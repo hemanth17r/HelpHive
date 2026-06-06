@@ -63,6 +63,7 @@ const AppContent = () => {
     selectedBird,
     profileActionCallback,
     completeProfileAction,
+    cancelProfileAction,
   } = useContext(AppContext);
 
   const { 
@@ -304,7 +305,7 @@ const AppContent = () => {
                   <div className="w-8 h-8 rounded-full border border-primary/20 overflow-hidden bg-orange-50 flex items-center justify-center shrink-0 hover:border-primary transition-colors">
                     <BirdAvatar birdName={selectedBird} size={32} />
                   </div>
-                  <StatusDot />
+                  {renderStatusDot()}
                 </div>
               )}
               {/* Back button (hides on main layout bases) */}
