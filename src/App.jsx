@@ -73,9 +73,14 @@ const AppContent = () => {
   } = useContext(NotificationContext);
 
   // Status dot for Tasker avatar
-  const StatusDot = () => (
-    (role === 'tasker' && isOnline) ? (
-      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white transition-colors duration-300 z-10 bg-green-500" />
+  const renderStatusDot = () => (
+    (role === 'tasker') ? (
+      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-900 ${
+        !isOnline ? 'bg-slate-500' : 
+        liveStatus === 'looking' ? 'bg-amber-400 animate-pulse' : 
+        ['crew_set', 'arriving', 'working'].includes(liveStatus) ? 'bg-emerald-500' : 
+        'bg-emerald-500'
+      }`} />
     ) : null
   );
 
@@ -225,7 +230,7 @@ const AppContent = () => {
                   <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border border-primary/20 overflow-hidden bg-orange-50 flex items-center justify-center shrink-0 shadow-sm">
                     <BirdAvatar birdName={selectedBird} size={36} />
                   </div>
-                  <StatusDot />
+                  {renderStatusDot()}
                 </div>
               </div>
             </div>
