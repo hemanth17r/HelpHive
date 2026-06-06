@@ -1,0 +1,128 @@
+import { supabase } from '../config/supabase';
+
+export const api = {
+  // --- Jobs API ---
+  fetchJobs: async () => {
+    const { data, error } = await supabase.from('jobs').select('*');
+    if (data) {
+      // Map properties as needed if using Supabase
+      const mappedJobs = data.map(j => ({
+        ...j,
+        posterId: j.poster_id,
+        taskerId: j.tasker_id,
+        skillId: j.skill_id,
+        peopleNeeded: j.people_needed,
+        timePosted: j.created_at,
+        lng: j.location ? j.location.coordinates[0] : 0,
+        lat: j.location ? j.location.coordinates[1] : 0,
+      }));
+      return { data: mappedJobs, error };
+    }
+    return { data, error };
+  },
+
+  postJob: async (jobData) => {
+    const { data, error } = await supabase.from('jobs').insert({
+      poster_id: jobData.posterId,
+      skill_id: jobData.skillId,
+      description: jobData.description,
+      people_needed: jobData.peopleNeeded,
+      amount: jobData.amount,
+      location: jobData.locationStr // formatted POINT(...)
+    }).select().single();
+    
+    return { data, error };
+  },
+
+  updateJob: async (jobId, updates) => {
+    const { data, error } = await supabase.from('jobs').update(updates).eq('id', jobId).select().single();
+    return { data, error };
+  },
+
+  deleteJob: async (jobId) => {
+    return await supabase
+      .from('jobs')
+      .delete()
+      .eq('id', jobId);
+  },
+
+  sendNotification: async (userId, title, body, actionUrl) => {
+    // 1. Try to invoke edge function (sends push AND saves to DB)
+    const { data, error } = await supabase.functions.invoke('push-notification', {
+      body: { user_id: userId, title, body, action_url: actionUrl }
+    });
+
+    // 2. If edge function fails (e.g. not deployed yet), fallback to just inserting into DB so in-app works
+    if (error) {
+      console.warn('Edge function failed or not deployed, falling back to DB insert:', error);
+      return await supabase
+        .from('notifications')
+        .insert({
+          user_id: userId,
+          type: 'system',
+          title,
+          body,
+          action_url: actionUrl
+        });
+    }
+    
+    return { data, error };
+  },
+
+  subscribeToJobs: (callback) => {
+    const channel = supabase
+      .channel('public:jobs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
+        callback();
+      })
+      .subscribe();
+      
+    return { unsubscribe: () => supabase.removeChannel(channel) };
+  },
+
+  // --- Profiles API ---
+  fetchProfile: async (userId) => {
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    return { data, error };
+  },
+
+  findProfileByPhone: async (phone) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('phone', phone)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    return { data, error };
+  },
+
+  createProfile: async (profileData) => {
+    const { data, error } = await supabase.from('profiles').insert(profileData).select().single();
+    return { data, error };
+  },
+
+  updateProfile: async (userId, updates) => {
+    const { data, error } = await supabase.from('profiles').update(updates).eq('id', userId).select().single();
+    return { data, error };
+  },
+  
+  upsertUserLocation: async (locationData) => {
+    const { data, error } = await supabase.from('user_locations').upsert(locationData);
+    return { data, error };
+  },
+
+  // --- Event Tracking API ---
+  logEvent: async (eventType, payload) => {
+    const { userId, role, entityId, metadata } = payload;
+    supabase.from('app_events').insert({
+      event_type: eventType,
+      user_id: userId || null,
+      active_role: role || null,
+      entity_id: entityId || null,
+      metadata: metadata || {}
+    }).then(({ error }) => {
+      if (error) console.error(`[EventTracker] Failed to log event: ${eventType}`, error);
+    });
+  }
+};

@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #FF6B35;
+  --color-dark: #2D2D2D;
+  --color-light-gray: #F5F5F5;
+  --color-border: #E5E5E5;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--color-light-gray);
+  color: var(--color-dark);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide all scrollbars globally for a cleaner app look */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Base custom styles for tooltip animations and generic styles */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(5px); } }
+
+/* Modal Backdrop Animations */
+.modal-backdrop-open {
+  animation: fadeIn 200ms ease-in-out forwards;
+}
+
+.modal-backdrop-close {
+  animation: fadeOut 200ms ease-in-out forwards;
+}
+
+/* Modal Content Animations */
+.modal-content-open {
+  animation: fadeIn 200ms ease-in-out forwards;
+}
+
+.modal-content-close {
+  animation: fadeOut 200ms ease-in-out forwards;
+}
