@@ -384,23 +384,23 @@ export const AppProvider = ({ children }) => {
 
   // Radius Logic for Job Feeds
   const getJobsInRadius = () => {
-    const openJobs = jobs.filter(j => j.status === 'open');
+    const openJobs = (jobs || []).filter(j => j?.status === 'open');
     
     let enrichedJobs = openJobs.map(job => {
       let distanceVal = 5.0; // fallback radius max
-      if (realLocation && job.lat && job.lng) {
+      if (realLocation && job?.lat && job?.lng) {
         distanceVal = calculateDistance(realLocation.lat, realLocation.lng, job.lat, job.lng);
-      } else if (job.distanceVal) {
+      } else if (job?.distanceVal) {
         distanceVal = job.distanceVal; // fallback for mock data
       }
       return {
-        ...job,
+        ...(job || {}),
         distanceVal
       };
     });
 
     if (realLocation) {
-      enrichedJobs.sort((a, b) => a.distanceVal - b.distanceVal);
+      enrichedJobs.sort((a, b) => (a?.distanceVal || 0) - (b?.distanceVal || 0));
     }
 
     return {

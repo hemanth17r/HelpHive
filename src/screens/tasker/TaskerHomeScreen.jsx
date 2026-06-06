@@ -31,20 +31,20 @@ const TaskerHomeScreen = () => {
     setDeclinedJobIds(prev => [...prev, jobId]);
   };
 
-  const { jobsList = [], radius = 5, message = '' } = getJobsInRadius();
+  const { jobsList = [], radius = 5, message = '' } = getJobsInRadius() || {};
 
   const visibleJobs = jobsList.filter(job => 
-    !declinedJobIds.includes(job.id) && 
-    job.posterId !== userProfile?.id
+    !declinedJobIds.includes(job?.id) && 
+    job?.posterId !== userProfile?.id
   );
 
   const matchingSkillsJobs = visibleJobs.filter(job => 
-    userProfile?.skills?.includes(job.skillId)
+    userProfile?.skills && Array.isArray(userProfile.skills) ? userProfile.skills.includes(job?.skillId) : false
   );
 
-  const displayActiveTasks = jobs.filter(job => 
-    (job.taskerId === userProfile?.id || job.taskerName === userProfile?.name) &&
-    (job.status === 'active' || job.status === 'in_progress')
+  const displayActiveTasks = (jobs || []).filter(job => 
+    (job?.taskerId === userProfile?.id || job?.taskerName === userProfile?.name) &&
+    (job?.status === 'active' || job?.status === 'in_progress')
   );
 
   return (
@@ -95,7 +95,7 @@ const TaskerHomeScreen = () => {
       {/* Main Content Feed */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full">
         {/* Guest Banner */}
-        {(!userProfile?.skills || userProfile.skills.length === 0) && (
+        {(!userProfile?.skills || !Array.isArray(userProfile.skills) || userProfile.skills.length === 0) && (
           <div 
             onClick={() => pushScreen('tasker_onboarding')}
             className="bg-orange-50 border border-primary/20 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-orange-100 transition-colors shadow-sm"
@@ -200,20 +200,20 @@ const TaskerHomeScreen = () => {
             )}
 
             {/* Section 1: Matching Skills or All Open Tasks */}
-            {((userProfile?.skills?.length > 0 ? matchingSkillsJobs : visibleJobs).length > 0) && (
+            {(((userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? matchingSkillsJobs : visibleJobs).length > 0) && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-                    {userProfile?.skills?.length > 0 ? 'Jobs Matching Your Skills' : 'Open Tasks Nearby'}
+                    {(userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? 'Jobs Matching Your Skills' : 'Open Tasks Nearby'}
                   </span>
                   <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                    {(userProfile?.skills?.length > 0 ? matchingSkillsJobs : visibleJobs).length} Live
+                    {((userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? matchingSkillsJobs : visibleJobs).length} Live
                   </span>
                 </div>
-                {(userProfile?.skills?.length > 0 ? matchingSkillsJobs : visibleJobs).map((job) => (
+                {((userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? matchingSkillsJobs : visibleJobs).map((job) => (
                   <JobCard
-                    key={job.id}
-                    job={{ ...job, distance: `${job.distanceVal} km` }}
+                    key={job?.id || Math.random()}
+                    job={{ ...job, distance: `${job?.distanceVal || 0} km` }}
                     onDecline={handleDeclineJob}
                   />
                 ))}
