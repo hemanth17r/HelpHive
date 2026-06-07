@@ -1,23 +1,76 @@
+/**
+ * Request the user's current GPS location.
+ * 
+ * On mobile browsers, this can fail with various errors:
+ * - PERMISSION_DENIED (1): User clicked "deny" or permission is blocked
+ * - POSITION_UNAVAILABLE (2): GPS is off or device can't determine location
+ * - TIMEOUT (3): Took too long to get a fix
+ * - NotAllowedError: Browser blocked the permission prompt (e.g., overlay apps on Android)
+ * 
+ * @returns {Promise<{lat: number, lng: number}>}
+ */
 export const getCurrentLocation = () => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocation is not supported by your browser'));
+      return;
+    }
+
+    // Check if we can query the permission state first (supported in modern browsers)
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        if (result.state === 'denied') {
+          reject(new Error('Location permission has been denied. Please enable it in your browser settings.'));
+          return;
+        }
+        // Permission is 'granted' or 'prompt' - proceed to get position
+        requestPosition(resolve, reject);
+      }).catch(() => {
+        // permissions.query not supported for geolocation in this browser, try directly
+        requestPosition(resolve, reject);
+      });
     } else {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        (error) => {
-          reject(error);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
+      requestPosition(resolve, reject);
     }
   });
 };
+
+function requestPosition(resolve, reject) {
+  try {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+      },
+      (error) => {
+        let message;
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            message = 'Location permission denied. Please enable location access in your browser settings.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            message = 'Location information is unavailable. Please check that GPS/location services are enabled on your device.';
+            break;
+          case error.TIMEOUT:
+            message = 'Location request timed out. Please try again.';
+            break;
+          default:
+            message = 'An unknown error occurred while getting your location.';
+        }
+        const enrichedError = new Error(message);
+        enrichedError.code = error.code;
+        enrichedError.originalError = error;
+        reject(enrichedError);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  } catch (err) {
+    // Handle the case where the browser blocks the call entirely (e.g., NotAllowedError from overlay apps on Android)
+    reject(new Error('Your browser blocked the location request. Close any overlays or bubbles from other apps, then try again.'));
+  }
+}
 
 export const getTimeAgo = (timestamp) => {
   if (!timestamp) return 'Just now';

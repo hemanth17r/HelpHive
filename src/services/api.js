@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase';
 
 export const api = {
+  supabase,
   // --- Jobs API ---
   fetchJobs: async () => {
     const { data, error } = await supabase.from('jobs').select('*');

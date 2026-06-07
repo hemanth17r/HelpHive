@@ -412,8 +412,8 @@ export const AppProvider = ({ children }) => {
 
   // Tasker accepts a job
   const acceptJob = async (jobId) => {
-    const tId = userProfileState?.id || userId || 'demo-id';
-    const tName = userProfileState?.taskerName || userProfileState?.name || 'Tasker';
+    const tId = userProfile?.id || userId || 'demo-id';
+    const tName = userProfile?.taskerName || userProfile?.name || 'Tasker';
     setJobs(prevJobs => 
       prevJobs.map(j => j.id === jobId ? { ...j, status: 'accepted', taskerId: tId, taskerName: tName } : j)
     );
@@ -581,9 +581,10 @@ export const AppProvider = ({ children }) => {
   const resetApp = () => {
     if (userId) trackEvent(EVENTS.LOGOUT, { userId, role });
     setRole(null);
-    setUserLocation(null);
+    setUserLocation(SERVICE_AREAS[0]);
     setLocationPermission('prompt');
-    setUserProfile(null);
+    setUserProfileState(null);
+    setUserId(null);
     setSelectedBird('falcon');
     localStorage.removeItem('activeRole');
     localStorage.removeItem('userId');
@@ -598,6 +599,7 @@ export const AppProvider = ({ children }) => {
     setProfileActionCallback(null);
     setTrackingTaskerPos(null);
     setAnimationTick(0);
+    setRealLocation(null);
     if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
   };
 
@@ -666,7 +668,8 @@ export const AppProvider = ({ children }) => {
         requireProfile,
         completeProfileAction,
         cancelProfileAction,
-        loginWithPhone
+        loginWithPhone,
+        userId
       }}
     >
       {children}

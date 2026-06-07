@@ -12,7 +12,6 @@ const TaskerHomeScreen = () => {
     userLocation, 
     userProfile, 
     getJobsInRadius, 
-    setShowLocationSheet,
     selectedBird,
     isOnline,
     setIsOnline,

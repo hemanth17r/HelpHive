@@ -1,5 +1,5 @@
-import React, { useContext } from 'react';
-import { ArrowLeft, Bell, CheckCircle2, Navigation, Star, AlertTriangle } from 'lucide-react';
+import React, { useContext, useState } from 'react';
+import { ArrowLeft, Bell, CheckCircle2, Navigation, Star, AlertTriangle, BellOff } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { NotificationContext } from '../store/NotificationContext';
 
@@ -24,6 +24,9 @@ const NotificationsScreen = () => {
     subscribeToPush 
   } = useContext(NotificationContext);
 
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [subscribeError, setSubscribeError] = useState(null);
+
   const handleNotificationClick = (notification) => {
     if (!notification.is_read) {
       markAsRead(notification.id);
@@ -32,6 +35,24 @@ const NotificationsScreen = () => {
       pushScreen(notification.action_url);
     }
   };
+
+  const handleSubscribeToPush = async () => {
+    setIsSubscribing(true);
+    setSubscribeError(null);
+    try {
+      const success = await subscribeToPush();
+      if (!success) {
+        setSubscribeError('Could not enable notifications. Please check your browser settings and allow notifications for this site.');
+      }
+    } catch {
+      setSubscribeError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  // Show the prompt if push is supported and permission hasn't been granted yet
+  const showPushPrompt = pushSupported && pushPermission !== 'granted';
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -57,18 +78,44 @@ const NotificationsScreen = () => {
       </div>
 
       {/* Push Subscription Prompt */}
-      {pushSupported && pushPermission === 'default' && (
+      {showPushPrompt && (
         <div className="m-4 p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-start space-x-3 shadow-sm">
-          <Bell className="w-6 h-6 text-primary shrink-0 mt-0.5" />
+          {pushPermission === 'denied' ? (
+            <BellOff className="w-6 h-6 text-gray-400 shrink-0 mt-0.5" />
+          ) : (
+            <Bell className="w-6 h-6 text-primary shrink-0 mt-0.5" />
+          )}
           <div className="flex-1">
-            <h3 className="text-sm font-bold text-dark">Enable Push Notifications</h3>
-            <p className="text-xs text-gray-600 mt-1">Get instantly notified when a tasker accepts your job or completes a task, even when you're not in the app.</p>
-            <button 
-              onClick={subscribeToPush}
-              className="mt-3 bg-primary text-white text-xs font-bold px-4 py-2 rounded-full hover:bg-primary/90 transition-colors"
-            >
-              Turn on notifications
-            </button>
+            {pushPermission === 'denied' ? (
+              <>
+                <h3 className="text-sm font-bold text-dark">Notifications Blocked</h3>
+                <p className="text-xs text-gray-600 mt-1">
+                  Notifications are blocked by your browser. To enable them, open your browser settings and allow notifications for this site.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-sm font-bold text-dark">Enable Push Notifications</h3>
+                <p className="text-xs text-gray-600 mt-1">Get instantly notified when a tasker accepts your job or completes a task, even when you're not in the app.</p>
+                <button 
+                  onClick={handleSubscribeToPush}
+                  disabled={isSubscribing}
+                  className={`mt-3 bg-primary text-white text-xs font-bold px-4 py-2 rounded-full transition-colors ${
+                    isSubscribing ? 'opacity-70 cursor-wait' : 'hover:bg-primary/90 cursor-pointer'
+                  }`}
+                >
+                  {isSubscribing ? (
+                    <span className="flex items-center space-x-1.5">
+                      <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"></span>
+                      <span>Enabling...</span>
+                    </span>
+                  ) : 'Turn on notifications'}
+                </button>
+                {subscribeError && (
+                  <p className="text-xs text-red-500 font-semibold mt-2">{subscribeError}</p>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -122,3 +169,4 @@ const NotificationsScreen = () => {
 };
 
 export default NotificationsScreen;
+

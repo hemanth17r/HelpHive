@@ -1,5 +1,7 @@
 import React, { useContext } from 'react';
 import { AppProvider, AppContext } from './store/AppContext';
+import { ToastProvider } from './store/ToastContext';
+import { NotificationProvider, NotificationContext } from './store/NotificationContext';
 import { 
   Sparkles, 
   Home, 
@@ -57,13 +59,13 @@ const AppContent = () => {
     pushScreen,
     popScreen,
     resetApp,
-    demoMode,
     isOnline,
     setIsOnline,
     selectedBird,
     profileActionCallback,
     completeProfileAction,
     cancelProfileAction,
+    liveStatus,
   } = useContext(AppContext);
 
   const { 
@@ -342,8 +344,7 @@ const AppContent = () => {
 );
 };
 
-import { ToastProvider } from './store/ToastContext';
-import { NotificationProvider, NotificationContext } from './store/NotificationContext';
+// ToastProvider and NotificationProvider imported at top of file
 
 function App() {
   return (

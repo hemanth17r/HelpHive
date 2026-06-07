@@ -10,7 +10,6 @@ const PosterHomeScreen = () => {
   const { 
     userLocation, 
     userProfile, 
-    setShowLocationSheet,
     selectedBird,
     jobs,
     pushScreen,
