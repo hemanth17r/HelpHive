@@ -48,7 +48,7 @@ const ActionItemsCarousel = () => {
       icon: User,
       title: 'Complete Profile',
       desc: 'Add Name & Phone',
-      color: 'bg-blue-50 text-blue-600 border-blue-200',
+      color: 'bg-violet-50 text-violet-600 border-violet-200',
       action: handleProfileRequest
     },
     location: {

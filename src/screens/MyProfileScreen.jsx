@@ -8,6 +8,7 @@ import BirdSelector from '../components/BirdSelector';
 import IconLabel from '../components/IconLabel';
 import { ToastContext } from '../store/ToastContext';
 import LoginModal from '../components/LoginModal';
+import { useProfileCompletion } from '../hooks/useProfileCompletion';
 
 const WhatsAppIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -18,6 +19,7 @@ const WhatsAppIcon = ({ className }) => (
 const MyProfileScreen = () => {
   const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
+  const { completionPercentage } = useProfileCompletion();
 
   const handleWhatsAppSupport = () => {
     const uId = userProfile?.id || userId || 'N/A';
@@ -188,9 +190,12 @@ Issue: `;
             <Tooltip text="Tap to change avatar" position="top">
               <button 
                 onClick={() => setShowBirdSelector(true)}
-                className="w-20 h-20 rounded-full border-4 border-white shadow-md -mt-14 mb-3 overflow-hidden bg-orange-50 flex items-center justify-center cursor-pointer hover:border-primary/20 transition-all active:scale-95"
+                className="w-[88px] h-[88px] rounded-full -mt-16 mb-3 flex items-center justify-center cursor-pointer hover:scale-105 transition-all active:scale-95 p-[3px]"
+                style={{ background: `conic-gradient(#f97316 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)` }}
               >
-                <BirdAvatar birdName={selectedBird} size={64} />
+                <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-[3px] border-white shadow-md">
+                  <BirdAvatar birdName={selectedBird} size={64} />
+                </div>
               </button>
             </Tooltip>
             
@@ -497,9 +502,12 @@ Issue: `;
             <Tooltip text="Tap to change avatar" position="top">
               <button 
                 onClick={() => setShowBirdSelector(true)}
-                className="w-20 h-20 rounded-full border-4 border-white shadow-md -mt-14 mb-3 overflow-hidden bg-orange-50 flex items-center justify-center cursor-pointer hover:border-primary/20 transition-all active:scale-95"
+                className="w-[88px] h-[88px] rounded-full -mt-16 mb-3 flex items-center justify-center cursor-pointer hover:scale-105 transition-all active:scale-95 p-[3px]"
+                style={{ background: `conic-gradient(#f97316 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)` }}
               >
-                <BirdAvatar birdName={selectedBird} size={64} />
+                <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-[3px] border-white shadow-md">
+                  <BirdAvatar birdName={selectedBird} size={64} />
+                </div>
               </button>
             </Tooltip>
             

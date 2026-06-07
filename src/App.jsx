@@ -202,7 +202,7 @@ const AppContent = () => {
               
               {/* Notification Bell */}
               <div 
-                className="relative cursor-pointer mr-4 hover:opacity-80 transition-opacity"
+                className="relative cursor-pointer mr-2 hover:opacity-80 transition-opacity"
                 onClick={() => pushScreen('notifications')}
               >
                 <Bell className="w-5 h-5 text-gray-600" />
@@ -215,7 +215,7 @@ const AppContent = () => {
 
               {/* Profile Avatar Trigger */}
               <div 
-                className="flex items-center space-x-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+                className="cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => {
                   if (role === 'tasker') {
                     setActiveTab('profile');
@@ -225,10 +225,6 @@ const AppContent = () => {
                   }
                 }}
               >
-                <div className="text-right hidden md:block max-w-[100px]">
-                  <p className="text-xs font-black text-dark leading-none truncate">{userProfile?.name || 'Guest'}</p>
-                  <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-wider">{role === 'poster' ? 'Hirer' : role}</p>
-                </div>
                 <div className="relative">
                   <div 
                     className="w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center p-[2px]"
@@ -315,8 +311,13 @@ const AppContent = () => {
                   }}
                   className="relative cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded-full border border-primary/20 overflow-hidden bg-orange-50 flex items-center justify-center shrink-0 hover:border-primary transition-colors">
-                    <BirdAvatar birdName={selectedBird} size={32} />
+                  <div 
+                    className="w-9 h-9 rounded-full flex items-center justify-center p-[2px]"
+                    style={{ background: `conic-gradient(#f97316 ${completionPercentage}%, #f3f4f6 ${completionPercentage}%)` }}
+                  >
+                    <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-2 border-white">
+                      <BirdAvatar birdName={selectedBird} size={28} />
+                    </div>
                   </div>
                   {renderStatusDot()}
                 </div>
