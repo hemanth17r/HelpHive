@@ -50,7 +50,7 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
     setPhone(formatted);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) {
       setError('Name is required.');
@@ -67,10 +67,7 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
     }
 
     setError('');
-    const res = await onSubmit(name.trim(), rawPhone);
-    if (res && res.success === false) {
-      setError(res.error);
-    }
+    onSubmit(name.trim(), rawPhone);
   };
 
   return (

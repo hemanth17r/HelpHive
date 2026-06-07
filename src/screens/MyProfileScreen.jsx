@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { Star, ShieldAlert, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2 } from 'lucide-react';
+import { Star, ShieldAlert, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2 } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { SKILLS } from '../data/mockData';
 import Tooltip from '../components/Tooltip';
@@ -137,7 +137,7 @@ Issue: `;
     setEditedPhone(formattedPhoneNumber);
   };
 
-  const handleSaveAccount = async (e) => {
+  const handleSaveAccount = (e) => {
     if (e) e.preventDefault();
     const updates = {};
     const finalName = editedName.trim() || 'New User'; // Fallback if they empty it completely
@@ -151,11 +151,7 @@ Issue: `;
     }
     
     if (Object.keys(updates).length > 0) {
-      const res = await setUserProfile({ ...profile, ...updates });
-      if (res && res.success === false) {
-        showToast(res.error, 'error');
-        return;
-      }
+      setUserProfile({ ...profile, ...updates });
       showToast('Account details updated successfully!', 'success');
     }
     setIsEditingAccount(false);
@@ -297,27 +293,15 @@ Issue: `;
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3 text-sm pt-3">
+                <div className="flex items-center space-x-3 text-sm">
                   <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
                     <Phone className="w-4 h-4 text-gray-500" />
                   </div>
-                  <div className={`flex-1 ${profile.email ? 'border-b border-gray-100 pb-3' : ''}`}>
+                  <div className="flex-1">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Phone Number</p>
                     <p className="font-bold text-dark">{profile.phone}</p>
                   </div>
                 </div>
-
-                {profile.email && (
-                  <div className="flex items-center space-x-3 text-sm pt-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
-                      <Mail className="w-4 h-4 text-gray-500" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Email Address</p>
-                      <p className="font-bold text-dark">{profile.email}</p>
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -621,27 +605,15 @@ Issue: `;
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3 text-sm pt-3">
+                <div className="flex items-center space-x-3 text-sm">
                   <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
                     <Phone className="w-4 h-4 text-gray-500" />
                   </div>
-                  <div className={`flex-1 ${profile.email ? 'border-b border-gray-100 pb-3' : ''}`}>
+                  <div className="flex-1">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Phone Number</p>
                     <p className="font-bold text-dark">{profile.phone}</p>
                   </div>
                 </div>
-
-                {profile.email && (
-                  <div className="flex items-center space-x-3 text-sm pt-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
-                      <Mail className="w-4 h-4 text-gray-500" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Email Address</p>
-                      <p className="font-bold text-dark">{profile.email}</p>
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </div>

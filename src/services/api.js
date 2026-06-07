@@ -3,33 +3,6 @@ import { parseEWKBPoint } from '../utils/location';
 
 export const api = {
   supabase,
-  // --- Auth API ---
-  signInWithOtp: async (email) => {
-    return await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-      },
-    });
-  },
-  signInWithOAuth: async (provider) => {
-    return await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
-  },
-  signOut: async () => {
-    return await supabase.auth.signOut();
-  },
-  getSession: async () => {
-    return await supabase.auth.getSession();
-  },
-  getUser: async () => {
-    return await supabase.auth.getUser();
-  },
-
   // --- Jobs API ---
   fetchJobs: async () => {
     const { data, error } = await supabase.from('jobs').select('*');
