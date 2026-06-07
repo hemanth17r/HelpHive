@@ -78,11 +78,8 @@ const AppContent = () => {
   // Status dot for Tasker avatar
   const renderStatusDot = () => (
     (role === 'tasker') ? (
-      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-900 ${
-        !isOnline ? 'bg-slate-500' : 
-        liveStatus === 'looking' ? 'bg-amber-400 animate-pulse' : 
-        ['crew_set', 'arriving', 'working'].includes(liveStatus) ? 'bg-emerald-500' : 
-        'bg-emerald-500'
+      <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+        !isOnline ? 'bg-gray-400' : 'bg-emerald-500'
       }`} />
     ) : null
   );
@@ -226,7 +223,7 @@ const AppContent = () => {
                 }}
               >
                 <div className="text-right hidden md:block max-w-[100px]">
-                  <p className="text-xs font-black text-dark leading-none truncate">{userProfile?.name || 'Guest User'}</p>
+                  <p className="text-xs font-black text-dark leading-none truncate">{userProfile?.name || 'Guest'}</p>
                   <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-wider">{role === 'poster' ? 'Hirer' : role}</p>
                 </div>
                 <div className="relative">
@@ -247,6 +244,12 @@ const AppContent = () => {
           <main className="flex-1 overflow-y-auto relative flex justify-center w-full bg-[#F8F9FA]">
             <div key={currentScreen} className="w-full lg:max-w-2xl bg-white lg:shadow-[0_0_20px_rgba(0,0,0,0.03)] lg:border-x lg:border-gray-100 flex flex-col min-h-screen relative animate-[fadeIn_200ms_ease-in-out]">
               {renderScreen()}
+              {/* Bottom Nav for desktop */}
+              {showBottomNav && (
+                <div className="sticky bottom-0 z-20">
+                  <BottomNav />
+                </div>
+              )}
             </div>
           </main>
         </div>

@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { Star, ShieldAlert, Award, Calendar, ArrowLeft, LogOut, User, Phone, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2 } from 'lucide-react';
+import { Star, ShieldAlert, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2 } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { SKILLS } from '../data/mockData';
 import Tooltip from '../components/Tooltip';
@@ -7,6 +7,7 @@ import BirdAvatar from '../components/BirdAvatars';
 import BirdSelector from '../components/BirdSelector';
 import IconLabel from '../components/IconLabel';
 import { ToastContext } from '../store/ToastContext';
+import LoginModal from '../components/LoginModal';
 
 const WhatsAppIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -40,6 +41,7 @@ Issue: `;
   const [editedPhone, setEditedPhone] = useState('');
   const [isEditingSkills, setIsEditingSkills] = useState(false);
   const [editedSkills, setEditedSkills] = useState([]);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -467,12 +469,22 @@ Issue: `;
 
               <div className="h-px bg-gray-100 my-2 mx-3"></div>
 
-              <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-xs font-bold text-red-500 hover:bg-red-50 p-3 rounded-2xl transition-colors cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <LogOut className="w-4.5 h-4.5 text-red-500" />
-                  <span>Sign Out</span>
-                </div>
-              </button>
+              {userId ? (
+                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-xs font-bold text-red-500 hover:bg-red-50 p-3 rounded-2xl transition-colors cursor-pointer">
+                  <div className="flex items-center space-x-3">
+                    <LogOut className="w-4.5 h-4.5 text-red-500" />
+                    <span>Sign Out</span>
+                  </div>
+                </button>
+              ) : (
+                <button onClick={() => setShowLoginModal(true)} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer">
+                  <div className="flex items-center space-x-3">
+                    <LogIn className="w-4.5 h-4.5 text-primary" />
+                    <span>Log In</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-primary" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -809,12 +821,22 @@ Issue: `;
 
               <div className="h-px bg-gray-100 my-2 mx-3"></div>
 
-              <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-xs font-bold text-red-500 hover:bg-red-50 p-3 rounded-2xl transition-colors cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <LogOut className="w-4.5 h-4.5 text-red-500" />
-                  <span>Sign Out</span>
-                </div>
-              </button>
+              {userId ? (
+                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-xs font-bold text-red-500 hover:bg-red-50 p-3 rounded-2xl transition-colors cursor-pointer">
+                  <div className="flex items-center space-x-3">
+                    <LogOut className="w-4.5 h-4.5 text-red-500" />
+                    <span>Sign Out</span>
+                  </div>
+                </button>
+              ) : (
+                <button onClick={() => setShowLoginModal(true)} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer">
+                  <div className="flex items-center space-x-3">
+                    <LogIn className="w-4.5 h-4.5 text-primary" />
+                    <span>Log In</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-primary" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -829,6 +851,11 @@ Issue: `;
           setShowBirdSelector(false);
           showToast('Avatar updated successfully!');
         }}
+      />
+
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
       />
 
       {/* Skills Editing Modal */}
