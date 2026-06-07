@@ -201,6 +201,15 @@ export const AppProvider = ({ children }) => {
     }
     
     const currentUserId = userId || localStorage.getItem('userId');
+
+    // Check phone number uniqueness
+    if (profileData.phone && profileData.phone !== userProfile?.phone) {
+      const { data: existingProfile } = await api.findProfileByPhone(profileData.phone);
+      if (existingProfile && existingProfile.id !== currentUserId) {
+        return { success: false, error: 'An account already exists with this phone number. Please log in.' };
+      }
+    }
+
     // Optimistic update so UI reflects immediately, even in demo mode or if Supabase fails
     setUserProfileState(prev => prev ? { ...prev, ...profileData, ...roleSpecificUpdates } : { id: currentUserId || 'demo-id', ...profileData, ...roleSpecificUpdates });
 
@@ -269,11 +278,15 @@ export const AppProvider = ({ children }) => {
   };
 
   const completeProfileAction = async (name, phone) => {
-    await setUserProfile({ name, phone, verifiedPhone: phone });
+    const res = await setUserProfile({ name, phone, verifiedPhone: phone });
+    if (res && res.success === false) {
+      return res;
+    }
     if (profileActionCallback) {
       profileActionCallback();
       setProfileActionCallback(null);
     }
+    return { success: true };
   };
 
   const cancelProfileAction = () => {
