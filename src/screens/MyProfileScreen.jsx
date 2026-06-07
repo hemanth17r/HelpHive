@@ -36,6 +36,7 @@ Issue: `;
     window.open(whatsappUrl, '_blank');
   };
   const [showBirdSelector, setShowBirdSelector] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedPhone, setEditedPhone] = useState('');
@@ -86,14 +87,14 @@ Issue: `;
 
   // Fallback profile
   const profile = {
+    ...userProfile,
     name: userProfile?.name || 'New User',
     phone: userProfile?.phone || 'Add Phone',
     skills: userProfile?.skills || [],
     rating: userProfile?.rating || 0,
     tasksCompleted: userProfile?.tasksCompleted || 0,
     badges: userProfile?.badges || [],
-    reviews: userProfile?.reviews || [],
-    ...userProfile
+    reviews: userProfile?.reviews || []
   };
 
   const reviews = profile.reviews || [];

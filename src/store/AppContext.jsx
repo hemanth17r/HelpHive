@@ -256,7 +256,12 @@ export const AppProvider = ({ children }) => {
     const currentName = userProfile?.name;
     const currentPhone = userProfile?.phone;
     
-    if (currentName && currentPhone) {
+    // Validate if the user actually has a real name and phone set
+    // This ensures both Tasker and Hirer use the same unified profile data
+    const hasValidName = currentName && currentName !== 'Guest User' && currentName !== 'New User';
+    const hasValidPhone = currentPhone && currentPhone !== 'Add Phone';
+    
+    if (hasValidName && hasValidPhone) {
       callback();
     } else {
       setProfileActionCallback(() => callback);

@@ -5,6 +5,7 @@ import { SKILLS } from '../../data/mockData';
 import Tooltip from '../../components/Tooltip';
 import BirdAvatar from '../../components/BirdAvatars';
 import { getCurrentLocation } from '../../utils/location';
+import ActionItemsCarousel from '../../components/ActionItemsCarousel';
 
 const PosterHomeScreen = () => {
   const { 
@@ -82,6 +83,9 @@ const PosterHomeScreen = () => {
       {/* Main Content Feed */}
       <div className="flex-1 overflow-y-auto px-4 pt-6 pb-24 space-y-6 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full">
         
+        {/* Action Items Carousel for missing permissions/profile details */}
+        <ActionItemsCarousel />
+
         {/* Post a Job Prominent Button */}
         <Tooltip text="Create a new task request">
           <button

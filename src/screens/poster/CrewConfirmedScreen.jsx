@@ -191,7 +191,7 @@ const CrewConfirmedScreen = () => {
 
           {otpVisible ? (
             <div className="bg-white border border-primary/20 rounded-2xl py-3 px-6 inline-block shadow-xs animate-scale-up">
-              <span className="text-2xl font-black text-primary tracking-widest">{otpGenerated || '----'}</span>
+              <span className="text-2xl font-black text-primary tracking-widest">{currentPostedJob?.otp || otpGenerated || '----'}</span>
             </div>
           ) : (
             <Tooltip text="Show verification OTP code">

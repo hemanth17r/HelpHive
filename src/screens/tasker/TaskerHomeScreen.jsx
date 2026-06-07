@@ -6,6 +6,7 @@ import Tooltip from '../../components/Tooltip';
 import BirdAvatar from '../../components/BirdAvatars';
 import { SKILLS } from '../../data/mockData';
 import { getCurrentLocation } from '../../utils/location';
+import ActionItemsCarousel from '../../components/ActionItemsCarousel';
 
 const TaskerHomeScreen = () => {
   const { 
@@ -112,21 +113,8 @@ const TaskerHomeScreen = () => {
 
       {/* Main Content Feed */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full">
-        {/* Guest Banner */}
-        {(!userProfile?.skills || !Array.isArray(userProfile.skills) || userProfile.skills.length === 0) && (
-          <div 
-            onClick={() => pushScreen('tasker_onboarding')}
-            className="bg-orange-50 border border-primary/20 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-orange-100 transition-colors shadow-sm"
-          >
-            <div>
-              <h4 className="text-sm font-black text-primary">Setup your skills</h4>
-              <p className="text-[10px] font-bold text-primary/80 mt-0.5">Select what tasks you can do to get matched!</p>
-            </div>
-            <div className="bg-white p-2 rounded-xl text-primary shadow-xs shrink-0">
-              <CheckCircle className="w-5 h-5" />
-            </div>
-          </div>
-        )}
+        {/* Action Items Carousel for missing permissions/profile details */}
+        <ActionItemsCarousel />
 
         {/* My Active Tasks Section */}
         {displayActiveTasks.length > 0 && (

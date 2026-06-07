@@ -42,6 +42,7 @@ import JobHistoryScreen from './screens/JobHistoryScreen';
 import ProfileCompletionModal from './components/ProfileCompletionModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import NotificationsScreen from './screens/NotificationsScreen';
+import { useProfileCompletion } from './hooks/useProfileCompletion';
 
 // Navigation Components
 import BottomNav from './components/BottomNav';
@@ -74,6 +75,8 @@ const AppContent = () => {
     pushPermission, 
     subscribeToPush 
   } = useContext(NotificationContext);
+
+  const { completionPercentage } = useProfileCompletion();
 
   // Status dot for Tasker avatar
   const renderStatusDot = () => (
@@ -227,8 +230,13 @@ const AppContent = () => {
                   <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-wider">{role === 'poster' ? 'Hirer' : role}</p>
                 </div>
                 <div className="relative">
-                  <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border border-primary/20 overflow-hidden bg-orange-50 flex items-center justify-center shrink-0 shadow-sm">
-                    <BirdAvatar birdName={selectedBird} size={36} />
+                  <div 
+                    className="w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center p-[2px]"
+                    style={{ background: `conic-gradient(#f97316 ${completionPercentage}%, #f3f4f6 ${completionPercentage}%)` }}
+                  >
+                    <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-2 border-white">
+                      <BirdAvatar birdName={selectedBird} size={36} />
+                    </div>
                   </div>
                   {renderStatusDot()}
                 </div>
