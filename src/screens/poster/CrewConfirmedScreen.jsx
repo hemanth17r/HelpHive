@@ -37,9 +37,7 @@ const CrewConfirmedScreen = () => {
 
   const handlePayOnline = () => {
     const tasker = crewTaskers[0];
-    const taskerUpi = tasker?.name 
-      ? `${tasker.name.toLowerCase().replace(/\s+/g, '')}@okaxis` 
-      : 'helphive@upi';
+    const taskerUpi = tasker?.upiId || 'helphive@upi';
     const amount = currentPostedJob?.amount || 0;
     const taskTitle = currentPostedJob?.description || 'Task';
     
@@ -75,7 +73,7 @@ const CrewConfirmedScreen = () => {
     localStorage.removeItem(`payment_initiated_${jobId}`);
 
     // Navigate to feedback rating screen
-    pushScreen('rating_screen');
+    pushScreen('rating_screen', true);
   };
 
   const handleWhatsAppSupport = () => {

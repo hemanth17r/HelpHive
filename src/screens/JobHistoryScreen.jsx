@@ -86,10 +86,10 @@ const JobHistoryScreen = () => {
           } else if (type === 'active') {
             if (role === 'tasker') {
               setAcceptedJob(job);
-              pushScreen('tasker_accepted_job');
+              pushScreen('tasker_accepted_job', true);
             } else {
               setCurrentPostedJob(job);
-              pushScreen('crew_confirmed');
+              pushScreen('crew_confirmed', true);
             }
           }
         }}

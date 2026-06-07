@@ -81,7 +81,7 @@ const RatingScreen = () => {
       showToast('Rating submitted!', 'success');
     }
 
-    pushScreen('job_receipt');
+    pushScreen('poster_home');
   };
 
   const handleReportSubmit = () => {

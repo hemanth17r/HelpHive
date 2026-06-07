@@ -70,7 +70,7 @@ const PosterHomeScreen = () => {
     if (job.status === 'completed') {
       pushScreen('job_receipt');
     } else {
-      pushScreen('crew_confirmed');
+      pushScreen('crew_confirmed', true);
     }
   };
 

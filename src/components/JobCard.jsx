@@ -7,7 +7,7 @@ import Tooltip from './Tooltip';
 import { getTimeAgo, getCurrentLocation } from '../utils/location';
 
 const JobCard = ({ job, onDecline }) => {
-  const { acceptJob, requireProfile, realLocation, setRealLocation } = useContext(AppContext);
+  const { acceptJob, requireProfile, realLocation, setRealLocation, userProfile, pushScreen, setTaskerActivityScrollTarget } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
 
   const handleRequestLocation = async (e) => {
@@ -24,6 +24,33 @@ const JobCard = ({ job, onDecline }) => {
   // Find skill icon
   const skill = SKILLS.find(s => s.id === job.skillId);
   const Icon = skill ? skill.icon : SKILLS[SKILLS.length - 1].icon;
+
+  const handleAcceptJob = () => {
+    requireProfile(async () => {
+      // 1. Check UPI ID first
+      if (!userProfile?.upiId) {
+        showToast('Please add your UPI ID to receive payments.', 'error');
+        setTaskerActivityScrollTarget('upi');
+        pushScreen('tasker_activity');
+        return;
+      }
+
+      // 2. Check GPS Location next
+      if (!realLocation) {
+        try {
+          const loc = await getCurrentLocation();
+          setRealLocation(loc);
+          // Location successfully obtained, proceed to accept the job
+          acceptJob(job.id);
+        } catch(err) {
+          showToast('GPS location is required to accept jobs. Please enable it.', 'error');
+        }
+      } else {
+        // 3. Location already present, accept the job
+        acceptJob(job.id);
+      }
+    });
+  };
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-xs border border-border flex flex-col space-y-3.5 hover:shadow-md transition-shadow">
@@ -90,20 +117,7 @@ const JobCard = ({ job, onDecline }) => {
         
         <Tooltip text="Accept job and get details" className="flex-1">
           <button
-            onClick={async () => {
-              if (!realLocation) {
-                try {
-                  const loc = await getCurrentLocation();
-                  setRealLocation(loc);
-                  // Location successfully obtained, proceed to accept the job
-                  requireProfile(() => acceptJob(job.id));
-                } catch(err) {
-                  showToast('GPS location is required to accept jobs. Please enable it.', 'error');
-                }
-              } else {
-                requireProfile(() => acceptJob(job.id));
-              }
-            }}
+            onClick={handleAcceptJob}
             className="w-full flex items-center justify-center space-x-1.5 bg-primary hover:bg-primary/95 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-xs shadow-primary/30 transition-all cursor-pointer"
           >
             <Check className="w-3.5 h-3.5" />

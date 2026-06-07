@@ -41,8 +41,6 @@ Issue: `;
   const [editedPhone, setEditedPhone] = useState('');
   const [isEditingSkills, setIsEditingSkills] = useState(false);
   const [editedSkills, setEditedSkills] = useState([]);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   
@@ -83,6 +81,8 @@ Issue: `;
       }
     }
   }, [isEditingSkills, shouldRenderSkillsModal]);
+
+
 
   // Fallback profile
   const profile = {
@@ -782,6 +782,8 @@ Issue: `;
                 </div>
                 <ChevronRight className="w-4 h-4 text-primary" />
               </button>
+
+
 
               <button onClick={() => pushScreen('tasker_activity')} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">

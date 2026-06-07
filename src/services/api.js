@@ -13,7 +13,7 @@ export const api = {
       
       let profileMap = {};
       if (profileIds.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone').in('id', profileIds);
+        const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone, upi_id').in('id', profileIds);
         if (profiles) {
           profiles.forEach(p => { profileMap[p.id] = p; });
         }
@@ -38,7 +38,8 @@ export const api = {
           posterPhone: poster.phone,
           taskerName: tasker.name,
           taskerBird: tasker.bird,
-          taskerPhone: tasker.phone
+          taskerPhone: tasker.phone,
+          taskerUpi: tasker.upi_id
         };
       });
       return { data: mappedJobs, error };

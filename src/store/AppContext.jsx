@@ -117,7 +117,8 @@ export const AppProvider = ({ children }) => {
             skills: data.skills || [],
             rating: data.rating,
             tasksCompleted: data.tasks_completed,
-            bird: data.bird
+            bird: data.bird,
+            upiId: data.upi_id || ''
           });
           const activeRole = localStorage.getItem('activeRole') || data.role;
           setRole(activeRole);
@@ -165,7 +166,8 @@ export const AppProvider = ({ children }) => {
           skills: data.skills || [],
           rating: data.rating,
           tasksCompleted: data.tasks_completed,
-          bird: data.bird
+          bird: data.bird,
+          upiId: data.upi_id || ''
         });
         const activeRole = data.role || 'tasker';
         setRole(activeRole);
@@ -206,6 +208,7 @@ export const AppProvider = ({ children }) => {
       const { data, error } = await api.updateProfile(currentUserId, {
         name: profileData.name !== undefined ? profileData.name : userProfile?.name,
         phone: profileData.phone !== undefined ? profileData.phone : userProfile?.phone,
+        upi_id: profileData.upiId !== undefined ? profileData.upiId : userProfile?.upiId,
         skills: profileData.skills || userProfile?.skills || [],
         bird: selectedBird,
         location: locationStr
@@ -228,7 +231,8 @@ export const AppProvider = ({ children }) => {
         tasks_completed: profileData.tasksCompleted || 0,
         skills: profileData.skills || [],
         bird: selectedBird,
-        location: locationStr
+        location: locationStr,
+        upi_id: profileData.upiId || null
       });
 
       if (data) {
@@ -309,10 +313,14 @@ export const AppProvider = ({ children }) => {
   const [leadNotifications, setLeadNotifications] = useState([]);
 
   // Navigation push & pop
-  const pushScreen = (screen) => {
+  const pushScreen = (screen, replaceStack = false) => {
     // If base screen of a flow, reset history stack base
     if (screen === 'landing' || screen === 'tasker_home' || screen === 'poster_home') {
       setScreenStack([screen]);
+    } else if (replaceStack) {
+      const base = role === 'tasker' ? 'tasker_home' : 'poster_home';
+      setScreenStack([base, screen]);
+      window.history.pushState({ screen }, '', window.location.pathname);
     } else {
       setScreenStack(prev => [...prev, screen]);
       window.history.pushState({ screen }, '', window.location.pathname);
@@ -449,7 +457,7 @@ export const AppProvider = ({ children }) => {
     setTrackingTaskerPos({ lat: startLat, lng: startLng });
     setAnimationTick(0);
 
-    pushScreen('tasker_accepted_job');
+    pushScreen('tasker_accepted_job', true);
   };
 
   // Tasker completes a job
@@ -472,7 +480,7 @@ export const AppProvider = ({ children }) => {
     }
 
     if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
-    pushScreen('tasker_rating');
+    pushScreen('tasker_rating', true);
   };
 
   // Poster posts a job
@@ -608,12 +616,13 @@ export const AppProvider = ({ children }) => {
           name: updatedJob.taskerName || 'Helper',
           rating: 5.0, // Should be fetched from profile
           tasksCompleted: 1,
-          bird: updatedJob.taskerBird || 'falcon'
+          bird: updatedJob.taskerBird || 'falcon',
+          upiId: updatedJob.taskerUpi
         };
         
         setCrewTaskers([taskerInfo]);
         setLiveStatus('crew_set');
-        pushScreen('crew_confirmed');
+        pushScreen('crew_confirmed', true);
       }
     }
   }, [jobs, currentScreen, currentPostedJob, pushScreen]);
@@ -691,6 +700,7 @@ export const AppProvider = ({ children }) => {
         liveStatus,
         setLiveStatus,
         otpGenerated,
+        setOtpGenerated,
         otpEntered,
         setOtpEntered,
         resetApp,

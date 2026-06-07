@@ -27,6 +27,7 @@ test.describe('Tasker Flow - Browse & Accept Job', () => {
       
       localStorage.setItem('userId', 'tasker_test_1');
       localStorage.setItem('activeRole', 'tasker');
+      localStorage.setItem('mock_otp', '1234');
     });
 
     // Reload to apply state and enter Tasker Home Screen
@@ -43,7 +44,7 @@ test.describe('Tasker Flow - Browse & Accept Job', () => {
     await expect(page.getByText('Job in Progress').first()).toBeVisible();
     await expect(page.getByText('Verify OTP to Start Job').first()).toBeVisible();
 
-    // Enter OTP (fallback is 1234)
+    // Enter OTP (mocked to 1234)
     await page.getByPlaceholder('Enter OTP').first().fill('1234');
     await page.getByRole('button', { name: 'Verify' }).first().click();
 

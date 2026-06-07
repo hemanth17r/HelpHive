@@ -1,16 +1,36 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Clock, CheckCircle, TrendingUp, Briefcase, CalendarDays, Users, Hash, ChevronDown, ChevronUp, Inbox } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, TrendingUp, Briefcase, CalendarDays, Users, Hash, ChevronDown, ChevronUp, Inbox, Check, X } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
+import { ToastContext } from '../../store/ToastContext';
 import { SKILLS } from '../../data/mockData';
 
 const TaskerActivityScreen = () => {
-  const { popScreen, jobs, userProfile, pushScreen, setCurrentPostedJob, setAcceptedJob, taskerActivityScrollTarget, setTaskerActivityScrollTarget } = useContext(AppContext);
+  const { popScreen, jobs, userProfile, setUserProfile, pushScreen, setCurrentPostedJob, setAcceptedJob, taskerActivityScrollTarget, setTaskerActivityScrollTarget } = useContext(AppContext);
+  const { showToast } = useContext(ToastContext);
 
   const [showAllActive, setShowAllActive] = useState(false);
   const [showAllCompleted, setShowAllCompleted] = useState(false);
+  const [isEditingUpi, setIsEditingUpi] = useState(false);
+  const [editedUpiId, setEditedUpiId] = useState('');
+  const [pulseUpi, setPulseUpi] = useState(false);
 
   const activeRef = useRef(null);
   const completedRef = useRef(null);
+  const upiRef = useRef(null);
+
+  const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
+
+  const handleSaveUpi = (e) => {
+    if (e) e.preventDefault();
+    const finalUpi = editedUpiId.trim();
+    if (!upiRegex.test(finalUpi)) {
+      showToast('Please enter a valid UPI ID (e.g. name@bank)', 'error');
+      return;
+    }
+    setUserProfile({ ...userProfile, upiId: finalUpi });
+    showToast('UPI ID saved successfully!', 'success');
+    setIsEditingUpi(false);
+  };
 
   // Scroll to targeted section if directed from MyProfileScreen
   useEffect(() => {
@@ -21,6 +41,11 @@ const TaskerActivityScreen = () => {
         }
         if (taskerActivityScrollTarget === 'completed' && completedRef.current) {
           completedRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        if (taskerActivityScrollTarget === 'upi' && upiRef.current) {
+          upiRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setPulseUpi(true);
+          setTimeout(() => setPulseUpi(false), 2000);
         }
         setTaskerActivityScrollTarget(null);
       }, 100);
@@ -157,6 +182,67 @@ const TaskerActivityScreen = () => {
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* ─── UPI ID / Receive Payments Section ─── */}
+        <div ref={upiRef} className={`bg-white rounded-3xl shadow-sm overflow-hidden transition-all duration-300 ${pulseUpi ? 'border border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)]' : 'border border-gray-100'}`} id="upi-settings-section">
+          <div className="p-5 space-y-4">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-orange-50 rounded-xl">
+                <Briefcase className="w-4.5 h-4.5 text-orange-500" />
+              </div>
+              <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Payment Settings</h3>
+            </div>
+            
+            {!userProfile?.upiId ? (
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
+                <h3 className="text-[11px] font-black uppercase text-orange-600 tracking-wider mb-2">Receive Payments</h3>
+                <p className="text-[10px] font-bold text-gray-500 mb-3">Add your UPI ID to receive payments directly from customers.</p>
+                <form onSubmit={handleSaveUpi} className="flex flex-col space-y-2">
+                  <input
+                    type="text"
+                    value={editedUpiId}
+                    onChange={(e) => setEditedUpiId(e.target.value)}
+                    placeholder="e.g. username@okhdfcbank"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold text-dark focus:outline-none focus:border-primary"
+                  />
+                  <button type="submit" disabled={!editedUpiId.trim()} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50 flex justify-center">
+                    Save UPI ID
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Receive Payments (UPI)</span>
+                  {!isEditingUpi && (
+                    <button onClick={() => { setEditedUpiId(userProfile.upiId); setIsEditingUpi(true); }} className="text-primary hover:bg-primary/10 p-1 rounded-md transition-colors cursor-pointer text-[10px] font-bold uppercase">
+                      Edit
+                    </button>
+                  )}
+                </div>
+                {isEditingUpi ? (
+                  <form onSubmit={handleSaveUpi} className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={editedUpiId}
+                      onChange={(e) => setEditedUpiId(e.target.value)}
+                      placeholder="e.g. username@okhdfcbank"
+                      className="flex-1 bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs font-bold text-dark focus:outline-none focus:border-primary"
+                    />
+                    <button type="button" onClick={() => setIsEditingUpi(false)} className="text-gray-400 hover:text-red-500 p-1.5 cursor-pointer flex-shrink-0">
+                      <X className="w-4 h-4" />
+                    </button>
+                    <button type="submit" disabled={!editedUpiId.trim()} className="text-primary hover:text-primary/80 p-1.5 cursor-pointer disabled:opacity-50 flex-shrink-0">
+                      <Check className="w-4 h-4" />
+                    </button>
+                  </form>
+                ) : (
+                  <span className="text-sm font-bold text-dark truncate">{userProfile.upiId}</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
