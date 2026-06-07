@@ -95,6 +95,14 @@ const JobReceiptScreen = () => {
               <p className="text-xs font-bold text-dark leading-relaxed">
                 {currentPostedJob.description}
               </p>
+              {currentPostedJob.address?.completeAddress && (
+                <div className="flex items-start mt-1.5 space-x-1">
+                  <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+                  <span className="text-xs font-bold text-gray-500 leading-snug">
+                    {currentPostedJob.address.completeAddress}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

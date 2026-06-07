@@ -2,11 +2,13 @@ import React, { useContext, useState } from 'react';
 import { Users, IndianRupee, MapPin, Clock, Check, X } from 'lucide-react';
 import { SKILLS } from '../data/mockData';
 import { AppContext } from '../store/AppContext';
+import { ToastContext } from '../store/ToastContext';
 import Tooltip from './Tooltip';
 import { getTimeAgo, getCurrentLocation } from '../utils/location';
 
 const JobCard = ({ job, onDecline }) => {
   const { acceptJob, requireProfile, realLocation, setRealLocation } = useContext(AppContext);
+  const { showToast } = useContext(ToastContext);
 
   const handleRequestLocation = async (e) => {
     e.stopPropagation();
@@ -15,6 +17,7 @@ const JobCard = ({ job, onDecline }) => {
       setRealLocation(loc);
     } catch(err) {
       console.error('Location request denied or failed', err);
+      showToast('Location permission is required to see distance.', 'error');
     }
   };
   
@@ -36,6 +39,14 @@ const JobCard = ({ job, onDecline }) => {
           <p className="text-sm font-semibold text-dark leading-snug line-clamp-2">
             {job.description}
           </p>
+          {job.address?.completeAddress && (
+            <div className="flex items-start mt-1.5 space-x-1">
+              <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
+              <span className="text-[11px] font-bold text-gray-500 leading-snug">
+                {job.address.completeAddress}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -79,7 +90,20 @@ const JobCard = ({ job, onDecline }) => {
         
         <Tooltip text="Accept job and get details" className="flex-1">
           <button
-            onClick={() => requireProfile(() => acceptJob(job.id))}
+            onClick={async () => {
+              if (!realLocation) {
+                try {
+                  const loc = await getCurrentLocation();
+                  setRealLocation(loc);
+                  // Location successfully obtained, proceed to accept the job
+                  requireProfile(() => acceptJob(job.id));
+                } catch(err) {
+                  showToast('GPS location is required to accept jobs. Please enable it.', 'error');
+                }
+              } else {
+                requireProfile(() => acceptJob(job.id));
+              }
+            }}
             className="w-full flex items-center justify-center space-x-1.5 bg-primary hover:bg-primary/95 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-xs shadow-primary/30 transition-all cursor-pointer"
           >
             <Check className="w-3.5 h-3.5" />

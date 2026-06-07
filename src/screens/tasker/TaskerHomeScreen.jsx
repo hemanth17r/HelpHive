@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { ToggleLeft, ToggleRight, Wifi, WifiOff, Inbox, MapPin, Users, CheckCircle, Clock } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Wifi, WifiOff, Inbox, MapPin, Users, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import JobCard from '../../components/JobCard';
 import Tooltip from '../../components/Tooltip';
@@ -23,6 +23,19 @@ const TaskerHomeScreen = () => {
     setRealLocation,
     setActiveTab
   } = useContext(AppContext);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshFeed = async () => {
+    setIsRefreshing(true);
+    try {
+      const loc = await getCurrentLocation();
+      setRealLocation(loc);
+    } catch (err) {
+      console.error("Failed to refresh location", err);
+    }
+    setIsRefreshing(false);
+  };
 
   const [declinedJobIds, setDeclinedJobIds] = useState([]);
 
@@ -65,6 +78,12 @@ const TaskerHomeScreen = () => {
                 Radius: {radius}km
               </div>
             </Tooltip>
+            <button 
+              onClick={handleRefreshFeed} 
+              className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
+            </button>
           </div>
 
           {/* Online / Offline Toggle */}

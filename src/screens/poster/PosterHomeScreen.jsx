@@ -179,9 +179,19 @@ const PosterHomeScreen = () => {
                       </div>
                     </div>
                     
-                    <p className="text-xs font-bold text-dark line-clamp-2 mb-3">
-                      {job.description}
-                    </p>
+                    <div className="mb-3">
+                      <p className="text-xs font-bold text-dark line-clamp-2">
+                        {job.description}
+                      </p>
+                      {job.address?.completeAddress && (
+                        <div className="flex items-start mt-1.5 space-x-1">
+                          <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          <span className="text-[10px] font-bold text-gray-500 leading-snug line-clamp-1">
+                            {job.address.completeAddress}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     
                     <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 border-t border-dashed border-border pt-3">
                       <div className="flex items-center space-x-1">
@@ -267,9 +277,19 @@ const PosterHomeScreen = () => {
                       </div>
                     </div>
                     
-                    <p className="text-xs font-bold text-gray-400 line-clamp-2 mb-3">
-                      {job.description}
-                    </p>
+                    <div className="mb-3">
+                      <p className="text-xs font-bold text-gray-400 line-clamp-2">
+                        {job.description}
+                      </p>
+                      {job.address?.completeAddress && (
+                        <div className="flex items-start mt-1.5 space-x-1 opacity-70">
+                          <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          <span className="text-[10px] font-bold text-gray-400 leading-snug line-clamp-1">
+                            {job.address.completeAddress}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     
                     <div className="flex items-center justify-between text-[10px] font-bold text-gray-400 border-t border-dashed border-border pt-3">
                       <div className="flex items-center space-x-1">

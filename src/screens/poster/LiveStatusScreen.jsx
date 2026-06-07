@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Radio, Users, Eye, ArrowRight, IndianRupee, Trash2 } from 'lucide-react';
+import { Radio, Users, Eye, ArrowRight, IndianRupee, Trash2, MapPin } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../data/mockData';
 import Tooltip from '../../components/Tooltip';
@@ -73,9 +73,19 @@ const LiveStatusScreen = () => {
             <Icon className="w-4 h-4 text-primary" />
             <span>{skill?.label}</span>
           </div>
-          <p className="text-xs font-bold text-dark leading-relaxed">
-            {currentPostedJob.description}
-          </p>
+          <div className="pb-2">
+            <p className="text-xs font-bold text-dark leading-relaxed">
+              {currentPostedJob.description}
+            </p>
+            {currentPostedJob.address?.completeAddress && (
+              <div className="flex items-start mt-1.5 space-x-1">
+                <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+                <span className="text-xs font-bold text-gray-500 leading-snug">
+                  {currentPostedJob.address.completeAddress}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="flex justify-between items-center pt-2 border-t border-dashed border-border text-xs font-bold text-gray-500">
             <div className="flex items-center space-x-1">
               <IndianRupee className="w-3.5 h-3.5 text-gray-400" />

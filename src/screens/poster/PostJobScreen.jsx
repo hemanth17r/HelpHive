@@ -178,12 +178,7 @@ const PostJobScreen = () => {
     const parsedAmount = parseFloat(amount);
     if (amount === '' || isNaN(parsedAmount) || parsedAmount < 0) return;
 
-    if (savedAddresses.length === 0) {
-      setShowAddressPopup(true);
-      return;
-    }
-    
-    submitJob(savedAddresses.find(a => a.isDefault) || savedAddresses[0]);
+    setShowAddressPopup(true);
   };
 
   const submitJob = (address) => {

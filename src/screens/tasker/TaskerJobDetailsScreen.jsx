@@ -1,9 +1,12 @@
 import React, { useState, useContext } from 'react';
 import { MapPin, Phone, MessageSquare, ShieldCheck, CheckCircle2, User, Compass } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
+import { ToastContext } from '../../store/ToastContext';
 import { SKILLS } from '../../data/mockData';
 import Tooltip from '../../components/Tooltip';
 import MapView from '../../components/MapView';
+import BirdAvatar from '../../components/BirdAvatars';
+import { api } from '../../services/api';
 import { trackEvent, EVENTS } from '../../utils/eventTracker';
 
 const WhatsAppIcon = ({ className }) => (
@@ -21,10 +24,12 @@ const TaskerJobDetailsScreen = () => {
     userProfile,
     role
   } = useContext(AppContext);
+  const { showToast } = useContext(ToastContext);
   
   const [otp, setOtp] = useState('');
   const [isVerified, setIsVerified] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
   React.useEffect(() => {
     if (acceptedJob && userProfile) {
@@ -37,13 +42,34 @@ const TaskerJobDetailsScreen = () => {
   const skill = SKILLS.find(s => s.id === acceptedJob.skillId);
   const Icon = skill ? skill.icon : SKILLS[SKILLS.length - 1].icon;
 
-  const handleVerifyOtp = () => {
-    const correctOtp = otpGenerated || '1234';
-    if (otp === correctOtp) {
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length !== 4) {
+      setErrorMsg('Please enter a valid 4-digit OTP.');
+      return;
+    }
+
+    setIsVerifying(true);
+    setErrorMsg('');
+
+    // E2E mock bypass
+    if (localStorage.getItem('mock_otp') && otp === localStorage.getItem('mock_otp')) {
+      setIsVerified(true);
+      setIsVerifying(false);
+      return;
+    }
+
+    const { data, error } = await api.verifyJobOtp(acceptedJob.id, otp);
+
+    setIsVerifying(false);
+    
+    if (error) {
+      console.error('OTP Verification Error:', error);
+      setErrorMsg('Error verifying OTP. Please try again.');
+    } else if (data === true) {
       setIsVerified(true);
       setErrorMsg('');
     } else {
-      setErrorMsg(`Incorrect OTP. Try "${correctOtp}"`);
+      setErrorMsg('Incorrect OTP. Please try again.');
     }
   };
 
@@ -55,8 +81,19 @@ const TaskerJobDetailsScreen = () => {
   const handleWhatsAppCustomer = () => {
     const taskTitle = skill?.label || acceptedJob.description || 'Task';
     const message = `Hi ${acceptedJob.address?.contactName || acceptedJob.posterName || 'Customer'},\n\nI'm contacting you regarding our HelpHive task.\n\nTask ID: ${acceptedJob.id || 'N/A'}\nTask: ${taskTitle}\n\nMessage: `;
-    const posterPhone = acceptedJob.address?.contactPhone || acceptedJob.posterPhone || '9347442426';
-    const whatsappUrl = `https://wa.me/91${posterPhone}?text=${encodeURIComponent(message)}`;
+    const posterPhone = acceptedJob.address?.contactPhone || acceptedJob.posterPhone;
+    
+    if (!posterPhone) {
+      showToast('Customer phone number is unavailable.', 'error');
+      return;
+    }
+    
+    let cleanPhone = posterPhone.replace(/\D/g, '');
+    if (cleanPhone.length === 10) {
+      cleanPhone = `91${cleanPhone}`;
+    }
+
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
@@ -78,12 +115,12 @@ const TaskerJobDetailsScreen = () => {
         {/* Job Poster Details */}
         <div className="flex items-center justify-between bg-gray-50 border border-border p-4 rounded-2xl">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <User className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-full border border-primary/20 overflow-hidden bg-orange-50 flex items-center justify-center shrink-0">
+              <BirdAvatar birdName={acceptedJob.posterBird || 'falcon'} size={48} />
             </div>
             <div>
               <h3 className="text-[10px] font-bold text-gray-400">Customer</h3>
-              <p className="text-xs font-black text-dark leading-tight">{acceptedJob.address?.contactName || acceptedJob.posterName}</p>
+              <p className="text-sm font-black text-dark leading-tight">{acceptedJob.posterName || acceptedJob.address?.contactName || 'Customer'}</p>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -181,9 +218,10 @@ const TaskerJobDetailsScreen = () => {
                 <Tooltip text="Verify OTP code">
                   <button
                     onClick={handleVerifyOtp}
-                    className="bg-primary hover:bg-primary/95 text-white font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer transition-colors"
+                    disabled={isVerifying}
+                    className={`bg-primary hover:bg-primary/95 text-white font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer transition-colors ${isVerifying ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    Verify
+                    {isVerifying ? 'Verifying...' : 'Verify'}
                   </button>
                 </Tooltip>
               </div>

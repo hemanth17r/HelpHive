@@ -7,9 +7,23 @@ export const api = {
   fetchJobs: async () => {
     const { data, error } = await supabase.from('jobs').select('*');
     if (data) {
-      // Map properties as needed if using Supabase
+      const posterIds = [...new Set(data.map(j => j.poster_id).filter(Boolean))];
+      const taskerIds = [...new Set(data.map(j => j.tasker_id).filter(Boolean))];
+      const profileIds = [...new Set([...posterIds, ...taskerIds])];
+      
+      let profileMap = {};
+      if (profileIds.length > 0) {
+        const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone').in('id', profileIds);
+        if (profiles) {
+          profiles.forEach(p => { profileMap[p.id] = p; });
+        }
+      }
+
       const mappedJobs = data.map(j => {
         const coords = parseEWKBPoint(j.location) || { lng: 0, lat: 0 };
+        const poster = profileMap[j.poster_id] || {};
+        const tasker = profileMap[j.tasker_id] || {};
+        
         return {
           ...j,
           posterId: j.poster_id,
@@ -19,6 +33,12 @@ export const api = {
           timePosted: j.created_at,
           lng: coords.lng,
           lat: coords.lat,
+          posterName: poster.name,
+          posterBird: poster.bird,
+          posterPhone: poster.phone,
+          taskerName: tasker.name,
+          taskerBird: tasker.bird,
+          taskerPhone: tasker.phone
         };
       });
       return { data: mappedJobs, error };
@@ -33,7 +53,8 @@ export const api = {
       description: jobData.description,
       people_needed: jobData.peopleNeeded,
       amount: jobData.amount,
-      location: jobData.locationStr // formatted POINT(...)
+      location: jobData.locationStr, // formatted POINT(...)
+      otp: jobData.otp
     }).select().single();
     
     return { data, error };
@@ -49,6 +70,14 @@ export const api = {
       .from('jobs')
       .delete()
       .eq('id', jobId);
+  },
+
+  verifyJobOtp: async (jobId, otp) => {
+    const { data, error } = await supabase.rpc('verify_job_otp', {
+      p_job_id: jobId,
+      p_otp: otp
+    });
+    return { data, error };
   },
 
   sendNotification: async (userId, title, body, actionUrl) => {

@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { Sparkles, Star, ShieldCheck, KeyRound, ArrowRight, ArrowLeft, Phone, Check, MapPin, Compass } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
+import { ToastContext } from '../../store/ToastContext';
 import Tooltip from '../../components/Tooltip';
 import MapView from '../../components/MapView';
 import BirdAvatar from '../../components/BirdAvatars';
@@ -25,6 +26,7 @@ const CrewConfirmedScreen = () => {
     trackingTaskerPos, 
     userId
   } = useContext(AppContext);
+  const { showToast } = useContext(ToastContext);
   
   const [otpVisible, setOtpVisible] = useState(false);
   const [paymentOption, setPaymentOption] = useState('online'); // 'online' or 'offline'
@@ -90,8 +92,19 @@ const CrewConfirmedScreen = () => {
     const tasker = crewTaskers[0];
     const taskTitle = currentPostedJob?.description || 'Task';
     const message = `Hi ${tasker?.name || 'Helper'},\n\nI'm contacting you regarding our HelpHive task.\n\nTask ID: ${currentPostedJob?.id || 'N/A'}\nTask: ${taskTitle}\n\nMessage: `;
-    const taskerPhone = tasker?.phone || '9347442426';
-    const whatsappUrl = `https://wa.me/91${taskerPhone}?text=${encodeURIComponent(message)}`;
+    const taskerPhone = tasker?.phone;
+    
+    if (!taskerPhone) {
+      showToast('Helper phone number is unavailable.', 'error');
+      return;
+    }
+
+    let cleanPhone = taskerPhone.replace(/\D/g, '');
+    if (cleanPhone.length === 10) {
+      cleanPhone = `91${cleanPhone}`;
+    }
+
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
@@ -180,7 +193,7 @@ const CrewConfirmedScreen = () => {
 
           {otpVisible ? (
             <div className="bg-white border border-primary/20 rounded-2xl py-3 px-6 inline-block shadow-xs animate-scale-up">
-              <span className="text-2xl font-black text-primary tracking-widest">{otpGenerated || '1234'}</span>
+              <span className="text-2xl font-black text-primary tracking-widest">{otpGenerated || '----'}</span>
             </div>
           ) : (
             <Tooltip text="Show verification OTP code">

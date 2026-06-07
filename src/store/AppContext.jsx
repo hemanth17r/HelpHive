@@ -3,7 +3,7 @@ import { SERVICE_AREAS } from '../config/serviceAreas';
 import { api } from '../services/api';
 import { trackEvent, EVENTS } from '../utils/eventTracker';
 import { ToastContext } from './ToastContext';
-import { parseEWKBPoint } from '../utils/location';
+import { parseEWKBPoint, getCurrentLocation } from '../utils/location';
 
 export const AppContext = createContext();
 
@@ -355,15 +355,19 @@ export const AppProvider = ({ children }) => {
       // Prevent browser from navigating back further if stack is active
       if (screenStack.length > 1) {
         setScreenStack(prev => prev.slice(0, -1));
-      } else {
-        // Keep in current base screen
+      } else if (activeTab !== 'home') {
+        // If they are on a root screen but not on the home tab (e.g., Profile),
+        // take them to the home tab and replace the popped state to trap them from exiting.
+        setActiveTab('home');
         window.history.pushState({ screen: currentScreen }, '', window.location.pathname);
       }
+      // If screenStack.length <= 1 and activeTab === 'home', we do nothing and let 
+      // the native browser/OS handle the back action, which will naturally close the app.
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [screenStack, currentScreen]);
+  }, [screenStack, currentScreen, activeTab]);
 
   // Change user location helper (kept for future expansion, currently defaults to LPU)
   const changeLocation = async (area) => {
@@ -417,11 +421,12 @@ export const AppProvider = ({ children }) => {
   const acceptJob = async (jobId) => {
     const tId = userProfile?.id || userId || localStorage.getItem('userId') || 'demo-id';
     const tName = userProfile?.taskerName || userProfile?.name || 'Tasker';
+    const tBird = userProfile?.bird || 'falcon';
     setJobs(prevJobs => 
-      prevJobs.map(j => j.id === jobId ? { ...j, status: 'accepted', taskerId: tId, taskerName: tName } : j)
+      prevJobs.map(j => j.id === jobId ? { ...j, status: 'accepted', taskerId: tId, taskerName: tName, taskerBird: tBird } : j)
     );
     const job = jobs.find(j => j.id === jobId);
-    const updatedJob = { ...job, status: 'accepted', taskerId: tId, taskerName: tName };
+    const updatedJob = { ...job, status: 'accepted', taskerId: tId, taskerName: tName, taskerBird: tBird };
     setAcceptedJob(updatedJob);
     
     // Backend update (removed tasker_name since it is not in DB schema)
@@ -498,13 +503,16 @@ export const AppProvider = ({ children }) => {
     }
 
     const currentUserId = userId || localStorage.getItem('userId');
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
     const { data, error } = await api.postJob({
       posterId: currentUserId,
       skillId: newJobData.skillId,
       description: newJobData.description || 'Quick task',
       peopleNeeded: newJobData.peopleNeeded || 1,
       amount: newJobData.amount,
-      locationStr: locationStr
+      locationStr: locationStr,
+      otp: otp
     });
 
     if (data) {
@@ -524,9 +532,7 @@ export const AppProvider = ({ children }) => {
       setJobs(prev => [dbJob, ...prev]);
       setCurrentPostedJob(dbJob);
       trackEvent(EVENTS.TASK_CREATION, { userId: currentUserId, role, entityId: data.id, metadata: { amount: newJobData.amount } });
-      
-      // Generate OTP
-      const otp = Math.floor(1000 + Math.random() * 9000).toString();
+      // OTP state update
       setOtpGenerated(otp);
 
       pushScreen('live_status');
@@ -551,16 +557,45 @@ export const AppProvider = ({ children }) => {
     });
   };
 
-  // Map Pin static position
+  // Map Pin static position and live tracking
   useEffect(() => {
     const targetJob = acceptedJob || currentPostedJob;
     const isJobActive = (currentScreen === 'tasker_accepted_job' && acceptedJob) || 
                         (currentScreen === 'crew_confirmed' && crewTaskers.length > 0 && currentPostedJob);
 
     if (isJobActive && targetJob) {
-      setTrackingTaskerPos({ lat: targetJob.lat, lng: targetJob.lng });
+      if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
+      
+      // If tasker role, fetch real location every 5 seconds to update map
+      if (role === 'tasker') {
+        // Start interval
+        trackingIntervalRef.current = setInterval(async () => {
+          try {
+            const loc = await getCurrentLocation();
+            setTrackingTaskerPos(loc);
+          } catch(err) {
+            console.error("Live tracking location failed", err);
+          }
+        }, 5000);
+      } else {
+        // For poster view without real-time backend updates in this demo,
+        // we just show the destination pin.
+        setTrackingTaskerPos({ lat: targetJob.lat, lng: targetJob.lng });
+      }
+    } else {
+      if (trackingIntervalRef.current) {
+        clearInterval(trackingIntervalRef.current);
+        trackingIntervalRef.current = null;
+      }
     }
-  }, [currentScreen, acceptedJob, currentPostedJob, crewTaskers]);
+
+    return () => {
+      if (trackingIntervalRef.current) {
+        clearInterval(trackingIntervalRef.current);
+        trackingIntervalRef.current = null;
+      }
+    };
+  }, [currentScreen, acceptedJob, currentPostedJob, crewTaskers, role]);
 
   // Listen for real job acceptance via Supabase
   useEffect(() => {
@@ -570,10 +605,10 @@ export const AppProvider = ({ children }) => {
       if (updatedJob && updatedJob.taskerId && updatedJob.status === 'accepted') {
         const taskerInfo = {
           id: updatedJob.taskerId,
-          name: updatedJob.taskerName,
+          name: updatedJob.taskerName || 'Helper',
           rating: 5.0, // Should be fetched from profile
           tasksCompleted: 1,
-          bird: 'falcon'
+          bird: updatedJob.taskerBird || 'falcon'
         };
         
         setCrewTaskers([taskerInfo]);
