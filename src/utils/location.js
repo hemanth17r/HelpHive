@@ -90,3 +90,60 @@ export const getTimeAgo = (timestamp) => {
   const days = Math.floor(hours / 24);
   return `${days} day${days > 1 ? 's' : ''} ago`;
 };
+
+/**
+ * Parses a PostGIS Point geometry hex string (EWKB) into longitude and latitude coordinates.
+ * @param {string|object} ewkb The PostGIS point hex string or GeoJSON point object.
+ * @returns {{lng: number, lat: number} | null}
+ */
+export const parseEWKBPoint = (ewkb) => {
+  if (!ewkb) return null;
+  if (typeof ewkb === 'object') {
+    if (ewkb.coordinates) return { lng: ewkb.coordinates[0], lat: ewkb.coordinates[1] };
+    if (ewkb.lng !== undefined && ewkb.lat !== undefined) return { lng: ewkb.lng, lat: ewkb.lat };
+    return null;
+  }
+  
+  try {
+    if (ewkb.startsWith('{')) {
+      const geo = JSON.parse(ewkb);
+      return { lng: geo.coordinates[0], lat: geo.coordinates[1] };
+    }
+    
+    const hexToDouble = (hexStr) => {
+      const bytes = new Uint8Array(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+      const buffer = bytes.buffer;
+      const dataView = new DataView(buffer);
+      return dataView.getFloat64(0, true);
+    };
+    
+    const isLittleEndian = ewkb.startsWith('01');
+    if (!isLittleEndian) {
+      const hexToDoubleBE = (hexStr) => {
+        const bytes = new Uint8Array(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+        const buffer = bytes.buffer;
+        const dataView = new DataView(buffer);
+        return dataView.getFloat64(0, false);
+      };
+      const typeByte = ewkb.slice(2, 10);
+      const hasSRID = (parseInt(typeByte, 16) & 0x20000000) !== 0;
+      const offset = hasSRID ? 18 : 10;
+      const lngHex = ewkb.slice(offset, offset + 16);
+      const latHex = ewkb.slice(offset + 16, offset + 32);
+      return { lng: hexToDoubleBE(lngHex), lat: hexToDoubleBE(latHex) };
+    }
+    
+    const hasSRID = ewkb.slice(8, 10) === '20';
+    const offset = hasSRID ? 18 : 10;
+    const lngHex = ewkb.slice(offset, offset + 16);
+    const latHex = ewkb.slice(offset + 16, offset + 32);
+    
+    return {
+      lng: hexToDouble(lngHex),
+      lat: hexToDouble(latHex)
+    };
+  } catch (e) {
+    console.error("Failed to parse EWKB Point:", ewkb, e);
+    return null;
+  }
+};

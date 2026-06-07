@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import { parseEWKBPoint } from '../utils/location';
 
 export const api = {
   supabase,
@@ -7,16 +8,19 @@ export const api = {
     const { data, error } = await supabase.from('jobs').select('*');
     if (data) {
       // Map properties as needed if using Supabase
-      const mappedJobs = data.map(j => ({
-        ...j,
-        posterId: j.poster_id,
-        taskerId: j.tasker_id,
-        skillId: j.skill_id,
-        peopleNeeded: j.people_needed,
-        timePosted: j.created_at,
-        lng: j.location ? j.location.coordinates[0] : 0,
-        lat: j.location ? j.location.coordinates[1] : 0,
-      }));
+      const mappedJobs = data.map(j => {
+        const coords = parseEWKBPoint(j.location) || { lng: 0, lat: 0 };
+        return {
+          ...j,
+          posterId: j.poster_id,
+          taskerId: j.tasker_id,
+          skillId: j.skill_id,
+          peopleNeeded: j.people_needed,
+          timePosted: j.created_at,
+          lng: coords.lng,
+          lat: coords.lat,
+        };
+      });
       return { data: mappedJobs, error };
     }
     return { data, error };

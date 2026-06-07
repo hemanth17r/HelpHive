@@ -3,6 +3,7 @@ import { SERVICE_AREAS } from '../config/serviceAreas';
 import { api } from '../services/api';
 import { trackEvent, EVENTS } from '../utils/eventTracker';
 import { ToastContext } from './ToastContext';
+import { parseEWKBPoint } from '../utils/location';
 
 export const AppContext = createContext();
 
@@ -71,16 +72,19 @@ export const AppProvider = ({ children }) => {
     const fetchJobs = async () => {
       const { data, error } = await api.fetchJobs();
       if (data) {
-        const mappedJobs = data.map(j => ({
-          ...j,
-          posterId: j.poster_id,
-          taskerId: j.tasker_id,
-          skillId: j.skill_id,
-          peopleNeeded: j.people_needed,
-          timePosted: j.created_at,
-          lng: j.location ? j.location.coordinates[0] : 0,
-          lat: j.location ? j.location.coordinates[1] : 0,
-        }));
+        const mappedJobs = data.map(j => {
+          const coords = parseEWKBPoint(j.location) || { lng: j.lng || 0, lat: j.lat || 0 };
+          return {
+            ...j,
+            posterId: j.posterId || j.poster_id,
+            taskerId: j.taskerId || j.tasker_id,
+            skillId: j.skillId || j.skill_id,
+            peopleNeeded: j.peopleNeeded || j.people_needed,
+            timePosted: j.timePosted || j.created_at,
+            lng: coords.lng,
+            lat: coords.lat,
+          };
+        });
         setJobs(mappedJobs);
       }
     };
@@ -194,14 +198,14 @@ export const AppProvider = ({ children }) => {
       }
     }
     
+    const currentUserId = userId || localStorage.getItem('userId');
     // Optimistic update so UI reflects immediately, even in demo mode or if Supabase fails
-    setUserProfileState(prev => prev ? { ...prev, ...profileData, ...roleSpecificUpdates } : { id: userId || 'demo-id', ...profileData, ...roleSpecificUpdates });
+    setUserProfileState(prev => prev ? { ...prev, ...profileData, ...roleSpecificUpdates } : { id: currentUserId || 'demo-id', ...profileData, ...roleSpecificUpdates });
 
-    if (userId) {
-      const { data, error } = await api.updateProfile(userId, {
+    if (currentUserId) {
+      const { data, error } = await api.updateProfile(currentUserId, {
         name: profileData.name !== undefined ? profileData.name : userProfile?.name,
         phone: profileData.phone !== undefined ? profileData.phone : userProfile?.phone,
-        ...roleSpecificUpdates,
         skills: profileData.skills || userProfile?.skills || [],
         bird: selectedBird,
         location: locationStr
@@ -218,7 +222,6 @@ export const AppProvider = ({ children }) => {
       const { data, error } = await api.createProfile({
         name: profileData.name || 'Guest User',
         phone: profileData.phone,
-        ...roleSpecificUpdates,
         role: role,
         city_id: userLocation?.id,
         rating: profileData.rating || 5.0,
@@ -412,7 +415,7 @@ export const AppProvider = ({ children }) => {
 
   // Tasker accepts a job
   const acceptJob = async (jobId) => {
-    const tId = userProfile?.id || userId || 'demo-id';
+    const tId = userProfile?.id || userId || localStorage.getItem('userId') || 'demo-id';
     const tName = userProfile?.taskerName || userProfile?.name || 'Tasker';
     setJobs(prevJobs => 
       prevJobs.map(j => j.id === jobId ? { ...j, status: 'accepted', taskerId: tId, taskerName: tName } : j)
@@ -421,8 +424,8 @@ export const AppProvider = ({ children }) => {
     const updatedJob = { ...job, status: 'accepted', taskerId: tId, taskerName: tName };
     setAcceptedJob(updatedJob);
     
-    // Backend update
-    await api.updateJob(jobId, { status: 'accepted', tasker_id: tId, tasker_name: tName });
+    // Backend update (removed tasker_name since it is not in DB schema)
+    await api.updateJob(jobId, { status: 'accepted', tasker_id: tId });
     trackEvent(EVENTS.TASK_ACCEPTANCE, { userId: tId, role, entityId: jobId });
 
     // Send Notification to Hirer
@@ -494,8 +497,9 @@ export const AppProvider = ({ children }) => {
       setEditJobData(null);
     }
 
+    const currentUserId = userId || localStorage.getItem('userId');
     const { data, error } = await api.postJob({
-      posterId: userId,
+      posterId: currentUserId,
       skillId: newJobData.skillId,
       description: newJobData.description || 'Quick task',
       peopleNeeded: newJobData.peopleNeeded || 1,
@@ -519,16 +523,18 @@ export const AppProvider = ({ children }) => {
       };
       setJobs(prev => [dbJob, ...prev]);
       setCurrentPostedJob(dbJob);
-      trackEvent(EVENTS.TASK_CREATION, { userId, role, entityId: data.id, metadata: { amount: newJobData.amount } });
+      trackEvent(EVENTS.TASK_CREATION, { userId: currentUserId, role, entityId: data.id, metadata: { amount: newJobData.amount } });
+      
+      // Generate OTP
+      const otp = Math.floor(1000 + Math.random() * 9000).toString();
+      setOtpGenerated(otp);
+
+      pushScreen('live_status');
+      showToast('Job posted successfully!', 'success');
     } else {
       console.error('Failed to post job:', error);
+      showToast('Failed to post job. Please try again.', 'error');
     }
-    
-    // Generate OTP
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    setOtpGenerated(otp);
-
-    pushScreen('live_status');
   };
 
   const saveDraftJob = (draftData) => {
