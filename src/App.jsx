@@ -42,6 +42,7 @@ import JobHistoryScreen from './screens/JobHistoryScreen';
 import ProfileCompletionModal from './components/ProfileCompletionModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import NotificationsScreen from './screens/NotificationsScreen';
+import ErrorBoundary from './components/ErrorBoundary';
 import { useProfileCompletion } from './hooks/useProfileCompletion';
 
 // Navigation Components
@@ -247,7 +248,9 @@ const AppContent = () => {
           {/* Main scrollable body */}
           <main className="flex-1 overflow-y-auto relative flex justify-center w-full bg-[#F8F9FA]">
             <div key={currentScreen} className="w-full lg:max-w-2xl bg-white lg:shadow-[0_0_20px_rgba(0,0,0,0.03)] lg:border-x lg:border-gray-100 flex flex-col min-h-screen relative animate-[fadeIn_200ms_ease-in-out]">
-              {renderScreen()}
+              <ErrorBoundary key={currentScreen}>
+                {renderScreen()}
+              </ErrorBoundary>
               {/* Bottom Nav for desktop */}
               {showBottomNav && (
                 <div className="sticky bottom-0 z-20">
@@ -337,7 +340,9 @@ const AppContent = () => {
 
         {/* Main App Body */}
         <div key={currentScreen} className="flex-1 flex flex-col overflow-y-auto no-scrollbar relative animate-[fadeIn_200ms_ease-in-out]">
-          {renderScreen()}
+          <ErrorBoundary key={currentScreen}>
+            {renderScreen()}
+          </ErrorBoundary>
         </div>
 
       {/* Floating Bottom Nav */}

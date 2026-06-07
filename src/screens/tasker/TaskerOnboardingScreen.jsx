@@ -1,12 +1,14 @@
 import React, { useState, useContext } from 'react';
 import { ArrowLeft, Check } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
+import { ToastContext } from '../../store/ToastContext';
 import { SKILLS } from '../../data/mockData';
 import IconLabel from '../../components/IconLabel';
 import Tooltip from '../../components/Tooltip';
 
 const TaskerOnboardingScreen = () => {
   const { setUserProfile, pushScreen, popScreen, userProfile, requireProfile } = useContext(AppContext);
+  const { showToast } = useContext(ToastContext);
   const [selectedSkills, setSelectedSkills] = useState(userProfile?.skills || []);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -25,16 +27,24 @@ const TaskerOnboardingScreen = () => {
       return;
     }
     
-    requireProfile(() => {
+    requireProfile(async () => {
       setIsLoading(true);
-      setTimeout(() => {
-        setIsLoading(false);
-        // Save profile skills
-        setUserProfile({
+      try {
+        const result = await setUserProfile({
           skills: selectedSkills,
         });
+        if (result && result.success === false) {
+          showToast(result.error || 'Failed to save skills. Please try again.', 'error');
+          return;
+        }
+        showToast('Skills saved successfully!', 'success');
         pushScreen('tasker_home');
-      }, 1000); // Simulated network delay
+      } catch (err) {
+        console.error('Failed to save skills:', err);
+        showToast('Failed to save skills. Please try again.', 'error');
+      } finally {
+        setIsLoading(false);
+      }
     });
   };
 

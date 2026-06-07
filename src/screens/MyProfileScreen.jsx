@@ -924,14 +924,23 @@ Issue: `;
             {/* Footer */}
             <div className="px-6 py-4 bg-white border-t border-border shrink-0">
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (editedSkills.length === 0) {
                     alert('Please select at least one skill.');
                     return;
                   }
-                  setUserProfile({ ...profile, skills: editedSkills });
-                  setIsEditingSkills(false);
-                  showToast('Services updated successfully!', 'success');
+                  try {
+                    const result = await setUserProfile({ skills: editedSkills });
+                    if (result && result.success === false) {
+                      showToast(result.error || 'Failed to save skills. Please try again.', 'error');
+                      return;
+                    }
+                    setIsEditingSkills(false);
+                    showToast('Services updated successfully!', 'success');
+                  } catch (err) {
+                    console.error('Failed to save skills:', err);
+                    showToast('Failed to save skills. Please try again.', 'error');
+                  }
                 }}
                 className="w-full bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer"
               >

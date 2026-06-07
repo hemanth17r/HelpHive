@@ -20,16 +20,25 @@ const TaskerActivityScreen = () => {
 
   const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
 
-  const handleSaveUpi = (e) => {
+  const handleSaveUpi = async (e) => {
     if (e) e.preventDefault();
     const finalUpi = editedUpiId.trim();
     if (!upiRegex.test(finalUpi)) {
       showToast('Please enter a valid UPI ID (e.g. name@bank)', 'error');
       return;
     }
-    setUserProfile({ ...userProfile, upiId: finalUpi });
-    showToast('UPI ID saved successfully!', 'success');
-    setIsEditingUpi(false);
+    try {
+      const result = await setUserProfile({ upiId: finalUpi });
+      if (result && result.success === false) {
+        showToast(result.error || 'Failed to save UPI ID. Please try again.', 'error');
+        return;
+      }
+      showToast('UPI ID saved successfully!', 'success');
+      setIsEditingUpi(false);
+    } catch (err) {
+      console.error('Failed to save UPI ID:', err);
+      showToast('Failed to save UPI ID. Please try again.', 'error');
+    }
   };
 
   // Scroll to targeted section if directed from MyProfileScreen

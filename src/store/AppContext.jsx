@@ -210,7 +210,10 @@ export const AppProvider = ({ children }) => {
       }
     }
 
-    // Optimistic update so UI reflects immediately, even in demo mode or if Supabase fails
+    // Save previous state for rollback on failure
+    const previousProfile = userProfile ? { ...userProfile } : null;
+
+    // Optimistic update so UI reflects immediately
     setUserProfileState(prev => prev ? { ...prev, ...profileData, ...roleSpecificUpdates } : { id: currentUserId || 'demo-id', ...profileData, ...roleSpecificUpdates });
 
     if (currentUserId) {
@@ -223,6 +226,15 @@ export const AppProvider = ({ children }) => {
         location: locationStr
       });
 
+      if (error) {
+        // Rollback optimistic update on failure
+        console.error('setUserProfile: DB update failed, rolling back', error);
+        if (previousProfile) {
+          setUserProfileState(previousProfile);
+        }
+        return { success: false, error: 'Failed to save. Please try again.' };
+      }
+
       if (data) {
         setUserProfileState(prev => ({
           ...prev,
@@ -230,6 +242,7 @@ export const AppProvider = ({ children }) => {
           ...roleSpecificUpdates
         }));
       }
+      return { success: true };
     } else if (profileData.phone) {
       const { data, error } = await api.createProfile({
         name: profileData.name || 'Guest User',
@@ -244,6 +257,14 @@ export const AppProvider = ({ children }) => {
         upi_id: profileData.upiId || null
       });
 
+      if (error) {
+        console.error('setUserProfile: DB create failed, rolling back', error);
+        if (previousProfile) {
+          setUserProfileState(previousProfile);
+        }
+        return { success: false, error: 'Failed to create profile. Please try again.' };
+      }
+
       if (data) {
         setUserId(data.id);
         localStorage.setItem('userId', data.id);
@@ -253,7 +274,9 @@ export const AppProvider = ({ children }) => {
         }));
         trackEvent(EVENTS.SIGNUP, { userId: data.id, role: role });
       }
+      return { success: true };
     }
+    return { success: true };
   };
 
   const [activeTab, setActiveTab] = useState('home'); // For tasker: 'home' | 'profile'
@@ -283,7 +306,8 @@ export const AppProvider = ({ children }) => {
       return res;
     }
     if (profileActionCallback) {
-      profileActionCallback();
+      // Await in case the callback is async (e.g. saving skills)
+      await profileActionCallback();
       setProfileActionCallback(null);
     }
     return { success: true };
