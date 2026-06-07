@@ -1,9 +1,8 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { ToggleLeft, ToggleRight, Wifi, WifiOff, Inbox, MapPin, Users, CheckCircle, Clock, RefreshCw } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Wifi, WifiOff, Inbox, Users, RefreshCw } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import JobCard from '../../components/JobCard';
-import Tooltip from '../../components/Tooltip';
-import BirdAvatar from '../../components/BirdAvatars';
+
 import { SKILLS } from '../../data/mockData';
 import { getCurrentLocation } from '../../utils/location';
 import ActionItemsCarousel from '../../components/ActionItemsCarousel';
@@ -44,7 +43,7 @@ const TaskerHomeScreen = () => {
     setDeclinedJobIds(prev => [...prev, jobId]);
   };
 
-  const { jobsList = [], radius = 5, message = '' } = getJobsInRadius() || {};
+  const { jobsList = [] } = getJobsInRadius() || {};
 
   const visibleJobs = jobsList.filter(job => 
     !declinedJobIds.includes(job?.id) && 
@@ -74,11 +73,9 @@ const TaskerHomeScreen = () => {
             >
               Hi, {userProfile?.name?.split(' ')[0] || 'Tasker'}
             </span>
-            <Tooltip text={`Jobs are queried in your surrounding radius`}>
-              <div className="text-[9px] font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20 shrink-0">
-                Radius: {radius}km
-              </div>
-            </Tooltip>
+            <div className="text-[9px] font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20 shrink-0">
+              LPU Campus
+            </div>
             <button 
               onClick={handleRefreshFeed} 
               className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
@@ -191,19 +188,14 @@ const TaskerHomeScreen = () => {
             <div className="p-4 bg-orange-50 rounded-full text-primary">
               <Inbox className="w-10 h-10" />
             </div>
-            <h3 className="text-base font-black text-dark">No Tasks Nearby</h3>
+            <h3 className="text-base font-black text-dark">No Open Tasks Right Now</h3>
             <p className="text-xs font-semibold text-gray-400 max-w-[220px]">
-              We couldn't find open tasks even after expanding to 5km radius.
+              No tasks posted on campus yet. Check back soon!
             </p>
           </div>
         ) : (
           <div className="space-y-6 pb-20">
-            {/* Radius Expansion Info Alert */}
-            {message && (
-              <div className="bg-orange-50 border border-primary/20 rounded-xl px-3 py-2 text-center text-[11px] text-primary font-bold animate-pulse">
-                🔍 {message}
-              </div>
-            )}
+
 
             {/* Section 1: Matching Skills or All Open Tasks */}
             {(((userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? matchingSkillsJobs : visibleJobs).length > 0) && (
