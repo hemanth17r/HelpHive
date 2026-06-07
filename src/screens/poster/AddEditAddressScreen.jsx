@@ -50,7 +50,7 @@ const AddEditAddressScreen = () => {
     setReceiverPhone(formattedPhoneNumber);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!area || !completeAddress) {
       showToast('Area and complete address are required', 'error');
       return;
@@ -69,7 +69,11 @@ const AddEditAddressScreen = () => {
       if (contactPhone !== userProfile?.phone) updates.phone = contactPhone;
       
       if (Object.keys(updates).length > 0) {
-        setUserProfile({ ...userProfile, ...updates });
+        const res = await setUserProfile({ ...userProfile, ...updates });
+        if (res && res.success === false) {
+          showToast(res.error, 'error');
+          return;
+        }
       }
     } else {
       contactName = receiverName.trim();

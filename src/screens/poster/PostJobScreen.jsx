@@ -207,7 +207,7 @@ const PostJobScreen = () => {
     }, 1000); // Simulate network delay
   };
 
-  const handleSaveAddressAndPost = () => {
+  const handleSaveAddressAndPost = async () => {
     if (!area || !completeAddress) {
       showToast('Area and complete address are required', 'error');
       return;
@@ -221,7 +221,11 @@ const PostJobScreen = () => {
     // Update global profile if in 'myself' mode
     if (contactMode === 'myself') {
       const rawPhone = receiverPhone.replace(/\D/g, '');
-      setUserProfile({ ...userProfile, name: receiverName, phone: rawPhone });
+      const res = await setUserProfile({ ...userProfile, name: receiverName, phone: rawPhone });
+      if (res && res.success === false) {
+        showToast(res.error, 'error');
+        return;
+      }
     }
 
     const newAddress = {

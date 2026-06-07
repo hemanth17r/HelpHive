@@ -99,14 +99,19 @@ export const AppProvider = ({ children }) => {
     };
   }, []);
 
-  // Fetch profile if returning user
+  // Listen to Supabase Auth State
   useEffect(() => {
-    if (userId && !userProfile) {
-      const fetchProfile = async () => {
-        const { data } = await api.fetchProfile(userId);
+    const { data: authListener } = api.supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const uid = session.user.id;
+        setUserId(uid);
+        localStorage.setItem('userId', uid);
+        
+        const { data } = await api.fetchProfile(uid);
         if (data) {
           setUserProfileState({
             id: data.id,
+            email: session.user.email,
             name: data.name,
             phone: data.phone,
             posterName: data.posterName || data.name,
@@ -123,63 +128,81 @@ export const AppProvider = ({ children }) => {
           const activeRole = localStorage.getItem('activeRole') || data.role;
           setRole(activeRole);
           localStorage.setItem('activeRole', activeRole);
-          trackEvent(EVENTS.LOGIN, { userId: data.id, role: activeRole });
+          trackEvent(EVENTS.LOGIN, { userId: uid, role: activeRole });
+          
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+             pushScreen(activeRole === 'tasker' ? 'tasker_home' : 'poster_home');
+          }
         } else {
-          // Profile not found in DB (zombie state), clear local storage
-          localStorage.removeItem('userId');
-          localStorage.removeItem('activeRole');
-          setUserId(null);
-          setRole(null);
-          setScreenStack(['landing']);
+          // New User
+          const newProfileData = {
+            id: uid,
+            name: 'New User',
+            phone: 'Add Phone',
+            role: role || 'tasker',
+            rating: 5.0,
+            tasks_completed: 0,
+            skills: [],
+            bird: selectedBird,
+            upi_id: null
+          };
+          const { data: newDbProfile } = await api.createProfile(newProfileData);
+          if (newDbProfile) {
+            setUserProfileState({
+              ...newProfileData,
+              email: session.user.email,
+              posterName: 'New User',
+              posterPhone: 'Add Phone',
+              taskerName: 'New User',
+              taskerPhone: 'Add Phone',
+              verifiedPhones: [],
+              upiId: ''
+            });
+            const activeRole = role || 'tasker';
+            setRole(activeRole);
+            localStorage.setItem('activeRole', activeRole);
+            trackEvent(EVENTS.SIGNUP, { userId: uid, role: activeRole });
+            pushScreen(activeRole === 'tasker' ? 'tasker_home' : 'poster_home');
+          }
         }
-      };
-      fetchProfile();
-    }
-  }, [userId]);
+      } else {
+        localStorage.removeItem('userId');
+        localStorage.removeItem('activeRole');
+        setUserId(null);
+        setRole(null);
+        setScreenStack(['landing']);
+      }
+    });
 
-  const loginWithPhone = async (phone) => {
+    return () => {
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
+  }, []);
+
+  const loginWithEmail = async (email) => {
     try {
-      const { data, error } = await api.findProfileByPhone(phone);
-      
+      const { data, error } = await api.signInWithOtp(email);
       if (error) {
-        if (error.code === 'PGRST116') {
-          // 0 rows returned - account not found
-          return { success: false, reason: 'not_found' };
-        }
-        // Other errors (timeout, connection, etc.)
-        console.error("Login DB error:", error);
-        return { success: false, reason: 'network' };
+        console.error("Login Auth error:", error);
+        return { success: false, reason: error.message };
       }
+      return { success: true };
+    } catch (err) {
+      console.error("Login throw:", err);
+      return { success: false, reason: 'network' };
+    }
+  };
 
-      if (data) {
-        setUserId(data.id);
-        localStorage.setItem('userId', data.id);
-        setUserProfileState({
-          id: data.id,
-          name: data.name,
-          phone: data.phone,
-          posterName: data.posterName || data.name,
-          posterPhone: data.posterPhone || data.phone,
-          taskerName: data.taskerName || data.name,
-          taskerPhone: data.taskerPhone || data.phone,
-          verifiedPhones: data.verifiedPhones || [],
-          skills: data.skills || [],
-          rating: data.rating,
-          tasksCompleted: data.tasks_completed,
-          bird: data.bird,
-          upiId: data.upi_id || ''
-        });
-        const activeRole = data.role || 'tasker';
-        setRole(activeRole);
-        localStorage.setItem('activeRole', activeRole);
-        trackEvent(EVENTS.LOGIN, { userId: data.id, role: activeRole });
-        
-        pushScreen(activeRole === 'tasker' ? 'tasker_home' : 'poster_home');
-        showToast('Welcome back!', 'success');
-        return { success: true };
+  const loginWithGoogle = async () => {
+    try {
+      const { data, error } = await api.signInWithOAuth('google');
+      if (error) {
+        console.error("Login Auth error:", error);
+        return { success: false, reason: error.message };
       }
-      
-      return { success: false, reason: 'not_found' };
+      return { success: true };
     } catch (err) {
       console.error("Login throw:", err);
       return { success: false, reason: 'network' };
@@ -201,6 +224,15 @@ export const AppProvider = ({ children }) => {
     }
     
     const currentUserId = userId || localStorage.getItem('userId');
+
+    // Check phone number uniqueness
+    if (profileData.phone && profileData.phone !== userProfile?.phone) {
+      const { data: existingProfile } = await api.findProfileByPhone(profileData.phone);
+      if (existingProfile && existingProfile.id !== currentUserId) {
+        return { success: false, error: 'An account already exists with this phone number.' };
+      }
+    }
+
     // Optimistic update so UI reflects immediately, even in demo mode or if Supabase fails
     setUserProfileState(prev => prev ? { ...prev, ...profileData, ...roleSpecificUpdates } : { id: currentUserId || 'demo-id', ...profileData, ...roleSpecificUpdates });
 
@@ -245,6 +277,7 @@ export const AppProvider = ({ children }) => {
         trackEvent(EVENTS.SIGNUP, { userId: data.id, role: role });
       }
     }
+    return { success: true };
   };
 
   const [activeTab, setActiveTab] = useState('home'); // For tasker: 'home' | 'profile'
@@ -269,11 +302,15 @@ export const AppProvider = ({ children }) => {
   };
 
   const completeProfileAction = async (name, phone) => {
-    await setUserProfile({ name, phone, verifiedPhone: phone });
+    const res = await setUserProfile({ name, phone, verifiedPhone: phone });
+    if (res && res.success === false) {
+      return res;
+    }
     if (profileActionCallback) {
       profileActionCallback();
       setProfileActionCallback(null);
     }
+    return { success: true };
   };
 
   const cancelProfileAction = () => {
@@ -633,8 +670,9 @@ export const AppProvider = ({ children }) => {
   }, [jobs, currentScreen, currentPostedJob, pushScreen]);
 
   // Reset helper
-  const resetApp = () => {
+  const resetApp = async () => {
     if (userId) trackEvent(EVENTS.LOGOUT, { userId, role });
+    await api.signOut();
     setRole(null);
     setUserLocation(SERVICE_AREAS[0]);
     setLocationPermission('prompt');
@@ -724,7 +762,8 @@ export const AppProvider = ({ children }) => {
         requireProfile,
         completeProfileAction,
         cancelProfileAction,
-        loginWithPhone,
+        loginWithEmail,
+        loginWithGoogle,
         userId
       }}
     >
