@@ -160,5 +160,41 @@ export const api = {
     }).then(({ error }) => {
       if (error) console.error(`[EventTracker] Failed to log event: ${eventType}`, error);
     });
+  },
+
+  // --- Admin Dashboard APIs ---
+  verifyAdmin: async (userId) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+    if (error) return false;
+    return data?.is_admin === true;
+  },
+
+  getDashboardStats: async () => {
+    const { data, error } = await supabase.rpc('get_dashboard_stats');
+    return { data, error };
+  },
+
+  getEventCounts: async (startDate, endDate) => {
+    const params = {};
+    if (startDate) params.p_start_date = startDate;
+    if (endDate) params.p_end_date = endDate;
+    const { data, error } = await supabase.rpc('get_event_counts', params);
+    return { data, error };
+  },
+
+  getDailyTimeseries: async (eventType, days = 30) => {
+    const params = { p_days: days };
+    if (eventType) params.p_event_type = eventType;
+    const { data, error } = await supabase.rpc('get_daily_event_timeseries', params);
+    return { data, error };
+  },
+
+  getRecentEvents: async (limit = 50) => {
+    const { data, error } = await supabase.rpc('get_recent_events', { p_limit: limit });
+    return { data, error };
   }
 };

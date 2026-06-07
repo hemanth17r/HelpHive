@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { Star, ShieldAlert, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2 } from 'lucide-react';
+import { Star, ShieldAlert, Shield, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2 } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { SKILLS } from '../data/mockData';
 import Tooltip from '../components/Tooltip';
@@ -17,7 +17,7 @@ const WhatsAppIcon = ({ className }) => (
 );
 
 const MyProfileScreen = () => {
-  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs } = useContext(AppContext);
+  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs, isAdmin } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const { completionPercentage } = useProfileCompletion();
 
@@ -471,9 +471,20 @@ Issue: `;
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-
-
               <div className="h-px bg-gray-100 my-2 mx-3"></div>
+
+              {isAdmin && (
+                <>
+                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-xs font-bold text-gray-800 hover:bg-gray-100 p-3 rounded-2xl transition-colors cursor-pointer">
+                    <div className="flex items-center space-x-3">
+                      <Shield className="w-4.5 h-4.5 text-gray-600" />
+                      <span>Admin Dashboard</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300" />
+                  </button>
+                  <div className="h-px bg-gray-100 my-2 mx-3"></div>
+                </>
+              )}
 
               {userId ? (
                 <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-xs font-bold text-red-500 hover:bg-red-50 p-3 rounded-2xl transition-colors cursor-pointer">
@@ -828,9 +839,20 @@ Issue: `;
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-
-
               <div className="h-px bg-gray-100 my-2 mx-3"></div>
+
+              {isAdmin && (
+                <>
+                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-xs font-bold text-gray-800 hover:bg-gray-100 p-3 rounded-2xl transition-colors cursor-pointer">
+                    <div className="flex items-center space-x-3">
+                      <Shield className="w-4.5 h-4.5 text-gray-600" />
+                      <span>Admin Dashboard</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300" />
+                  </button>
+                  <div className="h-px bg-gray-100 my-2 mx-3"></div>
+                </>
+              )}
 
               {userId ? (
                 <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-xs font-bold text-red-500 hover:bg-red-50 p-3 rounded-2xl transition-colors cursor-pointer">

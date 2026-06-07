@@ -34,6 +34,7 @@ export const AppProvider = ({ children }) => {
   const [userProfile, setUserProfileState] = useState(null); // { name, phone, skills, rating, tasksCompleted }
   const [userId, setUserId] = useState(() => localStorage.getItem('userId'));
   const [selectedBird, setSelectedBird] = useState('falcon'); // Bird avatar selection
+  const [isAdmin, setIsAdmin] = useState(false); // Admin dashboard access
   
   // Navigation stack state
   const [screenStack, setScreenStack] = useState(() => {
@@ -120,6 +121,7 @@ export const AppProvider = ({ children }) => {
             bird: data.bird,
             upiId: data.upi_id || ''
           });
+          setIsAdmin(data.is_admin === true);
           const activeRole = localStorage.getItem('activeRole') || data.role;
           setRole(activeRole);
           localStorage.setItem('activeRole', activeRole);
@@ -169,6 +171,7 @@ export const AppProvider = ({ children }) => {
           bird: data.bird,
           upiId: data.upi_id || ''
         });
+        setIsAdmin(data.is_admin === true);
         const activeRole = data.role || 'tasker';
         setRole(activeRole);
         localStorage.setItem('activeRole', activeRole);
@@ -678,6 +681,7 @@ export const AppProvider = ({ children }) => {
     setUserProfileState(null);
     setUserId(null);
     setSelectedBird('falcon');
+    setIsAdmin(false);
     localStorage.removeItem('activeRole');
     localStorage.removeItem('userId');
     setScreenStack(['landing']);
@@ -762,6 +766,7 @@ export const AppProvider = ({ children }) => {
         completeProfileAction,
         cancelProfileAction,
         loginWithPhone,
+        isAdmin,
         userId
       }}
     >

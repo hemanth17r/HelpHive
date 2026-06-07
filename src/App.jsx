@@ -39,6 +39,7 @@ import JobReceiptScreen from './screens/poster/JobReceiptScreen';
 import AddressBookScreen from './screens/poster/AddressBookScreen';
 import AddEditAddressScreen from './screens/poster/AddEditAddressScreen';
 import JobHistoryScreen from './screens/JobHistoryScreen';
+import AdminDashboard from './screens/AdminDashboard';
 import ProfileCompletionModal from './components/ProfileCompletionModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import NotificationsScreen from './screens/NotificationsScreen';
@@ -141,6 +142,8 @@ const AppContent = () => {
         return <JobHistoryScreen />;
       case 'notifications':
         return <NotificationsScreen />;
+      case 'admin_dashboard':
+        return <AdminDashboard />;
       default:
         return <LandingScreen />;
     }

@@ -6,15 +6,13 @@ import { api } from '../services/api';
  */
 
 export const trackEvent = (eventType, payload = {}) => {
-  const { userId, role, entityId, metadata } = payload;
-  
-  // EVENT TRACKING DISABLED FOR MVP CONSTRUCTION
-  // To re-enable event instrumentation once flows are stable, 
-  // remove the early return below.
-  return;
-  
-  // Fire and forget - do not await to avoid blocking UI
-  api.logEvent(eventType, payload);
+  try {
+    // Fire and forget - never await, never block UI
+    api.logEvent(eventType, payload);
+  } catch (e) {
+    // Analytics must NEVER crash the app or block user actions
+    // Silently swallow any synchronous errors
+  }
 };
 
 /**
