@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { ToggleLeft, ToggleRight, Wifi, WifiOff, Inbox, Users, RefreshCw } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import JobCard from '../../components/JobCard';
-
+import Tooltip from '../../components/Tooltip';
 import { SKILLS } from '../../data/mockData';
 import { getCurrentLocation } from '../../utils/location';
 import ActionItemsCarousel from '../../components/ActionItemsCarousel';
