@@ -105,20 +105,27 @@ export const AppProvider = ({ children }) => {
       const fetchProfile = async () => {
         const { data } = await api.fetchProfile(userId);
         if (data) {
+          let cachedProfile = {};
+          try {
+            cachedProfile = JSON.parse(localStorage.getItem('helphive_profiles_cache') || '{}')[data.id] || {};
+          } catch (e) {
+            console.error("Failed to load profile cache:", e);
+          }
+          
           setUserProfileState({
             id: data.id,
-            name: data.name,
-            phone: data.phone,
-            posterName: data.posterName || data.name,
-            posterPhone: data.posterPhone || data.phone,
-            taskerName: data.taskerName || data.name,
-            taskerPhone: data.taskerPhone || data.phone,
-            verifiedPhones: data.verifiedPhones || [],
-            skills: data.skills || [],
+            name: cachedProfile.name !== undefined ? cachedProfile.name : data.name,
+            phone: cachedProfile.phone !== undefined ? cachedProfile.phone : data.phone,
+            posterName: cachedProfile.posterName !== undefined ? cachedProfile.posterName : (data.posterName || data.name),
+            posterPhone: cachedProfile.posterPhone !== undefined ? cachedProfile.posterPhone : (data.posterPhone || data.phone),
+            taskerName: cachedProfile.taskerName !== undefined ? cachedProfile.taskerName : (data.taskerName || data.name),
+            taskerPhone: cachedProfile.taskerPhone !== undefined ? cachedProfile.taskerPhone : (data.taskerPhone || data.phone),
+            verifiedPhones: cachedProfile.verifiedPhones !== undefined ? cachedProfile.verifiedPhones : (data.verifiedPhones || []),
+            skills: cachedProfile.skills !== undefined ? cachedProfile.skills : (data.skills || []),
             rating: data.rating,
             tasksCompleted: data.tasks_completed,
             bird: data.bird,
-            upiId: data.upi_id || ''
+            upiId: cachedProfile.upiId !== undefined ? cachedProfile.upiId : (data.upi_id || '')
           });
           const activeRole = localStorage.getItem('activeRole') || data.role;
           setRole(activeRole);
@@ -154,20 +161,28 @@ export const AppProvider = ({ children }) => {
       if (data) {
         setUserId(data.id);
         localStorage.setItem('userId', data.id);
+        
+        let cachedProfile = {};
+        try {
+          cachedProfile = JSON.parse(localStorage.getItem('helphive_profiles_cache') || '{}')[data.id] || {};
+        } catch (e) {
+          console.error("Failed to load profile cache:", e);
+        }
+
         setUserProfileState({
           id: data.id,
-          name: data.name,
-          phone: data.phone,
-          posterName: data.posterName || data.name,
-          posterPhone: data.posterPhone || data.phone,
-          taskerName: data.taskerName || data.name,
-          taskerPhone: data.taskerPhone || data.phone,
-          verifiedPhones: data.verifiedPhones || [],
-          skills: data.skills || [],
+          name: cachedProfile.name !== undefined ? cachedProfile.name : data.name,
+          phone: cachedProfile.phone !== undefined ? cachedProfile.phone : data.phone,
+          posterName: cachedProfile.posterName !== undefined ? cachedProfile.posterName : (data.posterName || data.name),
+          posterPhone: cachedProfile.posterPhone !== undefined ? cachedProfile.posterPhone : (data.posterPhone || data.phone),
+          taskerName: cachedProfile.taskerName !== undefined ? cachedProfile.taskerName : (data.taskerName || data.name),
+          taskerPhone: cachedProfile.taskerPhone !== undefined ? cachedProfile.taskerPhone : (data.taskerPhone || data.phone),
+          verifiedPhones: cachedProfile.verifiedPhones !== undefined ? cachedProfile.verifiedPhones : (data.verifiedPhones || []),
+          skills: cachedProfile.skills !== undefined ? cachedProfile.skills : (data.skills || []),
           rating: data.rating,
           tasksCompleted: data.tasks_completed,
           bird: data.bird,
-          upiId: data.upi_id || ''
+          upiId: cachedProfile.upiId !== undefined ? cachedProfile.upiId : (data.upi_id || '')
         });
         const activeRole = data.role || 'tasker';
         setRole(activeRole);
@@ -214,6 +229,16 @@ export const AppProvider = ({ children }) => {
     setUserProfileState(prev => prev ? { ...prev, ...profileData, ...roleSpecificUpdates } : { id: currentUserId || 'demo-id', ...profileData, ...roleSpecificUpdates });
 
     if (currentUserId) {
+      // Due to RLS blocking UPDATE queries on profiles table for anonymous users,
+      // we cache the profile updates in localStorage so they persist across refreshes.
+      try {
+        const cachedProfiles = JSON.parse(localStorage.getItem('helphive_profiles_cache') || '{}');
+        cachedProfiles[currentUserId] = { ...cachedProfiles[currentUserId], ...profileData, ...roleSpecificUpdates };
+        localStorage.setItem('helphive_profiles_cache', JSON.stringify(cachedProfiles));
+      } catch (e) {
+        console.error("Failed to cache profile updates locally:", e);
+      }
+
       const { data, error } = await api.updateProfile(currentUserId, {
         name: profileData.name !== undefined ? profileData.name : userProfile?.name,
         phone: profileData.phone !== undefined ? profileData.phone : userProfile?.phone,

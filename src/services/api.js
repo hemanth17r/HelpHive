@@ -139,6 +139,7 @@ export const api = {
 
   updateProfile: async (userId, updates) => {
     const { data, error } = await supabase.from('profiles').update(updates).eq('id', userId).select().single();
+    if (error) console.error("updateProfile error:", error);
     return { data, error };
   },
   
