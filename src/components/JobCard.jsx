@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { Users, IndianRupee, MapPin, Clock, Check, X } from 'lucide-react';
-import { SKILLS } from '../data/mockData';
+import { SKILLS } from '../config/constants';
 import { AppContext } from '../store/AppContext';
 import { ToastContext } from '../store/ToastContext';
 import Tooltip from './Tooltip';

@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { ArrowLeft, CheckCircle2, Receipt, MapPin, Users, Calendar, HelpCircle, FileText, Star } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
-import { SKILLS } from '../../data/mockData';
+import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 
 const WhatsAppIcon = ({ className }) => (

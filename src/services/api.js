@@ -212,5 +212,31 @@ export const api = {
   getRecentEvents: async (limit = 50) => {
     const { data, error } = await supabase.rpc('get_recent_events', { p_limit: limit });
     return { data, error };
+  },
+
+  // --- Help & Support ---
+  submitHelpReport: async (reportData) => {
+    const { data, error } = await supabase.from('help_reports').insert({
+      user_id: reportData.userId || null,
+      description: reportData.description,
+      status: 'pending'
+    });
+    return { data, error };
+  },
+
+  getHelpReports: async () => {
+    const { data, error } = await supabase
+      .from('help_reports')
+      .select('*')
+      .order('created_at', { ascending: false });
+    return { data, error };
+  },
+
+  updateHelpReportStatus: async (id, status) => {
+    const { data, error } = await supabase
+      .from('help_reports')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    return { data, error };
   }
 };

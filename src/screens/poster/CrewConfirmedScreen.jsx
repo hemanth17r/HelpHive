@@ -6,7 +6,7 @@ import Tooltip from '../../components/Tooltip';
 import MapView from '../../components/MapView';
 import BirdAvatar from '../../components/BirdAvatars';
 import { api } from '../../services/api';
-import { SKILLS } from '../../data/mockData';
+import { SKILLS } from '../../config/constants';
 
 const WhatsAppIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">

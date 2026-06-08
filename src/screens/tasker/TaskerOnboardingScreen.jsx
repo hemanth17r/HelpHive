@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { ArrowLeft, Check } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
-import { SKILLS } from '../../data/mockData';
+import { SKILLS } from '../../config/constants';
 import IconLabel from '../../components/IconLabel';
 import Tooltip from '../../components/Tooltip';
 

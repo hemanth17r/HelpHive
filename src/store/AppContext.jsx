@@ -311,7 +311,7 @@ export const AppProvider = ({ children }) => {
     const previousProfile = userProfile ? { ...userProfile } : null;
 
     // Optimistic update so UI reflects immediately
-    setUserProfileState(prev => prev ? { ...prev, ...profileData, ...roleSpecificUpdates } : { id: currentUserId || 'demo-id', ...profileData, ...roleSpecificUpdates });
+    setUserProfileState(prev => prev ? { ...prev, ...profileData, ...roleSpecificUpdates } : { id: currentUserId || null, ...profileData, ...roleSpecificUpdates });
 
     if (currentUserId) {
       const { data, error } = await api.updateProfile(currentUserId, {
@@ -593,7 +593,7 @@ export const AppProvider = ({ children }) => {
       if (realLocation && job?.lat && job?.lng) {
         distanceVal = calculateDistance(realLocation.lat, realLocation.lng, job.lat, job.lng);
       } else if (job?.distanceVal) {
-        distanceVal = job.distanceVal; // fallback for mock data
+        distanceVal = job.distanceVal || 5.0;
       }
       return {
         ...(job || {}),
@@ -614,7 +614,7 @@ export const AppProvider = ({ children }) => {
 
   // Tasker accepts a job
   const acceptJob = async (jobId) => {
-    const tId = userProfile?.id || userId || localStorage.getItem('userId') || 'demo-id';
+    const tId = userProfile?.id || userId || localStorage.getItem('userId');
     const tName = userProfile?.taskerName || userProfile?.name || 'Tasker';
     const tBird = userProfile?.bird || 'falcon';
     setJobs(prevJobs => 
@@ -749,7 +749,7 @@ export const AppProvider = ({ children }) => {
       return [{
         ...draftData,
         id: draftData.id || ('draft_' + Date.now()),
-        posterId: userId || 'demo_poster',
+        posterId: userId || null,
         posterName: userProfile?.posterName || userProfile?.name || 'Unknown Hirer',
         timePosted: new Date().toISOString(),
         status: 'draft'

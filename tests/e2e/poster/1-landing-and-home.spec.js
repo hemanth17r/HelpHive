@@ -6,7 +6,7 @@ test.describe('Poster (Hirer) Flow - Landing & Home', () => {
 
     // Verify Hero text
     await expect(page.locator('text=HelpHive').first()).toBeVisible();
-    await expect(page.getByText('Hyperlocal helpers at your doorstep in seconds.').first()).toBeVisible();
+    await expect(page.getByText('Get trusted local help, fast.').first()).toBeVisible();
 
     // Select "I Need Help" (Poster role)
     await page.getByRole('button', { name: /I Need Help/i }).click();

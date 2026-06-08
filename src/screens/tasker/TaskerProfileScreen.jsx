@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Star, ShieldAlert, Award, Calendar, Phone, ArrowLeft, Check } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
-import { SKILLS } from '../../data/mockData';
+import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import BirdAvatar from '../../components/BirdAvatars';
 

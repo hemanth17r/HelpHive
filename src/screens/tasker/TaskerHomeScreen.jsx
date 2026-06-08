@@ -3,7 +3,7 @@ import { ToggleLeft, ToggleRight, Wifi, WifiOff, Inbox, Users, RefreshCw } from 
 import { AppContext } from '../../store/AppContext';
 import JobCard from '../../components/JobCard';
 import Tooltip from '../../components/Tooltip';
-import { SKILLS } from '../../data/mockData';
+import { SKILLS } from '../../config/constants';
 import { getCurrentLocation } from '../../utils/location';
 import ActionItemsCarousel from '../../components/ActionItemsCarousel';
 import { api } from '../../services/api';

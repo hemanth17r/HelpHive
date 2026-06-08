@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Clock, CheckCircle, TrendingUp, Briefcase, CalendarDays, Users, Hash, ChevronDown, ChevronUp, Inbox, Check, X } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
-import { SKILLS } from '../../data/mockData';
+import { SKILLS } from '../../config/constants';
 
 const TaskerActivityScreen = () => {
   const { popScreen, jobs, userProfile, setUserProfile, pushScreen, setCurrentPostedJob, setAcceptedJob, taskerActivityScrollTarget, setTaskerActivityScrollTarget } = useContext(AppContext);

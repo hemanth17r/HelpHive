@@ -6,7 +6,7 @@ test.describe('Tasker (Helper) Flow - Landing & Onboarding', () => {
     await page.goto('/');
 
     // Ensure page loaded
-    await expect(page.getByText('Hyperlocal helpers at your doorstep').first()).toBeVisible();
+    await expect(page.getByText('Get trusted local help, fast.').first()).toBeVisible();
 
     // Select Tasker Role
     await page.getByText('I Want to Work').first().click();

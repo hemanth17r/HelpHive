@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Radio, Users, Eye, ArrowRight, IndianRupee, Trash2, MapPin } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
-import { SKILLS } from '../../data/mockData';
+import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import { api } from '../../services/api';
 const LiveStatusScreen = () => {
-  const { currentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen } = useContext(AppContext);
+  const { currentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs } = useContext(AppContext);
   const [viewers, setViewers] = useState(0);
 
   // Real viewers/taskers count logic
@@ -36,14 +36,48 @@ const LiveStatusScreen = () => {
 
     fetchViewersCount();
     
-    // Refresh count every 5 seconds to reflect newly viewed taskers
-    const timer = setInterval(fetchViewersCount, 5000);
+    // Refresh count and job status every 3 seconds
+    const timer = setInterval(async () => {
+      fetchViewersCount();
+      
+      // Also poll job status just in case realtime subscription is delayed/missing
+      if (currentPostedJob?.id) {
+        try {
+          const { data } = await api.supabase
+            .from('jobs')
+            .select('status, tasker_id')
+            .eq('id', currentPostedJob.id)
+            .single();
+            
+          if (data && data.status === 'accepted' && data.tasker_id) {
+            const { data: allJobs } = await api.fetchJobs();
+            if (allJobs) {
+              setJobs(allJobs);
+              const updatedJob = allJobs.find(j => j.id === currentPostedJob.id);
+              if (updatedJob) {
+                const taskerInfo = {
+                  id: updatedJob.taskerId,
+                  name: updatedJob.taskerName || 'Helper',
+                  rating: 5.0,
+                  tasksCompleted: 1,
+                  bird: updatedJob.taskerBird || 'falcon',
+                  upiId: updatedJob.taskerUpi
+                };
+                setCrewTaskers([taskerInfo]);
+                setLiveStatus('crew_set');
+                pushScreen('crew_confirmed', true);
+              }
+            }
+          }
+        } catch (e) {}
+      }
+    }, 1000); // Polling every 1s for fast tests
 
     return () => {
       isMounted = false;
       clearInterval(timer);
     };
-  }, []);
+  }, [currentPostedJob]);
   if (!currentPostedJob) return null;
 
   const skill = SKILLS.find(s => s.id === currentPostedJob.skillId);

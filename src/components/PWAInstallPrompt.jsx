@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, X, Share } from 'lucide-react';
 
 const PWAInstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
     // Check if the user dismissed recently
@@ -21,8 +22,24 @@ const PWAInstallPrompt = () => {
       return (Date.now() - parseInt(dismissedTime, 10)) > sevenDays;
     };
 
+    // Check if app is already installed (standalone mode)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    
+    if (isStandalone) {
+      return; // Already installed, don't show prompt
+    }
+
+    // Detect iOS devices
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+    
+    if (isIOSDevice && shouldShow()) {
+      setIsIOS(true);
+      setShowPrompt(true);
+    }
+
     // 1. Check if the event was already captured globally by index.html script
-    if (window.deferredPrompt) {
+    if (window.deferredPrompt && !isIOSDevice) {
       setDeferredPrompt(window.deferredPrompt);
       if (shouldShow()) {
         setShowPrompt(true);
@@ -37,7 +54,7 @@ const PWAInstallPrompt = () => {
       setDeferredPrompt(e);
       window.deferredPrompt = e;
       
-      if (shouldShow()) {
+      if (shouldShow() && !isIOSDevice) {
         setShowPrompt(true);
       }
     };
@@ -47,7 +64,7 @@ const PWAInstallPrompt = () => {
       const promptEvent = e.detail || window.deferredPrompt;
       if (promptEvent) {
         setDeferredPrompt(promptEvent);
-        if (shouldShow()) {
+        if (shouldShow() && !isIOSDevice) {
           setShowPrompt(true);
         }
       }
@@ -111,12 +128,23 @@ const PWAInstallPrompt = () => {
           <X size={20} />
         </button>
       </div>
-      <button 
-        onClick={handleInstallClick}
-        className="w-full bg-[#FF6B35] hover:bg-[#e85a25] text-white font-medium py-2 px-4 rounded-lg transition-colors"
-      >
-        Install App
-      </button>
+      
+      {isIOS ? (
+        <div className="bg-orange-50 text-orange-800 text-sm p-3 rounded-lg flex flex-col gap-2">
+          <p>To install on iOS:</p>
+          <ol className="list-decimal pl-4 space-y-1">
+            <li className="flex items-center gap-1">Tap the Share button <Share size={14} className="inline"/> in Safari</li>
+            <li>Scroll down and select <strong>"Add to Home Screen"</strong></li>
+          </ol>
+        </div>
+      ) : (
+        <button 
+          onClick={handleInstallClick}
+          className="w-full bg-[#FF6B35] hover:bg-[#e85a25] text-white font-medium py-2 px-4 rounded-lg transition-colors"
+        >
+          Install App
+        </button>
+      )}
     </div>
   );
 };

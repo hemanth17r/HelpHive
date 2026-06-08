@@ -1,7 +1,7 @@
 import React, { useState, useContext, useRef } from 'react';
 import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
-import { SKILLS } from '../../data/mockData';
+import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import { ToastContext } from '../../store/ToastContext';
 const PostJobScreen = () => {

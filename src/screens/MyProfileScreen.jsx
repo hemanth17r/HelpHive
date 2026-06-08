@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Star, ShieldAlert, Shield, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2 } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
-import { SKILLS } from '../data/mockData';
+import { SKILLS } from '../config/constants';
 import Tooltip from '../components/Tooltip';
 import BirdAvatar from '../components/BirdAvatars';
 import BirdSelector from '../components/BirdSelector';

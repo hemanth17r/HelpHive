@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { MapPin, Phone, MessageSquare, ShieldCheck, CheckCircle2, User, Compass } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
-import { SKILLS } from '../../data/mockData';
+import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import MapView from '../../components/MapView';
 import BirdAvatar from '../../components/BirdAvatars';
@@ -51,13 +51,7 @@ const TaskerJobDetailsScreen = () => {
     setIsVerifying(true);
     setErrorMsg('');
 
-    // E2E mock bypass
-    if (localStorage.getItem('mock_otp') && otp === localStorage.getItem('mock_otp')) {
-      setIsVerified(true);
-      setIsVerifying(false);
-      return;
-    }
-
+    // Perform actual verification
     const { data, error } = await api.verifyJobOtp(acceptedJob.id, otp);
 
     setIsVerifying(false);

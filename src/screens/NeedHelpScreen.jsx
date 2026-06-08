@@ -2,27 +2,31 @@ import React, { useContext, useState } from 'react';
 import { ArrowLeft, HelpCircle } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { ToastContext } from '../store/ToastContext';
+import { api } from '../services/api';
 
 const NeedHelpScreen = () => {
-  const { popScreen } = useContext(AppContext);
+  const { popScreen, userId } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const [issueDescription, setIssueDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!issueDescription.trim()) {
       showToast('Please describe your issue.', 'error');
       return;
     }
 
-    // Mock storing the report in localStorage for later retrieval
-    const existingReports = JSON.parse(localStorage.getItem('helpReports') || '[]');
-    const newReport = {
-      id: Date.now().toString(),
-      description: issueDescription,
-      timestamp: new Date().toISOString(),
-      status: 'pending'
-    };
-    localStorage.setItem('helpReports', JSON.stringify([...existingReports, newReport]));
+    setIsSubmitting(true);
+    const { error } = await api.submitHelpReport({
+      userId: userId || null,
+      description: issueDescription
+    });
+    setIsSubmitting(false);
+
+    if (error) {
+      showToast('Failed to submit report. Please try again.', 'error');
+      return;
+    }
 
     showToast('Your issue has been reported successfully.', 'success');
     popScreen();
@@ -68,9 +72,14 @@ const NeedHelpScreen = () => {
       <div className="absolute bottom-6 left-0 right-0 px-6 z-20">
         <button 
           onClick={handleSubmit}
-          className="w-full flex items-center justify-center bg-primary hover:bg-primary/95 text-white py-4 rounded-2xl shadow-lg font-black tracking-wide cursor-pointer active:scale-[0.99] transition-all"
+          disabled={isSubmitting}
+          className={`w-full flex items-center justify-center py-4 rounded-2xl shadow-lg font-black tracking-wide transition-all ${
+            isSubmitting 
+              ? 'bg-gray-400 text-white cursor-not-allowed' 
+              : 'bg-primary hover:bg-primary/95 text-white cursor-pointer active:scale-[0.99]'
+          }`}
         >
-          Submit Report
+          {isSubmitting ? 'Submitting...' : 'Submit Report'}
         </button>
       </div>
     </div>

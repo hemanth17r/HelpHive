@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Clock, CheckCircle, AlertCircle, Users, MoreVertical, MapPin } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
-import { SKILLS } from '../data/mockData';
+import { SKILLS } from '../config/constants';
 
 const JobHistoryScreen = () => {
   const { popScreen, jobHistoryTab, jobs, userProfile, role, setEditJobData, pushScreen, setCurrentPostedJob, setAcceptedJob, expireJob, deleteJob } = useContext(AppContext);

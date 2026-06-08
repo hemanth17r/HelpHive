@@ -34,6 +34,13 @@ test.describe('Poster (Hirer) Flow - Job Posting', () => {
     // Click Post Job
     await page.getByRole('button', { name: 'Post Job Now' }).first().click();
 
+    // Fill the Address Popup
+    await expect(page.getByText('Add Address').first()).toBeVisible();
+    await page.getByPlaceholder('House No, Building Name').first().fill('Test Complete Address');
+    
+    // Name and phone should already be pre-filled with mock profile, but let's ensure we click save
+    await page.getByRole('button', { name: 'Save & Continue' }).first().click();
+
     // Should navigate to LiveStatusScreen
     await expect(page.getByText('Searching for Helpers...').first()).toBeVisible();
 
