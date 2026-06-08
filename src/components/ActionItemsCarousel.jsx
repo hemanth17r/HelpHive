@@ -2,28 +2,53 @@ import React, { useContext } from 'react';
 import { User, MapPin, Bell, Briefcase, IndianRupee } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { NotificationContext } from '../store/NotificationContext';
+import { ToastContext } from '../store/ToastContext';
 import { useProfileCompletion } from '../hooks/useProfileCompletion';
 import { getCurrentLocation } from '../utils/location';
 
 const ActionItemsCarousel = () => {
   const { requireProfile, pushScreen, setRealLocation, setActiveTab } = useContext(AppContext);
-  const { subscribeToPush } = useContext(NotificationContext);
+  const { subscribeToPush, pushSupported, pushPermission } = useContext(NotificationContext);
+  const { showToast } = useContext(ToastContext);
   const { missingItems } = useProfileCompletion();
 
   if (missingItems.length === 0) return null;
 
   const handleLocationRequest = async () => {
+    if (!navigator.geolocation) {
+      showToast('Geolocation is not supported by your browser.', 'error');
+      return;
+    }
     try {
       const loc = await getCurrentLocation();
       setRealLocation(loc);
+      showToast('Location enabled successfully!', 'success');
     } catch (e) {
       console.error("Location access denied or failed", e);
-      // Optional: Show a toast here if you have a toast system
+      showToast(e.message || 'Location permission denied. Please allow location access in your browser settings.', 'error');
     }
   };
 
   const handleNotificationRequest = async () => {
-    await subscribeToPush();
+    if (!pushSupported) {
+      showToast('Push notifications are not supported in this browser.', 'error');
+      return;
+    }
+    if (pushPermission === 'denied') {
+      showToast('Notifications are blocked. Please enable them in your browser settings.', 'error');
+      return;
+    }
+    try {
+      const success = await subscribeToPush();
+      if (success) {
+        showToast('Notifications enabled successfully!', 'success');
+      } else {
+        showToast('Failed to enable notifications. Please allow them in your settings.', 'error');
+      }
+    } catch (e) {
+      console.error("Notification permission request failed", e);
+      showToast('An error occurred while enabling notifications.', 'error');
+    }
   };
 
   const handleProfileRequest = () => {

@@ -4,7 +4,7 @@ import { NotificationContext } from '../store/NotificationContext';
 
 export const useProfileCompletion = () => {
   const { userProfile, role, realLocation } = useContext(AppContext);
-  const { pushPermission } = useContext(NotificationContext);
+  const { pushPermission, pushSupported } = useContext(NotificationContext);
   
   const [locationPermission, setLocationPermission] = useState('prompt');
 
@@ -31,7 +31,7 @@ export const useProfileCompletion = () => {
   const hasSkills = userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0;
   const hasUpiId = !!userProfile?.upiId;
   const hasLocation = locationPermission === 'granted' || !!realLocation;
-  const hasNotifications = pushPermission === 'granted';
+  const hasNotifications = !pushSupported || pushPermission === 'granted';
 
   let completionPercentage = 0;
   const missingItems = [];
