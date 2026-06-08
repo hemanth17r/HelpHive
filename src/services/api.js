@@ -81,10 +81,10 @@ export const api = {
     return { data, error };
   },
 
-  sendNotification: async (userId, title, body, actionUrl) => {
+  sendNotification: async (userId, title, body, actionUrl, type = 'system') => {
     // 1. Try to invoke edge function (sends push AND saves to DB)
     const { data, error } = await supabase.functions.invoke('push-notification', {
-      body: { user_id: userId, title, body, action_url: actionUrl }
+      body: { user_id: userId, title, body, action_url: actionUrl, type }
     });
 
     // 2. If edge function fails (e.g. not deployed yet), fallback to just inserting into DB so in-app works
@@ -94,7 +94,7 @@ export const api = {
         .from('notifications')
         .insert({
           user_id: userId,
-          type: 'system',
+          type,
           title,
           body,
           action_url: actionUrl

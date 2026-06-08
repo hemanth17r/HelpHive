@@ -282,7 +282,11 @@ export const AppProvider = ({ children }) => {
     return { success: true };
   };
 
-  const [activeTab, setActiveTab] = useState('home'); // For tasker: 'home' | 'profile'
+  const [activeTab, setActiveTabState] = useState('home'); // For tasker: 'home' | 'profile'
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    activeTabRef.current = tab;
+  };
   
   // Profile Action Interceptor
   const [profileActionCallback, setProfileActionCallback] = useState(null);
@@ -357,11 +361,19 @@ export const AppProvider = ({ children }) => {
   // Email notifications for coming soon
   const [leadNotifications, setLeadNotifications] = useState([]);
 
-  // Navigation push & pop
+  // ── Navigation: push, pop, and browser history sync ──────────────────
+  // Use refs so the popstate handler always reads the latest values
+  // without needing to re-register the listener on every state change.
+  const screenStackRef = useRef(screenStack);
+  const activeTabRef = useRef('home');
+  useEffect(() => { screenStackRef.current = screenStack; }, [screenStack]);
+
   const pushScreen = (screen, replaceStack = false) => {
-    // If base screen of a flow, reset history stack base
     if (screen === 'landing' || screen === 'tasker_home' || screen === 'poster_home') {
+      // Reset stack to base screen
       setScreenStack([screen]);
+      // Replace current history entry so base screen becomes the floor
+      window.history.replaceState({ screen, base: true }, '', window.location.pathname);
     } else if (replaceStack) {
       const base = role === 'tasker' ? 'tasker_home' : 'poster_home';
       setScreenStack([base, screen]);
@@ -373,13 +385,11 @@ export const AppProvider = ({ children }) => {
   };
 
   const popScreen = () => {
-    // Check if on first screen of a flow
     const firstScreens = ['landing', 'tasker_home', 'poster_home'];
     if (firstScreens.includes(currentScreen) || screenStack.length <= 1) {
-      // Do nothing, block accidental exits
-      return;
+      return; // Block accidental exits from home screens
     }
-    window.history.back();
+    window.history.back(); // Triggers popstate → handled below
   };
 
   const switchRole = async (newRole) => {
@@ -387,7 +397,6 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('activeRole', newRole);
     
     if (userId) {
-      // Async update to DB without blocking UI
       api.updateProfile(userId, { role: newRole }).then();
       trackEvent(EVENTS.ROLE_SWITCH, { userId, role: newRole });
     }
@@ -399,28 +408,54 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Sync browser back button with custom history stack
+  // Sync browser back button with custom history stack (PWA-safe)
   useEffect(() => {
-    // Initialize history state on load
-    window.history.replaceState({ screen: 'landing' }, '', window.location.pathname);
+    // Establish a "floor" history entry so the browser always has somewhere to go
+    // without leaving the app. We push TWO entries: the floor + the current screen.
+    window.history.replaceState({ screen: '__floor__', floor: true }, '', window.location.pathname);
+    window.history.pushState({ screen: screenStackRef.current[screenStackRef.current.length - 1] || 'landing' }, '', window.location.pathname);
 
     const handlePopState = (e) => {
-      // Prevent browser from navigating back further if stack is active
-      if (screenStack.length > 1) {
-        setScreenStack(prev => prev.slice(0, -1));
-      } else if (activeTab !== 'home') {
-        // If they are on a root screen but not on the home tab (e.g., Profile),
-        // take them to the home tab and replace the popped state to trap them from exiting.
-        setActiveTab('home');
-        window.history.pushState({ screen: currentScreen }, '', window.location.pathname);
+      const stack = screenStackRef.current;
+      const tab = activeTabRef.current;
+
+      if (e.state && e.state.floor) {
+        // User hit back and landed on our floor entry — they're trying to exit.
+        // If they're on a home screen with the home tab active, allow exit.
+        // Otherwise, push them back into the app.
+        const currentScr = stack[stack.length - 1];
+        const isHome = ['landing', 'tasker_home', 'poster_home'].includes(currentScr);
+        
+        if (isHome && tab === 'home') {
+          // Actually let them exit: go back once more to leave the app
+          window.history.back();
+          return;
+        }
+        // Not on home — push them back into the app
+        window.history.pushState({ screen: currentScr }, '', window.location.pathname);
+
+        if (!isHome && stack.length > 1) {
+          // Pop from screen stack
+          setScreenStack(prev => prev.slice(0, -1));
+        } else if (tab !== 'home') {
+          // On home screen but not home tab (e.g., profile) — switch to home tab
+          setActiveTab('home');
+        }
+        return;
       }
-      // If screenStack.length <= 1 and activeTab === 'home', we do nothing and let 
-      // the native browser/OS handle the back action, which will naturally close the app.
+
+      // Normal popstate (not the floor) — pop from screen stack
+      if (stack.length > 1) {
+        setScreenStack(prev => prev.slice(0, -1));
+      } else if (tab !== 'home') {
+        setActiveTab('home');
+        window.history.pushState({ screen: stack[stack.length - 1] }, '', window.location.pathname);
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [screenStack, currentScreen, activeTab]);
+  }, []); // Empty deps — uses refs for latest values
 
   // Change user location helper (kept for future expansion, currently defaults to LPU)
   const changeLocation = async (area) => {
@@ -492,7 +527,8 @@ export const AppProvider = ({ children }) => {
         job.posterId,
         "Job Accepted!",
         `${tName} has accepted your job and is on their way.`,
-        'crew_confirmed'
+        'crew_confirmed',
+        'job_accepted'
       );
     }
 
@@ -520,7 +556,8 @@ export const AppProvider = ({ children }) => {
         job.posterId,
         "Job Completed!",
         "Your tasker has marked the job as complete. Please review and pay.",
-        'rating_screen'
+        'rating_screen',
+        'job_completed'
       );
     }
 

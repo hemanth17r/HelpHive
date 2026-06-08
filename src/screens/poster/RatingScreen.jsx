@@ -72,7 +72,8 @@ const RatingScreen = () => {
           tasker.id,
           "New Badge Earned! 🏅",
           `You received the "${badgeObj?.label}" badge for your recent task!`,
-          'my_profile'
+          'my_profile',
+          'badge_received'
         );
       }
     });

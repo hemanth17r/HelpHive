@@ -3,22 +3,47 @@ import { Radio, Users, Eye, ArrowRight, IndianRupee, Trash2, MapPin } from 'luci
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../data/mockData';
 import Tooltip from '../../components/Tooltip';
-
+import { api } from '../../services/api';
 const LiveStatusScreen = () => {
   const { currentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen } = useContext(AppContext);
-  const [viewers, setViewers] = useState(3);
+  const [viewers, setViewers] = useState(0);
 
-  // Simulated viewers ticker
+  // Real viewers/taskers count logic
   useEffect(() => {
-    const timer = setInterval(() => {
-      setViewers(prev => Math.min(prev + Math.floor(Math.random() * 3) + 1, 24));
-    }, 1500);
+    let isMounted = true;
+    
+    const fetchViewersCount = async () => {
+      if (!currentPostedJob?.id) return;
+      
+      try {
+        const { data, error } = await api.supabase
+          .from('app_events')
+          .select('user_id')
+          .eq('event_type', 'job_viewed')
+          .eq('entity_id', currentPostedJob.id);
+          
+        if (error) throw error;
+        
+        if (isMounted && data) {
+          // Count unique user_ids
+          const uniqueViewers = new Set(data.map(e => e.user_id).filter(Boolean));
+          setViewers(uniqueViewers.size);
+        }
+      } catch (err) {
+        console.error("Failed to fetch viewers count:", err);
+      }
+    };
+
+    fetchViewersCount();
+    
+    // Refresh count every 5 seconds to reflect newly viewed taskers
+    const timer = setInterval(fetchViewersCount, 5000);
 
     return () => {
+      isMounted = false;
       clearInterval(timer);
     };
   }, []);
-
   if (!currentPostedJob) return null;
 
   const skill = SKILLS.find(s => s.id === currentPostedJob.skillId);

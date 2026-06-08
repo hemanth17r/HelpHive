@@ -6,6 +6,7 @@ import Tooltip from '../../components/Tooltip';
 import { SKILLS } from '../../data/mockData';
 import { getCurrentLocation } from '../../utils/location';
 import ActionItemsCarousel from '../../components/ActionItemsCarousel';
+import { api } from '../../services/api';
 
 const TaskerHomeScreen = () => {
   const { 
@@ -58,6 +59,34 @@ const TaskerHomeScreen = () => {
     (job?.taskerId === userProfile?.id || job?.taskerName === userProfile?.name) &&
     (job?.status === 'active' || job?.status === 'in_progress')
   );
+
+  useEffect(() => {
+    if (!isOnline || !userProfile?.id) return;
+    
+    // Log views for visible jobs
+    const jobsToLog = visibleJobs.filter(job => job?.status === 'open');
+    if (jobsToLog.length === 0) return;
+    
+    // Use sessionStorage to remember which jobs we've already logged as viewed in this session
+    const viewedJobs = JSON.parse(sessionStorage.getItem('viewedJobs') || '[]');
+    let updated = false;
+    
+    jobsToLog.forEach(job => {
+      if (!viewedJobs.includes(job.id)) {
+        api.logEvent('job_viewed', { 
+          userId: userProfile.id, 
+          role: 'tasker', 
+          entityId: job.id 
+        });
+        viewedJobs.push(job.id);
+        updated = true;
+      }
+    });
+    
+    if (updated) {
+      sessionStorage.setItem('viewedJobs', JSON.stringify(viewedJobs));
+    }
+  }, [visibleJobs, isOnline, userProfile?.id]);
 
   return (
     <div className="flex-1 flex flex-col bg-light-gray h-full select-none">
