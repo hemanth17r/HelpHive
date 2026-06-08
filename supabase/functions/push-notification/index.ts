@@ -38,6 +38,25 @@ serve(async (req) => {
       );
     }
 
+    // Check if the user is online before sending notifications
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('is_online')
+      .eq('id', user_id)
+      .single();
+
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.warn("Failed to retrieve user profile online status:", profileError);
+    }
+
+    if (profile && profile.is_online === false) {
+      return new Response(
+        JSON.stringify({ message: "User is offline. Skipping push notification." }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+
     // 1. Fetch all push subscriptions for the user
     const { data: subscriptions, error } = await supabaseClient
       .from('push_subscriptions')

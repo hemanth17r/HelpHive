@@ -82,6 +82,22 @@ export const api = {
   },
 
   sendNotification: async (userId, title, body, actionUrl, type = 'system') => {
+    // Check if user is online before sending notifications
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_online')
+        .eq('id', userId)
+        .single();
+        
+      if (profile && profile.is_online === false) {
+        console.log(`User ${userId} is offline. Skipping notification.`);
+        return { data: null, error: null, skipped: true };
+      }
+    } catch (err) {
+      console.warn("Failed to check recipient's online status, proceeding with notification:", err);
+    }
+
     // 1. Try to invoke edge function (sends push AND saves to DB)
     const { data, error } = await supabase.functions.invoke('push-notification', {
       body: { user_id: userId, title, body, action_url: actionUrl, type }

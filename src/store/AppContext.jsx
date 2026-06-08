@@ -122,6 +122,10 @@ export const AppProvider = ({ children }) => {
             upiId: data.upi_id || ''
           });
           setIsAdmin(data.is_admin === true);
+          if (data.is_online !== undefined && data.is_online !== null) {
+            setIsOnlineState(data.is_online);
+            localStorage.setItem('isOnline', JSON.stringify(data.is_online));
+          }
           const activeRole = localStorage.getItem('activeRole') || data.role;
           setRole(activeRole);
           localStorage.setItem('activeRole', activeRole);
@@ -172,6 +176,10 @@ export const AppProvider = ({ children }) => {
           upiId: data.upi_id || ''
         });
         setIsAdmin(data.is_admin === true);
+        if (data.is_online !== undefined && data.is_online !== null) {
+          setIsOnlineState(data.is_online);
+          localStorage.setItem('isOnline', JSON.stringify(data.is_online));
+        }
         const activeRole = data.role || 'tasker';
         setRole(activeRole);
         localStorage.setItem('activeRole', activeRole);
@@ -327,7 +335,20 @@ export const AppProvider = ({ children }) => {
   // Tasker-specific states
   const [acceptedJob, setAcceptedJob] = useState(null); 
   const [otpEntered, setOtpEntered] = useState('');
-  const [isOnline, setIsOnline] = useState(true);
+  
+  const [isOnline, setIsOnlineState] = useState(() => {
+    const saved = localStorage.getItem('isOnline');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  const setIsOnline = async (online) => {
+    setIsOnlineState(online);
+    localStorage.setItem('isOnline', JSON.stringify(online));
+    const currentUserId = userId || localStorage.getItem('userId');
+    if (currentUserId) {
+      await api.updateProfile(currentUserId, { is_online: online });
+    }
+  };
   
   // Poster-specific states
   const [currentPostedJob, setCurrentPostedJob] = useState(null); 
