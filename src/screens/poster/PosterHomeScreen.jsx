@@ -49,6 +49,29 @@ const PosterHomeScreen = () => {
 
   const [activeDropdownId, setActiveDropdownId] = useState(null);
 
+  const LPU_EXAMPLES = [
+    "Need someone to deliver Aloo Paratha from outside the Main Gate to the front of BH-3.",
+    "Need 5 players for a friendly cricket match near BH-4 playground, friendly bet 500 rupees.",
+    "Does anyone have a second-hand printed lab manual or workbook for CSE 320?",
+    "Anybody going to Jalandhar Cantt station? Let's split a cab from the Main Gate."
+  ];
+
+  const [exampleIndex, setExampleIndex] = useState(0);
+  const [fadeState, setFadeState] = useState('fade-in');
+
+  useEffect(() => {
+    if (displayActiveJobs.length === 0) {
+      const interval = setInterval(() => {
+        setFadeState('fade-out');
+        setTimeout(() => {
+          setExampleIndex(prev => (prev + 1) % LPU_EXAMPLES.length);
+          setFadeState('fade-in');
+        }, 300);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [displayActiveJobs.length]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = () => setActiveDropdownId(null);
@@ -110,13 +133,33 @@ const PosterHomeScreen = () => {
           </div>
 
           {displayActiveJobs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center space-y-3 py-10 bg-white rounded-3xl p-6 border border-border">
-              <div className="p-4 bg-gray-50 rounded-full text-gray-300">
-                <Clock className="w-8 h-8" />
+            <div className="flex flex-col items-center justify-center text-center space-y-4 py-10 px-6 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-3xl border border-orange-100/50 shadow-xs relative overflow-hidden group">
+              <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-orange-100/30 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
+              
+              <div className="p-3 bg-orange-500/10 text-orange-500 rounded-full animate-bounce duration-1000">
+                <PlusCircle className="w-7 h-7" />
               </div>
-              <p className="text-xs font-semibold text-gray-400 max-w-[200px]">
-                No active jobs. Post your first job.
-              </p>
+              
+              <div className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-orange-500 bg-orange-100/50 px-2.5 py-1 rounded-full border border-orange-200/20">
+                  Try Posting Something Like:
+                </span>
+              </div>
+              
+              <div className="min-h-[48px] flex items-center justify-center px-4 w-full">
+                <p className={`text-sm font-extrabold text-gray-700 italic leading-relaxed transition-opacity duration-300 ${fadeState === 'fade-out' ? 'opacity-0' : 'opacity-100'}`}>
+                  "{LPU_EXAMPLES[exampleIndex]}"
+                </p>
+              </div>
+
+              <div className="flex justify-center space-x-1.5 pt-1">
+                {LPU_EXAMPLES.map((_, idx) => (
+                  <div 
+                    key={idx}
+                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === exampleIndex ? 'bg-orange-500 w-3' : 'bg-orange-200'}`}
+                  ></div>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
