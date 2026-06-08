@@ -54,10 +54,64 @@ export const AppProvider = ({ children }) => {
   const [realLocation, setRealLocation] = useState(null); // Actual GPS coordinates {lat, lng}
   
   // Saved Addresses
-  const [savedAddresses, setSavedAddresses] = useState(() => {
+  const [savedAddresses, setSavedAddressesState] = useState(() => {
     const saved = localStorage.getItem('helphive_addresses_v2');
-    return saved ? JSON.parse(saved) : [];
+    const parsed = saved ? JSON.parse(saved) : [];
+    
+    // Keep only recent 3 addresses and ensure a single default address on load
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      let recent = parsed.slice(-3);
+      let defaultIndex = -1;
+      for (let i = recent.length - 1; i >= 0; i--) {
+        if (recent[i].isDefault) {
+          defaultIndex = i;
+          break;
+        }
+      }
+      if (defaultIndex === -1) {
+        defaultIndex = 0;
+      }
+      return recent.map((addr, idx) => ({
+        ...addr,
+        isDefault: idx === defaultIndex
+      }));
+    }
+    return parsed;
   });
+
+  const setSavedAddresses = (newAddresses) => {
+    const processAddresses = (list) => {
+      if (!Array.isArray(list)) return list;
+      
+      // Keep only the last 3 (most recent) addresses
+      let recent = list.slice(-3);
+      
+      // Ensure exactly one address is marked as default
+      if (recent.length > 0) {
+        let defaultIndex = -1;
+        for (let i = recent.length - 1; i >= 0; i--) {
+          if (recent[i].isDefault) {
+            defaultIndex = i;
+            break;
+          }
+        }
+        if (defaultIndex === -1) {
+          defaultIndex = 0;
+        }
+        recent = recent.map((addr, idx) => ({
+          ...addr,
+          isDefault: idx === defaultIndex
+        }));
+      }
+      return recent;
+    };
+
+    if (typeof newAddresses === 'function') {
+      setSavedAddressesState(prev => processAddresses(newAddresses(prev)));
+    } else {
+      setSavedAddressesState(processAddresses(newAddresses));
+    }
+  };
   
   // Effect to persist savedAddresses
   useEffect(() => {
@@ -74,9 +128,21 @@ export const AppProvider = ({ children }) => {
       const { data, error } = await api.fetchJobs();
       if (data) {
         const mappedJobs = data.map(j => {
+          let expiresAt = null;
+          let cleanDesc = j.description || '';
+          const match = cleanDesc.match(/\n\[Time: ([^\]]+)\]/);
+          if (match) {
+            expiresAt = match[1];
+            cleanDesc = cleanDesc.replace(/\n\[Time: [^\]]+\]/, '');
+          } else {
+            expiresAt = new Date(j.created_at).toISOString();
+          }
+
           const coords = parseEWKBPoint(j.location) || { lng: j.lng || 0, lat: j.lat || 0 };
           return {
             ...j,
+            description: cleanDesc,
+            expiresAt: expiresAt,
             posterId: j.posterId || j.poster_id,
             taskerId: j.taskerId || j.tasker_id,
             skillId: j.skillId || j.skill_id,
@@ -86,7 +152,27 @@ export const AppProvider = ({ children }) => {
             lat: coords.lat,
           };
         });
-        setJobs(mappedJobs);
+
+        // Check for active jobs that should be automatically expired (unfulfilled)
+        // after 5 days from their selected time (expiresAt).
+        const now = new Date();
+        const updatedJobs = mappedJobs.map(j => {
+          if (j.status !== 'completed' && j.status !== 'expired' && j.status !== 'draft') {
+            const selectedDate = new Date(j.expiresAt);
+            if (!isNaN(selectedDate.getTime())) {
+              const diffTime = now - selectedDate;
+              const diffDays = diffTime / (1000 * 60 * 60 * 24);
+              if (diffDays > 5) {
+                // Update in backend asynchronously
+                api.updateJob(j.id, { status: 'expired' }).then();
+                return { ...j, status: 'expired' };
+              }
+            }
+          }
+          return j;
+        });
+
+        setJobs(updatedJobs);
       }
     };
     fetchJobs();
@@ -598,7 +684,7 @@ export const AppProvider = ({ children }) => {
       locationStr = `POINT(${userLocation.lng} ${userLocation.lat})`;
     }
 
-    // Calculate expiration timestamp
+    // Calculate expiration timestamp (the selected date and time)
     const dateObj = new Date(newJobData.day);
     const [timeStr, ampmStr] = newJobData.time.split(' ');
     let [hours, minutes] = timeStr.split(':').map(Number);
@@ -606,6 +692,8 @@ export const AppProvider = ({ children }) => {
     if (ampmStr === 'AM' && hours === 12) hours = 0;
     dateObj.setHours(hours, minutes, 0, 0);
     const expiresAt = dateObj.toISOString();
+
+    const dbDescription = `${newJobData.description || 'Quick task'}\n[Time: ${expiresAt}]`;
 
     // Remove old job if reposting
     if (editJobData) {
@@ -619,7 +707,7 @@ export const AppProvider = ({ children }) => {
     const { data, error } = await api.postJob({
       posterId: currentUserId,
       skillId: newJobData.skillId,
-      description: newJobData.description || 'Quick task',
+      description: dbDescription,
       peopleNeeded: newJobData.peopleNeeded || 1,
       amount: newJobData.amount,
       locationStr: locationStr,
@@ -631,6 +719,7 @@ export const AppProvider = ({ children }) => {
         ...data,
         ...newJobData,
         id: data.id,
+        description: newJobData.description || 'Quick task',
         posterId: data.poster_id,
         posterName: userProfile?.posterName || userProfile?.name || 'Unknown Hirer',
         posterBird: selectedBird || 'robin',

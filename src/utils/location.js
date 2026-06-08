@@ -91,6 +91,44 @@ export const getTimeAgo = (timestamp) => {
   return `${days} day${days > 1 ? 's' : ''} ago`;
 };
 
+export const formatSelectedTime = (expiresAt) => {
+  if (!expiresAt) return 'No time specified';
+  
+  const date = new Date(expiresAt);
+  if (isNaN(date.getTime())) return expiresAt;
+
+  const now = new Date();
+  
+  // Reset hours to compare dates only
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  const diffTime = targetDate - today;
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  // Format the time part (e.g. 3 PM, 4 PM)
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // 0 should be 12
+  const minStr = minutes > 0 ? `:${String(minutes).padStart(2, '0')}` : '';
+  const timeStr = `${hours}${minStr} ${ampm}`;
+
+  if (diffDays === 0) {
+    return `Today, ${timeStr}`;
+  } else if (diffDays === 1) {
+    return `Tomorrow, ${timeStr}`;
+  } else if (diffDays === -1) {
+    return `Yesterday, ${timeStr}`;
+  } else {
+    const day = date.getDate();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[date.getMonth()];
+    return `${day} ${month}, ${timeStr}`;
+  }
+};
+
 /**
  * Parses a PostGIS Point geometry hex string (EWKB) into longitude and latitude coordinates.
  * @param {string|object} ewkb The PostGIS point hex string or GeoJSON point object.

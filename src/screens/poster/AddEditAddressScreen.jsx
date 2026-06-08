@@ -8,7 +8,9 @@ const AddEditAddressScreen = () => {
   const { popScreen, savedAddresses, setSavedAddresses, userProfile, setUserProfile } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
 
-  const [contactMode, setContactMode] = useState('myself'); // 'myself' | 'someone_else'
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  
   const [addressType, setAddressType] = useState('Home'); // 'Home' | 'Work' | 'Other'
 
   // Form states
@@ -16,16 +18,11 @@ const AddEditAddressScreen = () => {
   const [area, setArea] = useState('LPU');
   const [completeAddress, setCompleteAddress] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [receiverName, setReceiverName] = useState('');
-  const [receiverPhone, setReceiverPhone] = useState('');
 
-  const [editedName, setEditedName] = useState('');
-  const [editedPhone, setEditedPhone] = useState('');
-  
   useEffect(() => {
-    if (userProfile && !editedName && !editedPhone) {
-      setEditedName(userProfile.name === 'New User' ? '' : userProfile.name);
-      setEditedPhone(userProfile.phone === 'Add Phone' ? '' : userProfile.phone);
+    if (userProfile && !contactName && !contactPhone) {
+      setContactName(userProfile.name === 'New User' ? '' : userProfile.name);
+      setContactPhone(userProfile.phone === 'Add Phone' ? '' : userProfile.phone);
     }
   }, [userProfile]);
 
@@ -42,12 +39,7 @@ const AddEditAddressScreen = () => {
 
   const handlePhoneChange = (e) => {
     const formattedPhoneNumber = formatPhone(e.target.value);
-    setEditedPhone(formattedPhoneNumber);
-  };
-
-  const handleReceiverPhoneChange = (e) => {
-    const formattedPhoneNumber = formatPhone(e.target.value);
-    setReceiverPhone(formattedPhoneNumber);
+    setContactPhone(formattedPhoneNumber);
   };
 
   const handleSave = () => {
@@ -56,27 +48,18 @@ const AddEditAddressScreen = () => {
       return;
     }
 
-
-    let contactName = '';
-    let contactPhone = '';
-
-    if (contactMode === 'myself') {
-      contactName = editedName.trim() || 'New User';
-      contactPhone = editedPhone.trim() || 'Add Phone';
-      
-      const updates = {};
-      if (contactName !== userProfile?.name) updates.name = contactName;
-      if (contactPhone !== userProfile?.phone) updates.phone = contactPhone;
-      
-      if (Object.keys(updates).length > 0) {
-        setUserProfile({ ...userProfile, ...updates });
-      }
-    } else {
-      contactName = receiverName.trim();
-      contactPhone = receiverPhone.trim();
+    const finalContactName = contactName.trim() || 'New User';
+    const finalContactPhone = contactPhone.trim() || 'Add Phone';
+    
+    const updates = {};
+    if (finalContactName !== userProfile?.name) updates.name = finalContactName;
+    if (finalContactPhone !== userProfile?.phone) updates.phone = finalContactPhone;
+    
+    if (Object.keys(updates).length > 0) {
+      setUserProfile({ ...userProfile, ...updates });
     }
 
-    if (!contactName || !contactPhone) {
+    if (!finalContactName || !finalContactPhone) {
       showToast('Contact details are required', 'error');
       return;
     }
@@ -88,8 +71,8 @@ const AddEditAddressScreen = () => {
       area,
       completeAddress,
       landmark,
-      contactName,
-      contactPhone,
+      contactName: finalContactName,
+      contactPhone: finalContactPhone,
       isDefault: savedAddresses.length === 0, // make default if it's the first one
       lat: 17.3850,
       lng: 78.4867
@@ -166,73 +149,31 @@ const AddEditAddressScreen = () => {
         {/* Contact Details */}
         <div className="space-y-4">
           <h3 className="text-sm font-black text-dark tracking-wide">CONTACT DETAILS</h3>
-          
-          <div className="flex bg-gray-100 p-1 rounded-xl">
-            <button 
-              onClick={() => setContactMode('myself')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${contactMode === 'myself' ? 'bg-white shadow-sm text-dark' : 'text-gray-500 hover:text-dark'}`}
-            >
-              For Myself
-            </button>
-            <button 
-              onClick={() => setContactMode('someone_else')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${contactMode === 'someone_else' ? 'bg-white shadow-sm text-dark' : 'text-gray-500 hover:text-dark'}`}
-            >
-              Someone Else
-            </button>
-          </div>
 
-          {contactMode === 'myself' ? (
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
+              <input
+                type="text"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
+                placeholder="Enter full name"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Phone Number</label>
+              <div className="flex items-center space-x-2">
                 <input
-                  type="text"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                  placeholder="Enter full name"
+                  type="tel"
+                  value={contactPhone}
+                  onChange={handlePhoneChange}
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark transition-colors focus:outline-none focus:border-primary focus:bg-white"
+                  placeholder="123-456-7890"
                 />
               </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Phone Number</label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="tel"
-                    value={editedPhone}
-                    onChange={handlePhoneChange}
-                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark transition-colors focus:outline-none focus:border-primary focus:bg-white"
-                    placeholder="123-456-7890"
-                  />
-                </div>
-              </div>
             </div>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Receiver Name</label>
-                <input 
-                  type="text" 
-                  value={receiverName}
-                  onChange={(e) => setReceiverName(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                  placeholder="Enter name"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Receiver Phone</label>
-                <div className="flex items-center space-x-2">
-                  <input 
-                    type="tel" 
-                    value={receiverPhone}
-                    onChange={handleReceiverPhoneChange}
-                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark transition-colors focus:outline-none focus:border-primary focus:bg-white"
-                    placeholder="123-456-7890"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Address Type */}

@@ -4,7 +4,7 @@ import { SKILLS } from '../data/mockData';
 import { AppContext } from '../store/AppContext';
 import { ToastContext } from '../store/ToastContext';
 import Tooltip from './Tooltip';
-import { getTimeAgo, getCurrentLocation } from '../utils/location';
+import { formatSelectedTime, getCurrentLocation } from '../utils/location';
 
 const JobCard = ({ job, onDecline }) => {
   const { acceptJob, requireProfile, realLocation, setRealLocation, userProfile, pushScreen, setTaskerActivityScrollTarget } = useContext(AppContext);
@@ -99,7 +99,7 @@ const JobCard = ({ job, onDecline }) => {
         </div>
         <div className="flex items-center space-x-1.5">
           <Clock className="w-4 h-4 text-gray-400" />
-          <span>{getTimeAgo(job.timePosted)}</span>
+          <span>{formatSelectedTime(job.expiresAt || job.timePosted)}</span>
         </div>
       </div>
 

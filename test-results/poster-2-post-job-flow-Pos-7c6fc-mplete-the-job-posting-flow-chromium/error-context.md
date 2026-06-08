@@ -28,17 +28,15 @@ Call log:
 ```yaml
 - banner:
   - text: LPU & nearby HelpHive
-  - paragraph: Guest
-  - paragraph: Hirer
   - img
 - main:
+  - text: Enable Location Find nearby tasks Complete Profile Add Name & Phone Turn on Alerts Get instant updates
   - button "Post a Job Get local helpers in seconds":
     - heading "Post a Job" [level=2]
     - paragraph: Get local helpers in seconds
-  - text: My Active Jobs Moving Searching for Helpers...
-  - button
-  - paragraph: Test job description
-  - text: "Needed: 1 ₹100 Drafts"
+  - text: "My Active Jobs Try Posting Something Like:"
+  - paragraph: "\"Does anyone have a second-hand workbook for CSC 321? - ₹80\""
+  - text: Drafts
   - paragraph: No drafts.
   - button "Home"
   - button "Profile"

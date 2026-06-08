@@ -66,25 +66,21 @@ const PostJobScreen = () => {
 
   // Address Popup States
   const [showAddressPopup, setShowAddressPopup] = useState(false);
-  const [contactMode, setContactMode] = useState('myself');
   const [city, setCity] = useState('Jalandhar');
   const [area, setArea] = useState('LPU');
   const [completeAddress, setCompleteAddress] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [receiverName, setReceiverName] = useState(userProfile?.posterName || userProfile?.name || '');
-  const [receiverPhone, setReceiverPhone] = useState(userProfile?.posterPhone || userProfile?.phone || '');
+  const [contactName, setContactName] = useState(userProfile?.posterName || userProfile?.name || '');
+  const [contactPhone, setContactPhone] = useState(userProfile?.posterPhone || userProfile?.phone || '');
 
   React.useEffect(() => {
-    if (contactMode === 'myself') {
+    if (!contactName && !contactPhone) {
       const pName = userProfile?.posterName || userProfile?.name || '';
       const pPhone = userProfile?.posterPhone || userProfile?.phone || '';
-      setReceiverName(pName);
-      setReceiverPhone(pPhone);
-    } else {
-      setReceiverName('');
-      setReceiverPhone('');
+      setContactName(pName);
+      setContactPhone(pPhone);
     }
-  }, [contactMode, userProfile]);
+  }, [userProfile]);
 
   const handlePhoneChange = (e) => {
     let val = e.target.value.replace(/\D/g, '');
@@ -97,7 +93,7 @@ const PostJobScreen = () => {
       formatted = `${val.slice(0, 3)} ${val.slice(3)}`;
     }
     
-    setReceiverPhone(formatted);
+    setContactPhone(formatted);
   };
 
   // Draft Saving Logic
@@ -213,16 +209,13 @@ const PostJobScreen = () => {
       return;
     }
 
-    if (!receiverName || !receiverPhone) {
+    if (!contactName || !contactPhone) {
       showToast('Contact details are required', 'error');
       return;
     }
 
-    // Update global profile if in 'myself' mode
-    if (contactMode === 'myself') {
-      const rawPhone = receiverPhone.replace(/\D/g, '');
-      setUserProfile({ ...userProfile, name: receiverName, phone: rawPhone });
-    }
+    const rawPhone = contactPhone.replace(/\D/g, '');
+    setUserProfile({ ...userProfile, name: contactName, phone: rawPhone });
 
     const newAddress = {
       id: Date.now().toString(),
@@ -231,8 +224,8 @@ const PostJobScreen = () => {
       area,
       completeAddress,
       landmark,
-      contactName: receiverName,
-      contactPhone: receiverPhone,
+      contactName: contactName,
+      contactPhone: contactPhone,
       isDefault: true,
       lat: 17.3850 + (Math.random() * 0.01),
       lng: 78.4867 + (Math.random() * 0.01)
@@ -603,35 +596,21 @@ const PostJobScreen = () => {
 
               <div className="space-y-4 pt-2 border-t border-gray-100">
                 <h3 className="text-xs font-black text-dark tracking-wide">CONTACT DETAILS</h3>
-                <div className="flex bg-gray-100 p-1 rounded-xl">
-                  <button 
-                    onClick={() => setContactMode('myself')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${contactMode === 'myself' ? 'bg-white shadow-sm text-dark' : 'text-gray-500 hover:text-dark'}`}
-                  >
-                    For Myself
-                  </button>
-                  <button 
-                    onClick={() => setContactMode('someone_else')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${contactMode === 'someone_else' ? 'bg-white shadow-sm text-dark' : 'text-gray-500 hover:text-dark'}`}
-                  >
-                    Someone Else
-                  </button>
-                </div>
 
                 <div className="space-y-3">
                   <div>
                     <input 
                       type="text" 
-                      value={receiverName}
-                      onChange={(e) => setReceiverName(e.target.value)}
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                      placeholder="Name"
+                      placeholder="Full Name"
                     />
                   </div>
                   <div className="flex items-center space-x-2">
                     <input 
                       type="tel" 
-                      value={receiverPhone}
+                      value={contactPhone}
                       onChange={handlePhoneChange}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
                       placeholder="123-456-7890"
