@@ -7,7 +7,7 @@ import { useProfileCompletion } from '../hooks/useProfileCompletion';
 import { getCurrentLocation } from '../utils/location';
 
 const ActionItemsCarousel = () => {
-  const { requireProfile, pushScreen, setRealLocation, setActiveTab } = useContext(AppContext);
+  const { requireProfile, pushScreen, setRealLocation, setActiveTab, setTaskerActivityScrollTarget } = useContext(AppContext);
   const { subscribeToPush, pushSupported, pushPermission } = useContext(NotificationContext);
   const { showToast } = useContext(ToastContext);
   const { missingItems } = useProfileCompletion();
@@ -63,8 +63,8 @@ const ActionItemsCarousel = () => {
   };
 
   const handleUpiRequest = () => {
-    // We can push to profile tab or tasker activity where UPI is set
-    setActiveTab('profile');
+    setTaskerActivityScrollTarget('upi');
+    pushScreen('tasker_activity');
   };
 
   const CARDS = {
