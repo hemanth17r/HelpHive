@@ -50,10 +50,10 @@ const PosterHomeScreen = () => {
   const [activeDropdownId, setActiveDropdownId] = useState(null);
 
   const LPU_EXAMPLES = [
-    "Need someone to deliver my Blinkit parcel from the Main Gate to BH-3. Payout: ₹30.",
-    "Need 5 players for a friendly cricket match near BH-4 playground, friendly bet ₹500.",
-    "Does anyone have a second-hand printed lab manual or workbook for CSE 320? Paying: ₹150.",
-    "Anybody going to Jalandhar Cantt station? Let's split a cab from the Main Gate."
+    "Need someone to deliver Blinkit parcel from main gate to BH 3 - ₹30",
+    "Need 5 players for a friendly cricket match near BH 4 playground - ₹500",
+    "Does anyone have a second-hand workbook for CSC 321? - ₹150",
+    "Anybody going to Jalandhar Cantt station? Split cab from main gate - ₹150"
   ];
 
   const [exampleIndex, setExampleIndex] = useState(0);
@@ -67,7 +67,7 @@ const PosterHomeScreen = () => {
           setExampleIndex(prev => (prev + 1) % LPU_EXAMPLES.length);
           setFadeState('fade-in');
         }, 300);
-      }, 2500);
+      }, 2000);
       return () => clearInterval(interval);
     }
   }, [displayActiveJobs.length]);
