@@ -48,12 +48,11 @@ const PosterHomeScreen = () => {
   const displayDraftJobs = draftJobs;
 
   const [activeDropdownId, setActiveDropdownId] = useState(null);
-
   const LPU_EXAMPLES = [
     "Need someone to deliver Blinkit parcel from main gate to BH 3 - ₹30",
     "Need 5 players for a friendly cricket match near BH 4 playground - ₹500",
-    "Does anyone have a second-hand workbook for CSC 321? - ₹150",
-    "Anybody going to Jalandhar Cantt station? Split cab from main gate - ₹150"
+    "Does anyone have a second-hand workbook for CSC 321? - ₹80",
+    "Anybody going to Jalandhar Cantt station? Let's split a cab from main gate"
   ];
 
   const [exampleIndex, setExampleIndex] = useState(0);

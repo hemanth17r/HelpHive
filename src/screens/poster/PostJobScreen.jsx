@@ -304,6 +304,9 @@ const PostJobScreen = () => {
             <h2 className="text-xl font-black text-dark tracking-tight mb-1">
               Describe what you need
             </h2>
+            <p className="text-[10px] text-gray-400 font-bold mt-1">
+              💡 Enter ₹0 in Payout for cab splits, sports games, or social connections.
+            </p>
           </div>
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
