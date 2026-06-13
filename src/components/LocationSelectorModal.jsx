@@ -143,8 +143,8 @@ const LocationSelectorModal = () => {
       <div className="absolute inset-0" onClick={handleClose} />
 
       {view === 'prompt' ? (
-        /* Blinkit style Location Permission Not Enabled Prompt */
-        <div className="relative bg-[#1c1c1e] text-white rounded-[32px] w-full max-w-sm shadow-2xl p-6 text-center flex flex-col items-center border border-white/5 animate-[scaleUp_250ms_ease-in-out]">
+        /* HelpHive style Location Permission Not Enabled Prompt */
+        <div className="relative bg-white text-dark rounded-[32px] w-full max-w-sm shadow-2xl p-6 text-center flex flex-col items-center border border-border animate-[scaleUp_250ms_ease-in-out]">
           
           {/* Circular Pin Slash Icon */}
           <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-6 mt-4 border border-red-500/20">
@@ -156,14 +156,14 @@ const LocationSelectorModal = () => {
           </div>
 
           <h3 className="text-xl font-black mb-2.5">Location permission not enabled</h3>
-          <p className="text-sm text-gray-400 font-semibold px-4 mb-8 leading-relaxed">
+          <p className="text-sm text-gray-500 font-semibold px-4 mb-8 leading-relaxed">
             Please enable location permission for a better delivery experience
           </p>
 
           <button
             onClick={handleEnableLocation}
             disabled={isDetecting}
-            className="w-full bg-[#0c831f] hover:bg-[#0b721b] disabled:bg-green-800 text-white font-black py-4 rounded-2xl shadow-lg active:scale-[0.98] transition-all cursor-pointer mb-3.5 flex items-center justify-center space-x-2 text-sm animate-pulse"
+            className="w-full bg-primary hover:bg-primary/95 disabled:bg-primary/70 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer mb-3.5 flex items-center justify-center space-x-2 text-sm"
           >
             {isDetecting ? (
               <>
@@ -177,7 +177,7 @@ const LocationSelectorModal = () => {
 
           <button
             onClick={() => setView('manual')}
-            className="w-full bg-transparent hover:bg-white/5 text-white font-black py-3 rounded-2xl transition-all cursor-pointer text-sm"
+            className="w-full bg-transparent hover:bg-light-gray text-gray-500 hover:text-dark font-black py-3.5 rounded-2xl transition-all cursor-pointer text-sm"
           >
             Select location manually
           </button>
