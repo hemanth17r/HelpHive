@@ -12,6 +12,7 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
   const [error, setError] = useState('');
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentName = userProfile?.name;
   const currentPhone = userProfile?.phone;
@@ -52,6 +53,8 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    
     if (!name.trim()) {
       setError('Name is required.');
       return;
@@ -60,23 +63,37 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
       setError('Phone number is required.');
       return;
     }
+    
+    // Remove formatting characters to get raw 10 digits
     const rawPhone = phone.replace(/\D/g, '');
-    if (rawPhone.length < 10) {
-      setError('Please enter a valid phone number.');
+    if (rawPhone.length !== 10) {
+      setError('Please enter a valid 10-digit phone number.');
       return;
     }
 
+    setIsSubmitting(true);
     setError('');
-    const res = await onSubmit(name.trim(), rawPhone);
-    if (res && res.success === false) {
-      setError(res.error);
+
+    try {
+      console.log('handleSubmit: Before onSubmit');
+      const res = await onSubmit(name.trim(), rawPhone);
+      console.log('handleSubmit: After onSubmit, res:', res);
+      if (res && res.success === false) {
+        setError(res.error);
+      }
+    } catch (err) {
+      console.error('handleSubmit: Error in onSubmit', err);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      console.log('handleSubmit: finally setting isSubmitting(false)');
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div 
       onClick={onClose}
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs ${
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 ${
         isAnimatingOut ? 'modal-backdrop-close' : 'modal-backdrop-open'
       }`}
     >
@@ -154,10 +171,17 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
         <div className="px-6 py-4 bg-white border-t border-border shrink-0 pb-8 sm:pb-4">
           <button
             onClick={handleSubmit}
-            className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer"
+            disabled={isSubmitting}
+            className={`w-full flex items-center justify-center space-x-2 font-black py-4 rounded-2xl transition-all cursor-pointer ${
+              isSubmitting ? 'bg-primary/70 text-white cursor-not-allowed' : 'bg-primary hover:bg-primary/95 text-white shadow-lg shadow-primary/20 active:scale-[0.99]'
+            }`}
           >
-            <CheckCircle2 className="w-5 h-5" />
-            <span>Save & Continue</span>
+            {isSubmitting ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <CheckCircle2 className="w-5 h-5" />
+            )}
+            <span>{isSubmitting ? 'Saving...' : 'Save & Continue'}</span>
           </button>
         </div>
       </div>

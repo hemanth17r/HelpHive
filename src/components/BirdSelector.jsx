@@ -45,7 +45,7 @@ const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
   return (
     <div
       onClick={handleBackdropClick}
-      className={`fixed inset-0 z-[999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs ${
+      className={`fixed inset-0 z-[999] flex items-end sm:items-center justify-center bg-black/50 ${
         isAnimatingOut ? 'modal-backdrop-close' : 'modal-backdrop-open'
       }`}
     >

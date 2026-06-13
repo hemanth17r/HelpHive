@@ -3,6 +3,7 @@ import { HeartHandshake, Briefcase, Sparkles, ChevronRight } from 'lucide-react'
 import { AppContext } from '../store/AppContext';
 import Tooltip from '../components/Tooltip';
 import LoginModal from '../components/LoginModal';
+import { api } from '../services/api';
 
 const LandingScreen = () => {
   const { switchRole } = useContext(AppContext);
@@ -11,6 +12,47 @@ const LandingScreen = () => {
   const selectRole = (selectedRole) => {
     switchRole(selectedRole);
   };
+
+  // Google One Tap Initialization
+  React.useEffect(() => {
+    const handleCredentialResponse = async (response) => {
+      try {
+        const { data, error } = await api.supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: response.credential,
+        });
+        if (error) {
+          console.error('Google One Tap sign in error:', error);
+        }
+        // AppContext's onAuthStateChange will catch the successful login and redirect
+      } catch (err) {
+        console.error('Failed to process Google One Tap response:', err);
+      }
+    };
+
+    const initializeGoogleOneTap = () => {
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        window.google.accounts.id.initialize({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID', // Replaced from .env
+          callback: handleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+          context: 'use',
+        });
+        window.google.accounts.id.prompt();
+      }
+    };
+
+    // Check if the script is loaded, if not wait a bit
+    if (window.google) {
+      initializeGoogleOneTap();
+    } else {
+      const timer = setTimeout(() => {
+        if (window.google) initializeGoogleOneTap();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   return (
     <div 

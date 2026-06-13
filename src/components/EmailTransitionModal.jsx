@@ -4,17 +4,17 @@ import { AppContext } from '../store/AppContext';
 import { ToastContext } from '../store/ToastContext';
 import { api } from '../services/api';
 
-const LoginModal = ({ isOpen, onClose }) => {
-  const { setUserProfile } = useContext(AppContext);
+const EmailTransitionModal = ({ isOpen, onClose }) => {
+  const { userProfile, setUserProfile } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
 
   const [email, setEmail] = useState('');
-  const [view, setView] = useState('main'); // 'main', 'magic_link_sent'
+  const [error, setError] = useState('');
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const [loadingAction, setLoadingAction] = useState(null);
   const isLoading = loadingAction !== null;
-  const [error, setError] = useState('');
+  const [view, setView] = useState('main'); // 'main', 'magic_link_sent'
 
   useEffect(() => {
     if (isOpen) {
@@ -37,10 +37,14 @@ const LoginModal = ({ isOpen, onClose }) => {
 
   if (!shouldRender) return null;
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLink = async () => {
     setLoadingAction('google');
     setError('');
     try {
+      // By calling api.loginWithGoogle, the user is redirected to Google.
+      // We rely on onAuthStateChange to link the session if the backend logic allows it.
+      // However, if their email is not yet saved, onAuthStateChange might create a new user.
+      // That's why we encourage Magic Link, but provide this as requested.
       const { error } = await api.loginWithGoogle();
       if (error) throw error;
     } catch (e) {
@@ -51,9 +55,8 @@ const LoginModal = ({ isOpen, onClose }) => {
   };
 
   const handleMagicLink = async () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      showToast('Enter a valid email address.', 'error');
+    if (!email.trim() || !email.includes('@')) {
+      setError('Please enter a valid email address.');
       return;
     }
 
@@ -61,12 +64,31 @@ const LoginModal = ({ isOpen, onClose }) => {
     setError('');
 
     try {
-      const { error } = await api.loginWithMagicLink(email);
-      if (error) throw error;
+      // Check if email already exists on another account
+      const { data: existingProfile } = await api.findProfileByEmail(email.trim());
+      if (existingProfile && existingProfile.id !== userProfile?.id) {
+        setError('This email is already registered to another account.');
+        setLoadingAction(null);
+        return;
+      }
+
+      // Save email to the user's profile first so that when they click the magic link,
+      // onAuthStateChange can find the existing profile by email and link the auth_id
+      const res = await setUserProfile({ email: email.trim() });
+      if (res && res.success === false) {
+        setError(res.error || 'Failed to prepare email link.');
+        setLoadingAction(null);
+        return;
+      }
+
+      // Send the magic link
+      const { error: magicError } = await api.loginWithMagicLink(email.trim());
+      if (magicError) throw magicError;
+      
       setView('magic_link_sent');
-    } catch (e) {
-      console.error(e);
-      if (e.message?.includes('rate limit')) {
+    } catch (err) {
+      console.error(err);
+      if (err.message?.includes('rate limit')) {
         setError("Too many requests. Please wait a minute and try again.");
       } else {
         setError("Failed to send magic link. Please check your email and try again.");
@@ -76,12 +98,10 @@ const LoginModal = ({ isOpen, onClose }) => {
     }
   };
 
-
-
   return (
     <div 
       onClick={onClose}
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 ${
+      className={`fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 ${
         isAnimatingOut ? 'modal-backdrop-close' : 'modal-backdrop-open'
       }`}
     >
@@ -93,8 +113,8 @@ const LoginModal = ({ isOpen, onClose }) => {
       >
         <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-white shrink-0">
           <div>
-            <h2 className="text-lg font-black text-dark">Welcome to HelpHive</h2>
-            <p className="text-xs font-semibold text-gray-500 mt-0.5">Log in or create an account</p>
+            <h2 className="text-lg font-black text-dark">Secure Your Account</h2>
+            <p className="text-xs font-semibold text-gray-500 mt-0.5">Link an email to switch to passwordless login</p>
           </div>
           <button 
             onClick={onClose}
@@ -109,7 +129,7 @@ const LoginModal = ({ isOpen, onClose }) => {
             <div className="space-y-6">
               
               <button 
-                onClick={handleGoogleLogin}
+                onClick={handleGoogleLink}
                 disabled={isLoading}
                 className="w-full flex items-center justify-center space-x-3 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-dark px-4 py-3.5 rounded-2xl font-bold transition-all disabled:opacity-50"
               >
@@ -143,7 +163,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setError(''); }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && email.length > 5 && !isLoading) {
+                      if (e.key === 'Enter' && email.includes('@') && !isLoading) {
                         handleMagicLink();
                       }
                     }}
@@ -151,21 +171,10 @@ const LoginModal = ({ isOpen, onClose }) => {
                     placeholder="name@example.com"
                     className={`w-full bg-transparent border-0 px-3 py-2 text-sm font-semibold outline-hidden text-dark h-full ${isLoading ? 'text-gray-500 cursor-not-allowed' : ''}`}
                   />
-                  {email.length > 5 && (
-                    <button
-                      type="button"
-                      onClick={handleMagicLink}
-                      disabled={isLoading}
-                      className="bg-dark text-white px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ml-2 cursor-pointer shrink-0 disabled:opacity-70 flex items-center justify-center min-w-[80px]"
-                    >
-                      {loadingAction === 'magic' ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      ) : (
-                        'Send Link'
-                      )}
-                    </button>
-                  )}
                 </div>
+                <p className="text-xs text-gray-500 mt-2 font-medium leading-relaxed pt-1">
+                  HelpHive is moving to a modern, email-first login system. By linking your email, you will be able to log in easily without entering a phone number again.
+                </p>
               </div>
 
               {error && (
@@ -176,12 +185,18 @@ const LoginModal = ({ isOpen, onClose }) => {
                 </div>
               )}
 
-
-
+              <button
+                onClick={handleMagicLink}
+                disabled={isLoading}
+                className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-70 mt-4"
+              >
+                {loadingAction === 'magic' ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : null}
+                <span>{loadingAction === 'magic' ? 'Sending...' : 'Continue'}</span>
+              </button>
             </div>
           )}
-
-
 
           {view === 'magic_link_sent' && (
             <div className="py-6 text-center space-y-4">
@@ -190,7 +205,7 @@ const LoginModal = ({ isOpen, onClose }) => {
               </div>
               <h3 className="text-xl font-black text-dark">Check your email</h3>
               <p className="text-sm font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
-                We sent a magic link to <span className="text-dark font-bold">{email}</span>. Click the link to log in.
+                We sent a magic link to <span className="text-dark font-bold">{email}</span>. Click the link to complete linking your account.
               </p>
               <button 
                 onClick={() => setView('main')}
@@ -201,12 +216,10 @@ const LoginModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
-
-
         </div>
       </div>
     </div>
   );
 };
 
-export default LoginModal;
+export default EmailTransitionModal;

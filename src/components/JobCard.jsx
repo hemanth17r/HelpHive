@@ -7,8 +7,12 @@ import Tooltip from './Tooltip';
 import { formatSelectedTime, getCurrentLocation } from '../utils/location';
 
 const JobCard = ({ job, onDecline }) => {
-  const { acceptJob, requireProfile, realLocation, setRealLocation, userProfile, pushScreen, setTaskerActivityScrollTarget } = useContext(AppContext);
+  const { acceptJob, requireProfile, realLocation, setRealLocation, userProfile, pushScreen, setTaskerActivityScrollTarget, role } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
+
+  const hasReferenceLocation = role === 'tasker'
+    ? (userProfile?.serviceAreaLat !== null && userProfile?.serviceAreaLng !== null && userProfile?.serviceAreaLat !== undefined && userProfile?.serviceAreaLng !== undefined)
+    : (realLocation !== null && realLocation !== undefined);
 
   const handleRequestLocation = async (e) => {
     e.stopPropagation();
@@ -26,7 +30,7 @@ const JobCard = ({ job, onDecline }) => {
   const Icon = skill ? skill.icon : SKILLS[SKILLS.length - 1].icon;
 
   const handleAcceptJob = () => {
-    requireProfile(async () => {
+    requireProfile(() => {
       // 1. Check UPI ID first
       if (!userProfile?.upiId) {
         showToast('Please add your UPI ID to receive payments.', 'error');
@@ -35,20 +39,10 @@ const JobCard = ({ job, onDecline }) => {
         return;
       }
 
-      // 2. Check GPS Location next
-      if (!realLocation) {
-        try {
-          const loc = await getCurrentLocation();
-          setRealLocation(loc);
-          // Location successfully obtained, proceed to accept the job
-          acceptJob(job.id);
-        } catch(err) {
-          showToast('GPS location is required to accept jobs. Please enable it.', 'error');
-        }
-      } else {
-        // 3. Location already present, accept the job
+      // 2. Require Location before accepting
+      requireLocation('tasker', () => {
         acceptJob(job.id);
-      }
+      });
     });
   };
 
@@ -89,7 +83,7 @@ const JobCard = ({ job, onDecline }) => {
         </div>
         <div className="flex items-center space-x-1.5 overflow-hidden">
           <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
-          {realLocation ? (
+          {hasReferenceLocation ? (
             <span className="truncate">{job.distanceVal} km away</span>
           ) : (
             <span onClick={handleRequestLocation} className="text-primary cursor-pointer hover:underline truncate" style={{fontSize: '9px'}}>

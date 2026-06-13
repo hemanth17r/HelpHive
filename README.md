@@ -2,6 +2,16 @@
 
 HelpHive is a platform connecting users (Posters) who need help with everyday tasks with individuals (Taskers) willing to complete those tasks.
 
+---
+
+### 🇮🇳 Version 2: Pan India Launch Upgrade
+
+HelpHive has been upgraded to **Version 2** with major architectural enhancements for scaling, location-aware dispatcher queues, secure waitlists, and PWA push notifications.
+
+For detailed architecture, databases, and setups, see [PAN_INDIA_LAUNCH_V2.md](file:///c:/Users/AKKALA%20HEMANTH%20REDDY/OneDrive/Desktop/HelpHive/PAN_INDIA_LAUNCH_V2.md).
+
+---
+
 ## 🚀 Quick Start (Local Development)
 
 ### Prerequisites

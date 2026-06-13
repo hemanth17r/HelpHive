@@ -24,7 +24,8 @@ const CrewConfirmedScreen = () => {
     pushScreen, 
     popScreen,
     trackingTaskerPos, 
-    userId
+    userId,
+    userProfile
   } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   
@@ -34,6 +35,8 @@ const CrewConfirmedScreen = () => {
     return localStorage.getItem(`payment_initiated_${currentPostedJob?.id}`) === 'true';
   });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const handlePayOnline = () => {
     const tasker = crewTaskers[0];
@@ -55,25 +58,35 @@ const CrewConfirmedScreen = () => {
   };
 
   const handleCompleteTask = async () => {
-    setShowConfirmModal(false);
     if (!currentPostedJob) return;
+    setIsCompleting(true);
 
-    const jobId = currentPostedJob.id;
-    
-    // Optimistic UI updates
-    setJobs(prevJobs => 
-      prevJobs.map(j => j.id === jobId ? { ...j, status: 'completed' } : j)
-    );
-    setCurrentPostedJob(prev => prev ? { ...prev, status: 'completed' } : null);
+    try {
+      const jobId = currentPostedJob.id;
+      
+      // Optimistic UI updates
+      setJobs(prevJobs => 
+        prevJobs.map(j => j.id === jobId ? { ...j, status: 'completed' } : j)
+      );
+      setCurrentPostedJob(prev => prev ? { ...prev, status: 'completed' } : null);
 
-    // Database update
-    await api.updateJob(jobId, { status: 'completed' });
+      // Database update
+      await api.updateJob(jobId, { status: 'completed' });
 
-    // Clean up local storage
-    localStorage.removeItem(`payment_initiated_${jobId}`);
+      // Analytics: V2 Marketplace Metric
+      if (!userProfile?.tasksPosted) {
+        api.logEvent('first_job_completed', { userId, role: 'poster', entityId: jobId });
+      }
 
-    // Navigate to feedback rating screen
-    pushScreen('rating_screen', true);
+      // Clean up local storage
+      localStorage.removeItem(`payment_initiated_${jobId}`);
+
+      setShowConfirmModal(false);
+      // Navigate to feedback rating screen
+      pushScreen('rating_screen', true);
+    } finally {
+      setIsCompleting(false);
+    }
   };
 
   const handleWhatsAppSupport = () => {
@@ -106,6 +119,44 @@ const CrewConfirmedScreen = () => {
     window.open(whatsappUrl, '_blank');
   };
 
+  const handleCancelTask = async () => {
+    if (window.confirm("Are you sure you want to cancel this task? This action is recorded.")) {
+      setIsCancelling(true);
+      try {
+        api.logEvent('task_cancelled_by_poster', { userId, role: 'poster', entityId: currentPostedJob?.id });
+        
+        // Analytics: V2 Marketplace Metric
+        if (!userProfile?.tasksPosted) {
+          api.logEvent('first_job_failed', { 
+            userId, 
+            role: 'poster', 
+            entityId: currentPostedJob?.id,
+            failure_reason: 'HIRER_CANCELLED'
+          });
+        }
+
+        await api.updateJob(currentPostedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
+        
+        const tasker = crewTaskers[0];
+        if (tasker) {
+          api.sendNotification(
+            tasker.id,
+            "Task Cancelled",
+            `The customer cancelled the task.`,
+            'tasker_home',
+            'job_cancelled',
+            'tasker'
+          );
+        }
+        
+        showToast('Task cancelled successfully', 'info');
+        pushScreen('poster_home', true);
+      } finally {
+        setIsCancelling(false);
+      }
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col justify-between bg-white px-6 py-6 overflow-y-auto select-none">
       
@@ -119,9 +170,11 @@ const CrewConfirmedScreen = () => {
         </button>
         <div className="inline-flex items-center space-x-1.5 text-[10px] font-black tracking-widest text-green-600 bg-green-50 px-2.5 py-1 rounded-full uppercase border border-green-200">
           <Sparkles className="w-3 h-3 text-green-600 animate-pulse" />
-          <span>Crew Confirmed</span>
+          <span>{currentPostedJob?.status === 'in_progress' ? 'Task in Progress' : 'Crew Confirmed'}</span>
         </div>
-        <h2 className="text-base font-extrabold text-dark mt-2">Your Crew is Set!</h2>
+        <h2 className="text-base font-extrabold text-dark mt-2">
+          {currentPostedJob?.status === 'in_progress' ? 'Your helper is working!' : 'Your Crew is Set!'}
+        </h2>
       </div>
 
       {/* Main Content scrollable container */}
@@ -179,106 +232,159 @@ const CrewConfirmedScreen = () => {
           </div>
         ))}
 
-        {/* OTP Section */}
-        <div className="bg-orange-50/50 border border-primary/10 rounded-3xl p-5 space-y-3 text-center">
-          <div className="flex items-center justify-center space-x-2 text-xs font-bold text-dark">
-            <KeyRound className="w-4.5 h-4.5 text-primary" />
-            <span>Secure Verification</span>
-          </div>
-          <p className="text-[10px] text-gray-500 font-semibold leading-normal max-w-[240px] mx-auto">
-            Provide this code to your helper to authorize and start the job.
-          </p>
-
-          {otpVisible ? (
-            <div className="bg-white border border-primary/20 rounded-2xl py-3 px-6 inline-block shadow-xs animate-scale-up">
-              <span className="text-2xl font-black text-primary tracking-widest">{currentPostedJob?.otp || otpGenerated || '----'}</span>
+        {/* OTP Section (Only show if not in_progress) */}
+        {currentPostedJob?.status !== 'in_progress' ? (
+          <div className="bg-orange-50/50 border border-primary/10 rounded-3xl p-5 space-y-3 text-center">
+            <div className="flex items-center justify-center space-x-2 text-xs font-bold text-dark">
+              <KeyRound className="w-4.5 h-4.5 text-primary" />
+              <span>Secure Verification</span>
             </div>
-          ) : (
-            <Tooltip text="Show verification OTP code">
-              <button
-                onClick={() => setOtpVisible(true)}
-                className="bg-primary hover:bg-primary/95 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs shadow-xs cursor-pointer inline-flex items-center space-x-1.5 transition-all"
-              >
-                <span>Reveal OTP</span>
-              </button>
-            </Tooltip>
-          )}
-        </div>
+            <p className="text-[10px] text-gray-500 font-semibold leading-normal max-w-[240px] mx-auto">
+              Provide this code to your helper to authorize and start the job.
+            </p>
 
-        {/* Payment Options */}
-        <div className="bg-gray-50 border border-border rounded-2xl p-5 space-y-4">
-          <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-            Payment Method
-          </label>
-          
-          <div className="space-y-2.5">
-            {/* Pay Online Card */}
-            <button
-              onClick={() => setPaymentOption('online')}
-              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
-                paymentOption === 'online'
-                  ? 'border-green-600 bg-green-50/30'
-                  : 'border-border bg-white hover:bg-gray-50/50'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center shrink-0 ${
-                  paymentOption === 'online' ? 'border-green-600' : 'border-gray-300'
-                }`}>
-                  {paymentOption === 'online' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
-                </div>
-                <div>
-                  <span className="text-xs font-black text-dark block">Pay Online</span>
-                  <span className="text-[9px] font-bold text-gray-400 mt-0.5 block">Pay instantly using PhonePe, GPay, Paytm, etc.</span>
-                </div>
+            {otpVisible ? (
+              <div className="bg-white border border-primary/20 rounded-2xl py-3 px-6 inline-block shadow-xs animate-scale-up">
+                <span className="text-2xl font-black text-primary tracking-widest">{currentPostedJob?.otp || otpGenerated || '----'}</span>
               </div>
-            </button>
-
-            {/* Pay Offline Card */}
-            <button
-              onClick={() => setPaymentOption('offline')}
-              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
-                paymentOption === 'offline'
-                  ? 'border-green-600 bg-green-50/30'
-                  : 'border-border bg-white hover:bg-gray-50/50'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center shrink-0 ${
-                  paymentOption === 'offline' ? 'border-green-600' : 'border-gray-300'
-                }`}>
-                  {paymentOption === 'offline' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
-                </div>
-                <div>
-                  <span className="text-xs font-black text-dark block">Pay Offline</span>
-                  <span className="text-[9px] font-bold text-gray-400 mt-0.5 block">Pay cash directly or through other offline methods.</span>
-                </div>
-              </div>
-            </button>
-          </div>
-
-          {/* Primary Action Button */}
-          <div className="pt-2">
-            {paymentOption === 'online' && !paymentInitiated ? (
-              <Tooltip text={`Initiate payment of ₹${currentPostedJob?.amount || 0} via UPI`}>
-                <button
-                  onClick={handlePayOnline}
-                  className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide"
-                >
-                  Pay Online
-                </button>
-              </Tooltip>
             ) : (
-              <Tooltip text="Complete the task and submit helper review">
+              <Tooltip text="Show verification OTP code">
                 <button
-                  onClick={() => setShowConfirmModal(true)}
-                  className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide"
+                  onClick={() => setOtpVisible(true)}
+                  className="bg-primary hover:bg-primary/95 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs shadow-xs cursor-pointer inline-flex items-center space-x-1.5 transition-all"
                 >
-                  I Have Paid
+                  <span>Reveal OTP</span>
                 </button>
               </Tooltip>
             )}
           </div>
+        ) : (
+          <div className="bg-green-50 border border-green-200 rounded-3xl p-5 flex flex-col items-center justify-center space-y-2">
+             <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-1">
+               <Check className="w-6 h-6" />
+             </div>
+             <span className="text-sm font-black text-green-700">Helper Verified!</span>
+             <span className="text-[10px] text-green-600/80 font-bold text-center">The OTP was verified successfully. The task is currently in progress.</span>
+          </div>
+        )}
+
+        {/* Payment Options */}
+        <div className="bg-gray-50 border border-border rounded-2xl p-5 space-y-4">
+          <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+            Payment & Completion
+          </label>
+          
+          <div className="bg-white border border-border p-4 rounded-xl mb-3 flex flex-col space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-500 font-bold">Helper</span>
+              <span className="text-sm font-black text-dark">{crewTaskers[0]?.name || 'Helper'}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-500 font-bold">UPI ID</span>
+              <span className="text-xs font-bold text-gray-600">{crewTaskers[0]?.upiId || 'Not provided'}</span>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+              <span className="text-sm font-bold text-dark">Amount</span>
+              <span className="text-lg font-black text-primary">₹{currentPostedJob?.amount || 0}</span>
+            </div>
+          </div>
+
+          {(currentPostedJob?.amount > 0) && (
+            <div className="space-y-2.5">
+              {/* Pay Online Card */}
+              <button
+                onClick={() => setPaymentOption('online')}
+                className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                  paymentOption === 'online'
+                    ? 'border-green-600 bg-green-50/30'
+                    : 'border-border bg-white hover:bg-gray-50/50'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center shrink-0 ${
+                    paymentOption === 'online' ? 'border-green-600' : 'border-gray-300'
+                  }`}>
+                    {paymentOption === 'online' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
+                  </div>
+                  <div>
+                    <span className="text-xs font-black text-dark block">Pay Online</span>
+                    <span className="text-[9px] font-bold text-gray-400 mt-0.5 block">Pay instantly using PhonePe, GPay, Paytm, etc.</span>
+                  </div>
+                </div>
+              </button>
+
+              {/* Pay Offline Card */}
+              <button
+                onClick={() => setPaymentOption('offline')}
+                className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                  paymentOption === 'offline'
+                    ? 'border-green-600 bg-green-50/30'
+                    : 'border-border bg-white hover:bg-gray-50/50'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center shrink-0 ${
+                    paymentOption === 'offline' ? 'border-green-600' : 'border-gray-300'
+                  }`}>
+                    {paymentOption === 'offline' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
+                  </div>
+                  <div>
+                    <span className="text-xs font-black text-dark block">Pay Offline</span>
+                    <span className="text-[9px] font-bold text-gray-400 mt-0.5 block">Pay cash directly or through other offline methods.</span>
+                  </div>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* Primary Action Button */}
+          <div className="pt-2">
+            {(currentPostedJob?.amount > 0) ? (
+              (paymentOption === 'online' && !paymentInitiated) ? (
+                <Tooltip text={`Initiate payment of ₹${currentPostedJob?.amount || 0} via UPI`}>
+                  <button
+                    onClick={handlePayOnline}
+                    className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide"
+                  >
+                    Pay Online
+                  </button>
+                </Tooltip>
+              ) : (
+                <Tooltip text="Confirm payment to complete the task">
+                  <button
+                    onClick={() => setShowConfirmModal(true)}
+                    className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide"
+                  >
+                    I Have Paid
+                  </button>
+                </Tooltip>
+              )
+            ) : (
+              <Tooltip text="Complete the task and submit helper review">
+                <button
+                  onClick={handleCompleteTask}
+                  disabled={isCompleting || isCancelling}
+                  className="w-full flex justify-center items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide disabled:opacity-70"
+                >
+                  {isCompleting ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : null}
+                  <span>{isCompleting ? 'Completing...' : 'Mark as Complete'}</span>
+                </button>
+              </Tooltip>
+            )}
+          </div>
+
+          <button
+            onClick={handleCancelTask}
+            disabled={isCompleting || isCancelling}
+            className="w-full flex justify-center items-center gap-2 py-3 border border-red-200 text-red-500 rounded-xl text-xs font-bold hover:bg-red-50 transition-colors cursor-pointer mt-3 disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {isCancelling ? (
+              <div className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
+            ) : null}
+            <span>{isCancelling ? 'Cancelling...' : 'Cancel Task'}</span>
+          </button>
 
           {/* Divider */}
           <hr className="border-border my-2" />
@@ -305,7 +411,7 @@ const CrewConfirmedScreen = () => {
       {showConfirmModal && (
         <div 
           onClick={() => setShowConfirmModal(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs transition-opacity duration-300"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 transition-opacity duration-300"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
@@ -325,9 +431,13 @@ const CrewConfirmedScreen = () => {
               </button>
               <button
                 onClick={handleCompleteTask}
-                className="flex-1 py-3.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold shadow-md shadow-green-600/20 cursor-pointer transition-all active:scale-[0.98]"
+                disabled={isCompleting}
+                className="flex-1 flex justify-center items-center gap-2 py-3.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold shadow-md shadow-green-600/20 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-70"
               >
-                Complete Task
+                {isCompleting ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : null}
+                <span>{isCompleting ? 'Wait...' : 'Complete Task'}</span>
               </button>
             </div>
           </div>

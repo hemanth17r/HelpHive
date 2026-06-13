@@ -2,14 +2,18 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webPush from "https://esm.sh/web-push@3.6.7";
 
-// Hardcoded for MVP. In production, these should be loaded from Deno.env.get("VAPID_PRIVATE_KEY")
-const VAPID_PUBLIC_KEY = 'BIg-I-5TEqEy_5_YtXu3ZTlaM5kXhLEsYgJw6SC2mwfOkdNHwHSyrJ39PQVSklB4EFYEsLsorB_iSKiTo3zZYCA';
-const VAPID_PRIVATE_KEY = '1Oe5DBV2HJ3rcjeI7cIKquExyn-MiRUNOU1zj7mZFyc';
+// VAPID keys for Web Push. In production, these must be loaded from environment variables.
+const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") || 'BIg-I-5TEqEy_5_YtXu3ZTlaM5kXhLEsYgJw6SC2mwfOkdNHwHSyrJ39PQVSklB4EFYEsLsorB_iSKiTo3zZYCA';
+const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
+
+if (!VAPID_PRIVATE_KEY) {
+  console.warn("WARNING: VAPID_PRIVATE_KEY is not defined in the environment variables. Web Push notifications will fail to send.");
+}
 
 webPush.setVapidDetails(
   'mailto:support@helphive.com',
   VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY
+  VAPID_PRIVATE_KEY || ''
 );
 
 serve(async (req) => {
@@ -29,7 +33,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { user_id, title, body, action_url } = await req.json();
+    const { user_id, title, body, action_url, type, role } = await req.json();
 
     if (!user_id || !title || !body) {
       return new Response(
@@ -38,26 +42,24 @@ serve(async (req) => {
       );
     }
 
-    // Check if the user is online before sending notifications
-    const { data: profile, error: profileError } = await supabaseClient
-      .from('profiles')
-      .select('is_online')
-      .eq('id', user_id)
-      .single();
+    // 1. Insert notification into the DB FIRST, so internal notifications always work
+    const { error: insertError } = await supabaseClient
+      .from('notifications')
+      .insert({
+        user_id,
+        type: type || 'push',
+        title,
+        body,
+        action_url: action_url || '/',
+        role: role || null
+      });
 
-    if (profileError && profileError.code !== 'PGRST116') {
-      console.warn("Failed to retrieve user profile online status:", profileError);
+    if (insertError) {
+       console.error("Failed to insert notification into DB:", insertError);
+       // We still try to send the push even if logging it failed
     }
 
-    if (profile && profile.is_online === false) {
-      return new Response(
-        JSON.stringify({ message: "User is offline. Skipping push notification." }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-
-    // 1. Fetch all push subscriptions for the user
+    // 2. Fetch all push subscriptions for the user (always send push notifications, ignoring is_online)
     const { data: subscriptions, error } = await supabaseClient
       .from('push_subscriptions')
       .select('*')
@@ -66,28 +68,12 @@ serve(async (req) => {
     if (error) throw error;
     if (!subscriptions || subscriptions.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No push subscriptions found for user." }),
+        JSON.stringify({ message: "Notification logged to DB. No push subscriptions found for user." }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // 2. Insert notification into the DB
-    const { error: insertError } = await supabaseClient
-      .from('notifications')
-      .insert({
-        user_id,
-        type: 'push',
-        title,
-        body,
-        action_url: action_url || '/'
-      });
-
-    if (insertError) {
-       console.error("Failed to insert notification into DB:", insertError);
-       // We still try to send the push even if logging it failed
-    }
-
-    // 3. Send Web Push to all devices
+    // 4. Send Web Push to all devices
     const payload = JSON.stringify({
       title,
       body,

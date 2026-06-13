@@ -1,11 +1,14 @@
 import React, { useState, useContext, useRef } from 'react';
-import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar, MapPin } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
+import LocationPicker from '../../components/LocationPicker';
 import { ToastContext } from '../../store/ToastContext';
+import { evaluateMarketplaceMaturity } from '../../utils/marketplaceMaturity';
+import { api } from '../../services/api';
 const PostJobScreen = () => {
-  const { userLocation, postJob, popScreen, editJobData, setEditJobData, saveDraftJob, savedAddresses, setSavedAddresses, userProfile, setUserProfile, realLocation } = useContext(AppContext);
+  const { userLocation, postJob, popScreen, editJobData, setEditJobData, saveDraftJob, savedAddresses, addSavedAddress, userProfile, setUserProfile, realLocation } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const [selectedSkillId, setSelectedSkillId] = useState(editJobData?.skillId || '');
   const [description, setDescription] = useState(editJobData?.description || '');
@@ -64,12 +67,36 @@ const PostJobScreen = () => {
   const hourScrollTimeoutRef = useRef(null);
   const minuteScrollTimeoutRef = useRef(null);
 
+  // Rotating examples logic
+  const [exampleIndex, setExampleIndex] = useState(0);
+  const currentSkill = SKILLS.find(s => s.id === selectedSkillId) || SKILLS[0];
+  const activeExamples = currentSkill?.examples || ['Describe your task here'];
+
+  React.useEffect(() => {
+    if (activeExamples.length <= 1) return;
+    const interval = setInterval(() => {
+      setExampleIndex(prev => (prev + 1) % activeExamples.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [activeExamples.length, selectedSkillId]);
+
+  React.useEffect(() => {
+    setExampleIndex(0);
+  }, [selectedSkillId]);
+
+  const activePlaceholder = activeExamples[exampleIndex];
+
   // Address Popup States
-  const [showAddressPopup, setShowAddressPopup] = useState(false);
+  const [selectedJobLocation, setSelectedJobLocation] = useState(editJobData?.address || null);
+  const [showAddressPopup, setShowAddressPopup] = useState(() => !editJobData?.address);
+  const [isAddingNewAddress, setIsAddingNewAddress] = useState(() => savedAddresses.length === 0);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [city, setCity] = useState('Jalandhar');
   const [area, setArea] = useState('LPU');
   const [completeAddress, setCompleteAddress] = useState('');
   const [landmark, setLandmark] = useState('');
+  const [lat, setLat] = useState(17.3850);
+  const [lng, setLng] = useState(78.4867);
   const [contactName, setContactName] = useState(userProfile?.posterName || userProfile?.name || '');
   const [contactPhone, setContactPhone] = useState(userProfile?.posterPhone || userProfile?.phone || '');
 
@@ -81,6 +108,53 @@ const PostJobScreen = () => {
       setContactPhone(pPhone);
     }
   }, [userProfile]);
+
+  const [maturityInfo, setMaturityInfo] = useState(null);
+  const [isCheckingMaturity, setIsCheckingMaturity] = useState(false);
+  const [isWaitlisted, setIsWaitlisted] = useState(false);
+  const [waitlistCount, setWaitlistCount] = useState(0);
+
+  React.useEffect(() => {
+    setIsWaitlisted(false);
+    if (selectedSkillId && selectedJobLocation) {
+      setIsCheckingMaturity(true);
+      evaluateMarketplaceMaturity(selectedSkillId, selectedJobLocation.lat, selectedJobLocation.lng)
+        .then(res => {
+          setMaturityInfo(res);
+          setIsCheckingMaturity(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setIsCheckingMaturity(false);
+        });
+    } else {
+      setMaturityInfo(null);
+    }
+  }, [selectedSkillId, selectedJobLocation]);
+
+  const handleJoinWaitlist = async () => {
+    setIsLoading(true);
+    try {
+      await api.joinWaitlist(userProfile?.id, selectedSkillId, selectedJobLocation.lat, selectedJobLocation.lng);
+      
+      // Analytics: V2 Marketplace Metric
+      api.logEvent('waitlist_joined', {
+        userId: userProfile?.id,
+        role: 'poster',
+        categoryId: selectedSkillId,
+        lat: selectedJobLocation.lat,
+        lng: selectedJobLocation.lng
+      });
+
+      const { count } = await api.getWaitlistCount(selectedSkillId, selectedJobLocation.lat, selectedJobLocation.lng, 5000);
+      setIsWaitlisted(true);
+      setWaitlistCount(count || 1);
+    } catch (err) {
+      showToast('Failed to join waitlist.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handlePhoneChange = (e) => {
     let val = e.target.value.replace(/\D/g, '');
@@ -174,14 +248,18 @@ const PostJobScreen = () => {
     const parsedAmount = parseFloat(amount);
     if (amount === '' || isNaN(parsedAmount) || parsedAmount < 0) return;
 
-    setShowAddressPopup(true);
+    if (!selectedJobLocation) {
+      setShowAddressPopup(true);
+      return;
+    }
+    submitJob(selectedJobLocation);
   };
 
   const submitJob = (address) => {
     const parsedAmount = parseFloat(amount);
     const coords = { 
-      lat: realLocation?.lat || address.lat || 12.9352, 
-      lng: realLocation?.lng || address.lng || 77.6245 
+      lat: address.lat || realLocation?.lat || 12.9352, 
+      lng: address.lng || realLocation?.lng || 77.6245 
     };
     setIsLoading(true);
     isPostedRef.current = true;
@@ -203,37 +281,54 @@ const PostJobScreen = () => {
     }, 1000); // Simulate network delay
   };
 
-  const handleSaveAddressAndPost = () => {
-    if (!area || !completeAddress) {
-      showToast('Area and complete address are required', 'error');
+  const handleSaveAddressAndPost = async () => {
+    if (!completeAddress || completeAddress === 'Fetching address...') {
+      showToast('Please wait for the location to resolve.', 'error');
       return;
     }
 
-    if (!contactName || !contactPhone) {
-      showToast('Contact details are required', 'error');
-      return;
+    setIsSavingAddress(true);
+
+    try {
+      const finalContactName = userProfile?.name && userProfile.name !== 'New User' ? userProfile.name : 'Poster';
+      const finalContactPhone = userProfile?.phone && userProfile.phone !== 'Add Phone' ? userProfile.phone : '';
+
+      const newAddress = {
+        type: 'Job Location',
+        completeAddress,
+        landmark,
+        contactName: finalContactName,
+        contactPhone: finalContactPhone,
+        isDefault: savedAddresses.length === 0,
+        lat: lat,
+        lng: lng
+      };
+
+      let savedAddr;
+      if (addSavedAddress) {
+        savedAddr = await addSavedAddress(newAddress);
+      } else {
+        savedAddr = { ...newAddress, id: Date.now().toString() };
+      }
+      
+      setSelectedJobLocation(savedAddr);
+      setShowAddressPopup(false);
+    } finally {
+      setIsSavingAddress(false);
     }
+  };
 
-    const rawPhone = contactPhone.replace(/\D/g, '');
-    setUserProfile({ ...userProfile, name: contactName, phone: rawPhone });
-
-    const newAddress = {
-      id: Date.now().toString(),
-      type: 'Other',
-      city,
-      area,
-      completeAddress,
-      landmark,
-      contactName: contactName,
-      contactPhone: contactPhone,
-      isDefault: true,
-      lat: 17.3850 + (Math.random() * 0.01),
-      lng: 78.4867 + (Math.random() * 0.01)
-    };
-
-    setSavedAddresses([...savedAddresses, newAddress]);
+  const handleSelectExistingAddress = (address) => {
+    setSelectedJobLocation(address);
     setShowAddressPopup(false);
-    submitJob(newAddress);
+  };
+
+  const handleClosePopup = () => {
+    if (!selectedJobLocation) {
+      popScreen();
+    } else {
+      setShowAddressPopup(false);
+    }
   };
 
   const parsedAmount = parseFloat(amount);
@@ -245,7 +340,13 @@ const PostJobScreen = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 shrink-0">
         <button
-          onClick={popScreen}
+          onClick={() => {
+            if (maturityInfo && !maturityInfo.isActive) {
+              setSelectedSkillId('');
+            } else {
+              popScreen();
+            }
+          }}
           className="p-2.5 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -256,228 +357,290 @@ const PostJobScreen = () => {
         <div className="w-10"></div>
       </div>
 
-      {/* Scrollable Content */}
-      <div className="flex-1 space-y-8 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left overflow-y-auto pb-4 pr-1">
-        
-        {/* Category Section */}
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-black text-dark tracking-tight mb-1">
-              What kind of help do you need?
-            </h2>
-          </div>
-          {/* Responsive 3x3 category grid */}
-          <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
-            {SKILLS.map((skill) => {
-              const isSelected = selectedSkillId === skill.id;
-              const Icon = skill.icon;
-              return (
-                <button
-                  key={skill.id}
-                  onClick={() => setSelectedSkillId(skill.id)}
-                  className={`flex flex-col items-center justify-center w-full aspect-square rounded-2xl transition-all cursor-pointer border ${
-                    isSelected 
-                      ? 'bg-primary border-primary text-white shadow-md shadow-primary/20 scale-[1.02]' 
-                      : 'bg-gray-50 border-border text-gray-500 hover:bg-orange-50 hover:border-primary/30 hover:text-primary'
-                  }`}
-                >
-                  <Icon className="w-7 h-7 mb-1" />
-                  <span className={`text-[10px] font-black truncate w-full px-1 text-center ${isSelected ? 'text-white' : 'text-dark'}`}>
-                    {skill.shortLabel || skill.label.split(' ')[0]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Description Section */}
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-black text-dark tracking-tight mb-1">
-              Describe what you need
-            </h2>
-            <p className="text-[10px] text-gray-400 font-bold mt-1">
-              💡 Enter ₹0 in Payout for cab splits, sports games, or social connections.
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                Description
-              </label>
-              <span className={`text-[10px] font-bold ${description.length > 130 ? 'text-red-500' : 'text-gray-400'}`}>
-                {description.length}/150
-              </span>
+      {/* Selected Location Banner */}
+      {selectedJobLocation && (
+        <div className="mx-6 lg:mx-8 mb-6 px-4 py-3 bg-orange-50 border border-orange-100 rounded-xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform" onClick={() => setShowAddressPopup(true)}>
+          <div className="flex items-center space-x-3 mr-4">
+            <div className="p-2 bg-white rounded-lg shadow-sm shrink-0">
+              <MapPin className="w-4 h-4 text-orange-500" />
             </div>
-            <textarea
-              maxLength={150}
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Need 2 people to move boxes from 3rd floor to ground floor."
-              className="w-full bg-gray-50 border border-border focus:border-primary focus:bg-white rounded-2xl px-4 py-3 text-sm font-semibold outline-hidden transition-all resize-none text-dark"
-            />
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Job Location</p>
+              <p className="text-xs font-black text-dark line-clamp-1 mt-0.5">{selectedJobLocation.completeAddress}</p>
+            </div>
           </div>
+          <button className="text-[10px] font-bold text-orange-600 bg-white px-2 py-1 rounded-md shadow-sm border border-orange-100 shrink-0">Change</button>
         </div>
+      )}
 
-        {/* When do you need it? Section */}
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-black text-dark tracking-tight mb-1">
-              When do you need it?
-            </h2>
+      {/* Scrollable Content or Waitlist */}
+      {isCheckingMaturity ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+        </div>
+      ) : maturityInfo && !maturityInfo.isActive ? (
+        <div className="flex-1 flex flex-col justify-center items-center text-center px-4 -mt-20">
+          <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-6">
+            <Info className="w-10 h-10 text-primary" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5 overflow-hidden">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                Date
-              </label>
-              <div className="flex overflow-x-auto no-scrollbar bg-gray-100 p-1 rounded-xl h-[52px] snap-x">
-                {datesList.map((d, i) => {
-                  const dIso = d.toISOString();
-                  const isSelected = day === dIso;
-                  const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+          <h2 className="text-2xl font-black text-dark mb-3">Not Active Here Yet</h2>
+          <p className="text-sm font-semibold text-gray-500 mb-8 max-w-xs">
+            We don't have enough taskers for <strong className="text-dark">{currentSkill?.label}</strong> near this location yet. Join the waitlist to be notified!
+          </p>
+          
+          {isWaitlisted ? (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-5 w-full max-w-xs">
+              <p className="font-black text-green-700 text-lg mb-1">You're on the list!</p>
+              <p className="text-xs font-bold text-green-600/80">
+                {waitlistCount} {waitlistCount === 1 ? 'person is' : 'people are'} waiting in this area. We'll alert you soon.
+              </p>
+            </div>
+          ) : (
+            <button 
+              onClick={handleJoinWaitlist}
+              disabled={isLoading}
+              className="w-full max-w-xs flex items-center justify-center space-x-2 bg-dark hover:bg-dark/90 text-white font-black py-4 px-6 rounded-2xl shadow-lg active:scale-[0.99] transition-all cursor-pointer"
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <span>Join Waitlist</span>
+              )}
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="flex-1 space-y-8 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left overflow-y-auto pb-4 pr-1">
+            
+            {/* Category Section */}
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-black text-dark tracking-tight mb-1">
+                  What kind of help do you need?
+                </h2>
+              </div>
+              {/* Responsive 3x3 category grid */}
+              <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
+                {SKILLS.map((skill) => {
+                  const isSelected = selectedSkillId === skill.id;
+                  const Icon = skill.icon;
                   return (
                     <button
-                      key={dIso}
-                      type="button"
-                      onClick={() => setDay(dIso)}
-                      className={`shrink-0 px-4 rounded-lg text-sm font-bold transition-all cursor-pointer snap-start ${
-                        isSelected ? 'bg-white shadow-xs text-dark' : 'text-gray-500 hover:text-dark'
+                      key={skill.id}
+                      onClick={() => setSelectedSkillId(skill.id)}
+                      className={`flex flex-col items-center justify-center w-full aspect-square rounded-2xl transition-all cursor-pointer border ${
+                        isSelected 
+                          ? 'bg-primary border-primary text-white shadow-md shadow-primary/20 scale-[1.02]' 
+                          : 'bg-gray-50 border-border text-gray-500 hover:bg-orange-50 hover:border-primary/30 hover:text-primary'
                       }`}
                     >
-                      {label}
+                      <Icon className="w-7 h-7 mb-1" />
+                      <span className={`text-[10px] font-black truncate w-full px-1 text-center ${isSelected ? 'text-white' : 'text-dark'}`}>
+                        {skill.shortLabel || skill.label.split(' ')[0]}
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                Time
-              </label>
-              <div className="flex items-center gap-1.5 w-full">
-                <button
-                  type="button"
-                  onClick={() => setShowTimePicker(true)}
-                  className="flex items-center justify-center bg-gray-50 border border-border hover:border-primary hover:bg-white rounded-xl px-2 h-[52px] flex-1 cursor-pointer transition-all"
-                >
-                  <span className="text-sm font-black text-dark">
-                    {hour}:{minute}
+            {/* Description Section */}
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-black text-dark tracking-tight mb-1">
+                  Describe what you need
+                </h2>
+                <div className="h-4 mt-1 overflow-hidden">
+                  <p 
+                    className="text-[10px] text-gray-400 font-bold animate-[slideUp_300ms_ease-in-out]"
+                  >
+                    💡 {activePlaceholder}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                    Description
+                  </label>
+                  <span className={`text-[10px] font-bold ${description.length > 130 ? 'text-red-500' : 'text-gray-400'}`}>
+                    {description.length}/150
                   </span>
-                </button>
-                
-                <div className="flex bg-gray-100 p-1 rounded-xl h-[52px] shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setAmpm('AM')}
-                    className={`px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                      ampm === 'AM' ? 'bg-white shadow-xs text-dark' : 'text-gray-500 hover:text-dark'
-                    }`}
-                  >
-                    AM
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAmpm('PM')}
-                    className={`px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                      ampm === 'PM' ? 'bg-white shadow-xs text-dark' : 'text-gray-500 hover:text-dark'
-                    }`}
-                  >
-                    PM
-                  </button>
+                </div>
+                <textarea
+                  maxLength={150}
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={`e.g. ${activePlaceholder}`}
+                  className="w-full bg-gray-50 border border-border focus:border-primary focus:bg-white rounded-2xl px-4 py-3 text-sm font-semibold outline-hidden transition-all resize-none text-dark"
+                />
+              </div>
+            </div>
+
+            {/* When do you need it? Section */}
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-black text-dark tracking-tight mb-1">
+                  When do you need it?
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 overflow-hidden">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                    Date
+                  </label>
+                  <div className="flex overflow-x-auto no-scrollbar bg-gray-100 p-1 rounded-xl h-[52px] snap-x">
+                    {datesList.map((d, i) => {
+                      const dIso = d.toISOString();
+                      const isSelected = day === dIso;
+                      const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                      return (
+                        <button
+                          key={dIso}
+                          type="button"
+                          onClick={() => setDay(dIso)}
+                          className={`shrink-0 px-4 rounded-lg text-sm font-bold transition-all cursor-pointer snap-start ${
+                            isSelected ? 'bg-white shadow-xs text-dark' : 'text-gray-500 hover:text-dark'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                    Time
+                  </label>
+                  <div className="flex items-center gap-1.5 w-full">
+                    <button
+                      type="button"
+                      onClick={() => setShowTimePicker(true)}
+                      className="flex items-center justify-center bg-gray-50 border border-border hover:border-primary hover:bg-white rounded-xl px-2 h-[52px] flex-1 cursor-pointer transition-all"
+                    >
+                      <span className="text-sm font-black text-dark">
+                        {hour}:{minute}
+                      </span>
+                    </button>
+                    
+                    <div className="flex bg-gray-100 p-1 rounded-xl h-[52px] shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setAmpm('AM')}
+                        className={`px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                          ampm === 'AM' ? 'bg-white shadow-xs text-dark' : 'text-gray-500 hover:text-dark'
+                        }`}
+                      >
+                        AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAmpm('PM')}
+                        className={`px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                          ampm === 'PM' ? 'bg-white shadow-xs text-dark' : 'text-gray-500 hover:text-dark'
+                        }`}
+                      >
+                        PM
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* People & Payout Section */}
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-black text-dark tracking-tight mb-1">
+                  People & Payout
+                </h2>
+                <div className="bg-orange-50/50 border border-primary/10 rounded-xl p-3 flex items-center space-x-2 mt-2">
+                  <Info className="w-4 h-4 text-primary shrink-0" />
+                  <p className="text-[10px] font-semibold text-gray-500 leading-tight">
+                    <strong className="text-dark font-black">Note:</strong> Payout is for service only. Excludes cost of any items involved.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                    Helpers Needed
+                  </label>
+                  <div className="flex items-center justify-between bg-gray-50 border border-border rounded-xl p-1.5 w-full">
+                    <Tooltip text="Decrease crew count">
+                      <button type="button" onClick={decrementPeople} className="p-2.5 rounded-lg bg-white border border-border hover:bg-gray-50 active:scale-95 text-gray-500 cursor-pointer">
+                        <Minus className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                    <span className="text-base font-black text-dark">{peopleNeeded}</span>
+                    <Tooltip text="Increase crew count">
+                      <button type="button" onClick={incrementPeople} className="p-2.5 rounded-lg bg-white border border-border hover:bg-gray-50 active:scale-95 text-gray-500 cursor-pointer">
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                    Total Payout (₹)
+                  </label>
+                  <div className="flex items-center bg-gray-50 border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
+                    <IndianRupee className="w-4 h-4 text-gray-400 shrink-0" />
+                    <input
+                      type="number"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (['-', '+', 'e', 'E', '.'].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      min="0"
+                      placeholder="Amount"
+                      className="w-full bg-transparent border-0 px-2 py-2 text-sm font-semibold outline-hidden text-dark h-full"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* People & Payout Section */}
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-black text-dark tracking-tight mb-1">
-              People & Payout
-            </h2>
-            <div className="bg-orange-50/50 border border-primary/10 rounded-xl p-3 flex items-center space-x-2 mt-2">
-              <Info className="w-4 h-4 text-primary shrink-0" />
-              <p className="text-[10px] font-semibold text-gray-500 leading-tight">
-                <strong className="text-dark font-black">Note:</strong> Payout is for service only. Excludes cost of any items involved.
-              </p>
-            </div>
+          {/* Button footer */}
+          <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-4 border-t border-border bg-white mt-4 shrink-0">
+            <button
+              onClick={handlePost}
+              disabled={isPostDisabled}
+              className={`w-full flex items-center justify-center space-x-2 font-black py-4 px-6 rounded-2xl shadow-lg active:scale-[0.99] transition-all cursor-pointer ${
+                isPostDisabled 
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
+                  : 'bg-primary hover:bg-primary/95 text-white shadow-primary/20'
+              }`}
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <Send className="w-5 h-5" />
+                  <span>Post Job Now</span>
+                </>
+              )}
+            </button>
           </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                Helpers Needed
-              </label>
-              <div className="flex items-center justify-between bg-gray-50 border border-border rounded-xl p-1.5 w-full">
-                <Tooltip text="Decrease crew count">
-                  <button type="button" onClick={decrementPeople} className="p-2.5 rounded-lg bg-white border border-border hover:bg-gray-50 active:scale-95 text-gray-500 cursor-pointer">
-                    <Minus className="w-4 h-4" />
-                  </button>
-                </Tooltip>
-                <span className="text-base font-black text-dark">{peopleNeeded}</span>
-                <Tooltip text="Increase crew count">
-                  <button type="button" onClick={incrementPeople} className="p-2.5 rounded-lg bg-white border border-border hover:bg-gray-50 active:scale-95 text-gray-500 cursor-pointer">
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </Tooltip>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                Total Payout (₹)
-              </label>
-              <div className="flex items-center bg-gray-50 border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
-                <IndianRupee className="w-4 h-4 text-gray-400 shrink-0" />
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (['-', '+', 'e', 'E', '.'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  min="0"
-                  placeholder="Amount"
-                  className="w-full bg-transparent border-0 px-2 py-2 text-sm font-semibold outline-hidden text-dark h-full"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Button footer */}
-      <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-4 border-t border-border bg-white mt-4 shrink-0">
-        <button
-          onClick={handlePost}
-          disabled={isPostDisabled}
-          className={`w-full flex items-center justify-center space-x-2 font-black py-4 px-6 rounded-2xl shadow-lg active:scale-[0.99] transition-all cursor-pointer ${
-            isPostDisabled 
-              ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
-              : 'bg-primary hover:bg-primary/95 text-white shadow-primary/20'
-          }`}
-        >
-          {isLoading ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-          ) : (
-            <>
-              <Send className="w-5 h-5" />
-              <span>Post Job Now</span>
-            </>
-          )}
-        </button>
-      </div>
+        </>
+      )}
 
       {showTimePicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark/40 backdrop-blur-xs animate-[fadeIn_200ms_ease-in-out]" onClick={() => setShowTimePicker(false)}>
-          <div className="bg-white rounded-[32px] w-full max-w-xs shadow-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-in-out]" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowTimePicker(false)}>
+          {/* Backdrop: pure opacity fade on its own layer, no translateY, no blur — prevents flash artifact */}
+          <div className="absolute inset-0 bg-dark/50 animate-[overlayIn_180ms_ease-out]" />
+          {/* Modal card: slides up independently */}
+          <div className="relative bg-white rounded-[32px] w-full max-w-xs shadow-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out]" onClick={e => e.stopPropagation()}>
             <div className="bg-gray-50 p-6 text-center border-b border-border relative">
               <h3 className="font-extrabold text-xs text-gray-400 uppercase tracking-widest">Select Time</h3>
               <div className="text-4xl font-black text-dark mt-2 tracking-tight">
@@ -555,79 +718,86 @@ const PostJobScreen = () => {
       )}
 
       {showAddressPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark/40 backdrop-blur-xs animate-[fadeIn_200ms_ease-in-out]">
-          <div className="bg-white rounded-[32px] w-full max-w-sm max-h-[90vh] shadow-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-in-out]">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={handleClosePopup}>
+          {/* Backdrop: pure opacity fade on its own layer — no translateY, no blur animation */}
+          {/* This prevents the camera-flash tile artifact caused by animating backdrop-blur */}
+          <div className="absolute inset-0 bg-dark/50 animate-[overlayIn_180ms_ease-out]" />
+          {/* Modal card: slides up independently on its own composited layer */}
+          <div className="relative bg-white rounded-[32px] w-full max-w-sm max-h-[90vh] shadow-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out]" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-border relative flex items-center justify-between shrink-0">
-              <h3 className="font-extrabold text-sm text-dark tracking-wide">Add Address</h3>
-              <button onClick={() => setShowAddressPopup(false)} className="text-gray-400 hover:text-dark text-xl leading-none">&times;</button>
+              <h3 className="font-extrabold text-sm text-dark tracking-wide">{!isAddingNewAddress ? 'Pick the job location' : 'Add a new job location'}</h3>
+              <button onClick={handleClosePopup} className="text-gray-400 hover:text-dark text-xl leading-none">&times;</button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
-              <div className="space-y-3">
-                <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">City</label>
-                  <input 
-                    type="text" 
-                    value={city}
-                    disabled
-                    className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 cursor-not-allowed"
-                  />
+              {!isAddingNewAddress ? (
+                <div className="space-y-4">
+                  {savedAddresses.map((address) => (
+                    <div 
+                      key={address.id}
+                      onClick={() => handleSelectExistingAddress(address)}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all ${address.isDefault ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 bg-white'}`}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <h4 className="text-sm font-black text-dark uppercase">{address.type || 'Location'}</h4>
+                            {address.isDefault && <span className="text-[9px] font-bold bg-primary/10 text-primary px-1.5 rounded-sm uppercase tracking-wider">Default</span>}
+                          </div>
+                          <p className="text-xs font-semibold text-gray-500 mt-1 line-clamp-2">{address.completeAddress}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <button 
+                    onClick={() => setIsAddingNewAddress(true)}
+                    className="w-full py-3 mt-2 rounded-xl border border-dashed border-gray-300 text-gray-500 hover:text-primary hover:border-primary hover:bg-primary/5 text-sm font-bold transition-all flex items-center justify-center space-x-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add a new job location</span>
+                  </button>
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Area / Street *</label>
-                  <input 
-                    type="text" 
-                    value={area}
-                    disabled
-                    className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 cursor-not-allowed"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Complete Address *</label>
-                  <textarea 
-                    value={completeAddress}
-                    onChange={(e) => setCompleteAddress(e.target.value)}
-                    rows={2}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors resize-none"
-                    placeholder="House No, Building Name"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4 pt-2 border-t border-gray-100">
-                <h3 className="text-xs font-black text-dark tracking-wide">CONTACT DETAILS</h3>
-
-                <div className="space-y-3">
-                  <div>
-                    <input 
-                      type="text" 
-                      value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                      placeholder="Full Name"
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input 
-                      type="tel" 
-                      value={contactPhone}
-                      onChange={handlePhoneChange}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                      placeholder="123-456-7890"
+              ) : (
+                <div className="flex flex-col h-[60vh] max-h-[500px]">
+                  <div className="flex-1 min-h-0 relative">
+                    <LocationPicker 
+                      initialLat={lat}
+                      initialLng={lng}
+                      onLocationChange={(loc) => {
+                        setCompleteAddress(loc.completeAddress);
+                        setLat(loc.lat);
+                        setLng(loc.lng);
+                      }}
                     />
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            <div className="p-4 bg-white border-t border-border shrink-0">
-              <button 
-                onClick={handleSaveAddressAndPost} 
-                className="w-full bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer"
-              >
-                Save & Continue
-              </button>
-            </div>
+            {isAddingNewAddress && (
+              <div className="p-4 bg-white border-t border-border shrink-0">
+                <button 
+                  onClick={handleSaveAddressAndPost} 
+                  disabled={isSavingAddress}
+                  className="w-full flex justify-center items-center gap-2 bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-70"
+                >
+                  {isSavingAddress ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : null}
+                  <span>{isSavingAddress ? 'Saving...' : 'Save & Continue'}</span>
+                </button>
+                {savedAddresses.length > 0 && (
+                  <button 
+                    onClick={() => setIsAddingNewAddress(false)}
+                    className="w-full py-3 mt-2 text-sm font-bold text-gray-500 hover:text-dark transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

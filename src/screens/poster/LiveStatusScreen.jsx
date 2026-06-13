@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Radio, Users, Eye, ArrowRight, IndianRupee, Trash2, MapPin } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
@@ -7,10 +7,33 @@ import { api } from '../../services/api';
 const LiveStatusScreen = () => {
   const { currentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs } = useContext(AppContext);
   const [viewers, setViewers] = useState(0);
+  // Track the tasker_id that existed when this screen first mounted.
+  // We only navigate to crew_confirmed if a NEW tasker_id appears after mount.
+  const initialTaskerIdRef = useRef(null);
+  const hasNavigatedRef = useRef(false);
 
-  // Real viewers/taskers count logic
   useEffect(() => {
     let isMounted = true;
+
+    // Snapshot the tasker_id that exists when this screen mounts.
+    // Any tasker_id that was already present before this point is STALE —
+    // we must not auto-navigate based on it.
+    const snapshotInitialTaskerId = async () => {
+      if (!currentPostedJob?.id) return;
+      try {
+        const { data } = await api.supabase
+          .from('jobs')
+          .select('tasker_id')
+          .eq('id', currentPostedJob.id)
+          .single();
+        if (isMounted) {
+          initialTaskerIdRef.current = data?.tasker_id || null;
+        }
+      } catch (e) {
+        initialTaskerIdRef.current = null;
+      }
+    };
+    snapshotInitialTaskerId();
     
     const fetchViewersCount = async () => {
       if (!currentPostedJob?.id) return;
@@ -36,20 +59,26 @@ const LiveStatusScreen = () => {
 
     fetchViewersCount();
     
-    // Refresh count and job status every 3 seconds
+    // Refresh count and job status every 5 seconds (not 1s — avoids test-simulation feel)
     const timer = setInterval(async () => {
       fetchViewersCount();
       
       // Also poll job status just in case realtime subscription is delayed/missing
-      if (currentPostedJob?.id) {
+      if (currentPostedJob?.id && !hasNavigatedRef.current) {
         try {
           const { data } = await api.supabase
             .from('jobs')
             .select('status, tasker_id')
             .eq('id', currentPostedJob.id)
             .single();
+
+          // Only navigate if: status is accepted AND tasker_id is genuinely NEW
+          // (different from the snapshot taken at mount time)
+          const isNewTasker = data?.tasker_id &&
+            data.tasker_id !== initialTaskerIdRef.current;
             
-          if (data && data.status === 'accepted' && data.tasker_id) {
+          if (data && data.status === 'accepted' && isNewTasker) {
+            hasNavigatedRef.current = true;
             const { data: allJobs } = await api.fetchJobs();
             if (allJobs) {
               setJobs(allJobs);
@@ -69,9 +98,11 @@ const LiveStatusScreen = () => {
               }
             }
           }
-        } catch (e) {}
+        } catch (e) {
+          // ignore error
+        }
       }
-    }, 1000); // Polling every 1s for fast tests
+    }, 5000); // Polling every 5s — avoids simulated/test-like rapid triggering
 
     return () => {
       isMounted = false;

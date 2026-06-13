@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Satisfy&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -44,13 +45,35 @@ body {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(5px); } }
 
+/* Pure opacity-only backdrop animation — no translateY, no blur re-composition.
+ * Forces GPU compositing from frame 0 via translateZ(0), so the ENTIRE overlay
+ * fades in as one uniform layer with no tile/flash artifacts. */
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes overlayOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Modal card entrance — slides up from below, independent of backdrop */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Modal Backdrop Animations */
 .modal-backdrop-open {
-  animation: fadeIn 200ms ease-in-out forwards;
+  animation: overlayIn 200ms ease-out forwards;
+  will-change: opacity;
+  transform: translateZ(0);
 }
 
 .modal-backdrop-close {
-  animation: fadeOut 200ms ease-in-out forwards;
+  animation: overlayOut 200ms ease-in forwards;
+  will-change: opacity;
+  transform: translateZ(0);
 }
 
 /* Modal Content Animations */
@@ -60,4 +83,22 @@ body {
 
 .modal-content-close {
   animation: fadeOut 200ms ease-in-out forwards;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideOutLeft {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-100%); }
+}
+
+.slide-in-right {
+  animation: slideInRight 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.slide-out-left {
+  animation: slideOutLeft 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

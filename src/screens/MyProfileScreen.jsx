@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { Star, ShieldAlert, Shield, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2 } from 'lucide-react';
+import { Star, ShieldAlert, Shield, Lock, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2, ChevronDown, ExternalLink } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { SKILLS } from '../config/constants';
 import Tooltip from '../components/Tooltip';
@@ -41,9 +41,13 @@ Issue: `;
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [editedName, setEditedName] = useState('');
+  const [editedEmail, setEditedEmail] = useState('');
   const [editedPhone, setEditedPhone] = useState('');
   const [isEditingSkills, setIsEditingSkills] = useState(false);
   const [editedSkills, setEditedSkills] = useState([]);
+  const [isSavingSkills, setIsSavingSkills] = useState(false);
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
+  const [isAhrOpen, setIsAhrOpen] = useState(false);
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   
@@ -91,6 +95,7 @@ Issue: `;
   const profile = {
     ...userProfile,
     name: userProfile?.name || 'New User',
+    email: userProfile?.email || 'Add Email',
     phone: userProfile?.phone || 'Add Phone',
     skills: userProfile?.skills || [],
     rating: userProfile?.rating || 0,
@@ -137,22 +142,31 @@ Issue: `;
     setEditedPhone(formattedPhoneNumber);
   };
 
-  const handleSaveAccount = (e) => {
+  const handleSaveAccount = async (e) => {
     if (e) e.preventDefault();
     const updates = {};
     const finalName = editedName.trim() || 'New User'; // Fallback if they empty it completely
+    const finalEmail = editedEmail.trim() || 'Add Email';
     const finalPhone = editedPhone.trim() || 'Add Phone';
 
     if (finalName !== profile.name) {
       updates.name = finalName;
+    }
+    if (finalEmail !== profile.email) {
+      updates.email = finalEmail;
     }
     if (finalPhone !== profile.phone) {
       updates.phone = finalPhone;
     }
     
     if (Object.keys(updates).length > 0) {
-      setUserProfile({ ...profile, ...updates });
-      showToast('Account details updated successfully!', 'success');
+      setIsSavingAccount(true);
+      try {
+        await setUserProfile({ ...profile, ...updates });
+        showToast('Account details updated successfully!', 'success');
+      } finally {
+        setIsSavingAccount(false);
+      }
     }
     setIsEditingAccount(false);
   };
@@ -241,19 +255,22 @@ Issue: `;
             {isEditingAccount ? (
               <form onSubmit={handleSaveAccount} className="space-y-3">
                 <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
-                  <input
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                    placeholder="Enter full name"
-                    autoFocus
-                  />
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4 text-gray-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
+                      placeholder="Enter full name"
+                      autoFocus
+                    />
+                  </div>
                 </div>
                 <div>
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center space-x-2">
+                      <Phone className="w-4 h-4 text-gray-400 shrink-0" />
                       <input
                         type="tel"
                         value={editedPhone}
@@ -264,18 +281,35 @@ Issue: `;
                     </div>
                   </div>
                 </div>
+                <div>
+                    <div className="flex flex-col space-y-2">
+                      <div className="flex items-center space-x-2 opacity-70">
+                        <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                        <input
+                          type="email"
+                          value={profile.email}
+                          readOnly
+                          className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 cursor-not-allowed"
+                          placeholder="name@example.com"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 
                 <div className="pt-2 flex justify-end">
                   <button
                     type="submit"
-                    disabled={!canSave}
-                    className={`px-6 py-3 rounded-xl text-sm font-bold transition-colors shadow-sm ${
-                      !canSave
+                    disabled={!canSave || isSavingAccount}
+                    className={`px-6 py-3 rounded-xl text-sm font-bold transition-colors shadow-sm flex items-center justify-center gap-2 ${
+                      !canSave || isSavingAccount
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-primary hover:bg-primary/90 text-white cursor-pointer'
                     }`}
                   >
-                    Save Account
+                    {isSavingAccount ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : null}
+                    <span>{isSavingAccount ? 'Saving...' : 'Save Account'}</span>
                   </button>
                 </div>
               </form>
@@ -297,11 +331,21 @@ Issue: `;
                   <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
                     <Phone className="w-4 h-4 text-gray-500" />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 border-b border-gray-100 pb-3">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Phone Number</p>
                     <p className="font-bold text-dark">{profile.phone}</p>
                   </div>
                 </div>
+
+                <div className="flex items-center space-x-3 text-sm pt-1">
+                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                      <Mail className="w-4 h-4 text-gray-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Email</p>
+                      <p className="font-bold text-dark">{profile.email}</p>
+                    </div>
+                  </div>
               </>
             )}
           </div>
@@ -497,12 +541,48 @@ Issue: `;
                 <button onClick={() => setShowLoginModal(true)} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer">
                   <div className="flex items-center space-x-3">
                     <LogIn className="w-4.5 h-4.5 text-primary" />
-                    <span>Log In</span>
+                    <span>Sign In / Sign Up</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-primary" />
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Also from ahr card */}
+          <div className="bg-white rounded-3xl p-2 shadow-sm border border-border mt-4">
+            <button 
+              onClick={() => setIsAhrOpen(!isAhrOpen)} 
+              className="w-full flex items-center justify-between text-left text-xs font-bold text-gray-700 hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer"
+            >
+              <div className="flex items-center space-x-1.5">
+                <span>Also from</span>
+                <span 
+                  style={{ fontFamily: "'Satisfy', cursive", fontWeight: 800 }} 
+                  className="text-lg text-primary lowercase select-none"
+                >
+                  ahr
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isAhrOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isAhrOpen && (
+              <div className="mt-1 border-t border-gray-100 pt-1.5 px-3 pb-2 animate-[fadeIn_200ms_ease-in-out]">
+                <a 
+                  href="https://civiclens.tech" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex items-center justify-between py-2.5 px-2 rounded-xl text-xs font-bold text-gray-600 hover:text-primary hover:bg-orange-50/50 transition-all"
+                >
+                  <span className="flex items-center space-x-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    <span>CivicLens</span>
+                  </span>
+                  <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                </a>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -564,19 +644,22 @@ Issue: `;
             {isEditingAccount ? (
               <form onSubmit={handleSaveAccount} className="space-y-3">
                 <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
-                  <input
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                    placeholder="Enter full name"
-                    autoFocus
-                  />
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4 text-gray-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
+                      placeholder="Enter full name"
+                      autoFocus
+                    />
+                  </div>
                 </div>
                 <div>
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center space-x-2">
+                      <Phone className="w-4 h-4 text-gray-400 shrink-0" />
                       <input
                         type="tel"
                         value={editedPhone}
@@ -587,6 +670,20 @@ Issue: `;
                     </div>
                   </div>
                 </div>
+                <div>
+                    <div className="flex flex-col space-y-2">
+                      <div className="flex items-center space-x-2 opacity-70">
+                        <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                        <input
+                          type="email"
+                          value={profile.email}
+                          readOnly
+                          className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 cursor-not-allowed"
+                          placeholder="name@example.com"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 
                 <div className="pt-2 flex justify-end">
                   <button
@@ -620,11 +717,21 @@ Issue: `;
                   <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
                     <Phone className="w-4 h-4 text-gray-500" />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 border-b border-gray-100 pb-3">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Phone Number</p>
                     <p className="font-bold text-dark">{profile.phone}</p>
                   </div>
                 </div>
+
+                <div className="flex items-center space-x-3 text-sm pt-1">
+                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                      <Mail className="w-4 h-4 text-gray-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Email</p>
+                      <p className="font-bold text-dark">{profile.email}</p>
+                    </div>
+                  </div>
               </>
             )}
           </div>
@@ -747,15 +854,18 @@ Issue: `;
           <div className="bg-white rounded-2xl p-4 shadow-xs border border-border mt-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Service Scope</h3>
-              <Tooltip text="Change location" position="left">
-                <button className="text-[9px] font-black text-primary uppercase tracking-wider hover:underline cursor-pointer">
+              <Tooltip text="Change service area" position="left">
+                <button
+                  onClick={() => pushScreen('tasker_onboarding', false, { editServiceAreaOnly: true })}
+                  className="text-[9px] font-black text-primary uppercase tracking-wider hover:underline cursor-pointer"
+                >
                   Change
                 </button>
               </Tooltip>
             </div>
             <div className="flex items-center space-x-2 text-xs font-bold text-dark">
               <Calendar className="w-4.5 h-4.5 text-primary" />
-              <span>Active in {userLocation?.name || 'Koramangala, Bangalore'}</span>
+              <span>Active in {userProfile?.serviceAreaName || 'No service area selected'}</span>
             </div>
           </div>
 
@@ -865,12 +975,48 @@ Issue: `;
                 <button onClick={() => setShowLoginModal(true)} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer">
                   <div className="flex items-center space-x-3">
                     <LogIn className="w-4.5 h-4.5 text-primary" />
-                    <span>Log In</span>
+                    <span>Sign In / Sign Up</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-primary" />
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Also from ahr card */}
+          <div className="bg-white rounded-3xl p-2 shadow-sm border border-border mt-4 mb-10">
+            <button 
+              onClick={() => setIsAhrOpen(!isAhrOpen)} 
+              className="w-full flex items-center justify-between text-left text-xs font-bold text-gray-700 hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer"
+            >
+              <div className="flex items-center space-x-1.5">
+                <span>Also from</span>
+                <span 
+                  style={{ fontFamily: "'Satisfy', cursive", fontWeight: 800 }} 
+                  className="text-lg text-primary lowercase select-none"
+                >
+                  ahr
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isAhrOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isAhrOpen && (
+              <div className="mt-1 border-t border-gray-100 pt-1.5 px-3 pb-2 animate-[fadeIn_200ms_ease-in-out]">
+                <a 
+                  href="https://civiclens.tech" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex items-center justify-between py-2.5 px-2 rounded-xl text-xs font-bold text-gray-600 hover:text-primary hover:bg-orange-50/50 transition-all"
+                >
+                  <span className="flex items-center space-x-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    <span>CivicLens</span>
+                  </span>
+                  <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                </a>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -879,9 +1025,10 @@ Issue: `;
         isOpen={showBirdSelector}
         onClose={() => setShowBirdSelector(false)}
         selectedBird={selectedBird}
-        onSelectBird={(bird) => {
+        onSelectBird={async (bird) => {
           setSelectedBird(bird);
           setShowBirdSelector(false);
+          await setUserProfile({ bird });
           showToast('Avatar updated successfully!');
         }}
       />
@@ -895,7 +1042,7 @@ Issue: `;
       {shouldRenderSkillsModal && (
         <div 
           onClick={() => setIsEditingSkills(false)}
-          className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs ${
+          className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 ${
             isAnimatingSkillsOut ? 'modal-backdrop-close' : 'modal-backdrop-open'
           }`}
         >
@@ -951,6 +1098,7 @@ Issue: `;
                     alert('Please select at least one skill.');
                     return;
                   }
+                  setIsSavingSkills(true);
                   try {
                     const result = await setUserProfile({ skills: editedSkills });
                     if (result && result.success === false) {
@@ -962,11 +1110,17 @@ Issue: `;
                   } catch (err) {
                     console.error('Failed to save skills:', err);
                     showToast('Failed to save skills. Please try again.', 'error');
+                  } finally {
+                    setIsSavingSkills(false);
                   }
                 }}
-                className="w-full bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer"
+                disabled={isSavingSkills}
+                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-70"
               >
-                Save Services
+                {isSavingSkills ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : null}
+                <span>{isSavingSkills ? 'Saving...' : 'Save Services'}</span>
               </button>
             </div>
           </div>

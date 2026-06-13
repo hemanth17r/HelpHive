@@ -1,4 +1,5 @@
 import React, { useContext } from 'react';
+import { api } from './services/api';
 import { AppProvider, AppContext } from './store/AppContext';
 import { ToastProvider } from './store/ToastContext';
 import { NotificationProvider, NotificationContext } from './store/NotificationContext';
@@ -16,7 +17,8 @@ import {
   ToggleLeft,
   MapPin,
   Search,
-  ArrowLeft
+  ArrowLeft,
+  ChevronDown
 } from 'lucide-react';
 
 // Screens imports
@@ -44,6 +46,8 @@ import ProfileCompletionModal from './components/ProfileCompletionModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import NotificationsScreen from './screens/NotificationsScreen';
 import ErrorBoundary from './components/ErrorBoundary';
+import LocationPermissionModal from './components/LocationPermissionModal';
+import LocationSelectorModal from './components/LocationSelectorModal';
 import { useProfileCompletion } from './hooks/useProfileCompletion';
 
 // Navigation Components
@@ -54,6 +58,7 @@ import BirdAvatar from './components/BirdAvatars';
 const AppContent = () => {
   const { 
     currentScreen, 
+    routeParams,
     activeTab, 
     setActiveTab,
     role, 
@@ -69,6 +74,11 @@ const AppContent = () => {
     completeProfileAction,
     cancelProfileAction,
     liveStatus,
+    locationActionCallback,
+    locationActionRole,
+    completeLocationAction,
+    cancelLocationAction,
+    setLocationModalOpen
   } = useContext(AppContext);
 
   const { 
@@ -89,6 +99,20 @@ const AppContent = () => {
     ) : null
   );
 
+  const formatHeaderLocation = (loc) => {
+    if (!loc) return 'Select Location';
+    const parts = loc.name.split(',');
+    if (parts.length > 0) {
+      const first = parts[0].trim();
+      const second = parts.length > 1 ? parts[1].trim() : '';
+      if (second && (first.length + second.length < 22)) {
+        return `${first}, ${second}`;
+      }
+      return first.length > 25 ? `${first.slice(0, 22)}...` : first;
+    }
+    return loc.name;
+  };
+
   React.useEffect(() => {
     const metaThemeColor = document.getElementById('theme-color-meta');
     if (metaThemeColor) {
@@ -97,7 +121,46 @@ const AppContent = () => {
     }
   }, [currentScreen]);
 
+  // Update last active timestamp for active pool logic
+  React.useEffect(() => {
+    if (userProfile?.id && currentScreen !== 'landing') {
+      api.updateLastActive().catch(err => console.warn('Failed to update last active:', err));
+    }
+  }, [currentScreen, userProfile?.id]);
 
+  const handleNotificationClick = async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      try {
+        await Notification.requestPermission();
+      } catch (e) {
+        console.error("Notification permission request failed", e);
+      }
+    }
+    pushScreen('notifications');
+  };
+
+  // First Line of Defense: Ask for OS Permissions on first app load
+  React.useEffect(() => {
+    const hasPrompted = localStorage.getItem('hasPromptedInitialPermissions');
+    if (!hasPrompted && currentScreen !== 'landing') {
+      // Delay slightly to not interrupt immediate UI rendering
+      const timer = setTimeout(() => {
+        // Notification Permission
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+        // Location Permission
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => { console.log("Initial location granted"); },
+            (err) => { console.log("Initial location denied/failed"); }
+          );
+        }
+        localStorage.setItem('hasPromptedInitialPermissions', 'true');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentScreen]);
 
   // Render correct screen based on routing state
   const renderScreen = () => {
@@ -168,27 +231,30 @@ const AppContent = () => {
             
             {/* Left: Location & Back Button */}
             <div className="flex items-center flex-1 justify-start overflow-hidden pr-2">
-              <div className="flex items-center space-x-2 shrink-0 max-w-[200px] sm:max-w-[250px] md:max-w-[300px]">
-                {!isMainScreen && (
-                  <button 
-                    onClick={popScreen}
-                    className="flex items-center space-x-1 mr-2 px-1 py-1 hover:bg-gray-200 text-dark rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span className="hidden sm:inline">Back</span>
-                  </button>
-                )}
-                <MapPin className="w-5 h-5 md:w-6 md:h-6 text-primary shrink-0" />
-                <div className="flex flex-col items-start leading-tight overflow-hidden">
-                  <span className="text-base md:text-lg font-black text-dark truncate w-full flex items-center gap-1">
-                    {userLocation?.id === 'lpu' ? (
-                      <>LPU <span className="text-xs md:text-sm font-bold text-gray-500">&amp; nearby</span></>
-                    ) : (
-                      userLocation ? userLocation.name : 'Location'
-                    )}
-                  </span>
-                </div>
-              </div>
+              {!isMainScreen && (
+                <button 
+                  onClick={popScreen}
+                  className="flex items-center space-x-1 mr-2 px-1.5 py-1 hover:bg-gray-100 text-dark rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline">Back</span>
+                </button>
+              )}
+              {role !== 'tasker' && (
+                <button 
+                  onClick={() => setLocationModalOpen(true)}
+                  className="flex items-center space-x-2 text-left hover:opacity-85 active:scale-98 transition-all cursor-pointer shrink-0 max-w-[200px] sm:max-w-[250px] md:max-w-[300px]"
+                >
+                  <MapPin className="w-5 h-5 md:w-6 md:h-6 text-primary shrink-0" />
+                  <div className="flex flex-col items-start leading-none overflow-hidden">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Your Location</span>
+                    <span className="text-sm md:text-base font-black text-dark truncate w-full flex items-center gap-0.5">
+                      {formatHeaderLocation(userLocation)}
+                      <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+                    </span>
+                  </div>
+                </button>
+              )}
             </div>
 
             {/* Center: Branding */}
@@ -207,7 +273,7 @@ const AppContent = () => {
               {/* Notification Bell */}
               <div 
                 className="relative cursor-pointer mr-2 hover:opacity-80 transition-opacity"
-                onClick={() => pushScreen('notifications')}
+                onClick={handleNotificationClick}
               >
                 <Bell className="w-5 h-5 text-gray-600" />
                 {unreadCount > 0 && (
@@ -276,18 +342,21 @@ const AppContent = () => {
           >
             <div className="flex items-center">
               {/* Location Badge (Mobile) */}
-              <div className="flex items-center space-x-2.5 max-w-[260px] sm:max-w-[320px]">
-                <MapPin className="w-5 h-5 text-primary shrink-0" />
-                <div className="flex flex-col items-start leading-tight overflow-hidden">
-                  <span className="text-base font-black text-dark truncate w-full flex items-center gap-1">
-                    {userLocation?.id === 'lpu' ? (
-                      <>LPU <span className="text-xs font-bold text-gray-500">&amp; nearby</span></>
-                    ) : (
-                      userLocation ? userLocation.name : 'Location'
-                    )}
-                  </span>
-                </div>
-              </div>
+              {role !== 'tasker' && (
+                <button 
+                  onClick={() => setLocationModalOpen(true)}
+                  className="flex items-center space-x-2 text-left hover:opacity-85 active:scale-98 transition-all cursor-pointer shrink-0 max-w-[260px] sm:max-w-[320px]"
+                >
+                  <MapPin className="w-5 h-5 text-primary shrink-0" />
+                  <div className="flex flex-col items-start leading-none overflow-hidden">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Your Location</span>
+                    <span className="text-base font-black text-dark truncate w-full flex items-center gap-0.5">
+                      {formatHeaderLocation(userLocation)}
+                      <ChevronDown className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                    </span>
+                  </div>
+                </button>
+              )}
             </div>
             
             {/* Right side actions */}
@@ -295,7 +364,7 @@ const AppContent = () => {
               {/* Notification Bell (Mobile) */}
               <div 
                 className="relative cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => pushScreen('notifications')}
+                onClick={handleNotificationClick}
               >
                 <Bell className="w-5 h-5 text-gray-600" />
                 {unreadCount > 0 && (
@@ -357,6 +426,15 @@ const AppContent = () => {
       onClose={cancelProfileAction}
       onSubmit={completeProfileAction}
     />
+
+    <LocationPermissionModal 
+      isOpen={!!locationActionCallback}
+      onClose={cancelLocationAction}
+      onAllow={completeLocationAction}
+      role={locationActionRole}
+    />
+
+    <LocationSelectorModal />
 
     <PWAInstallPrompt />
 

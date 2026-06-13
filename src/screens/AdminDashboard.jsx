@@ -6,8 +6,10 @@ import {
   AlertTriangle, CheckCircle, Clock, ArrowLeft,
   RefreshCw, ChevronDown, ChevronUp, BarChart3,
   UserCheck, Zap, LogIn, LogOut, Star, Flag,
-  PlusCircle, Eye, XCircle, ToggleRight
+  PlusCircle, Eye, XCircle, ToggleRight, MapPin, 
+  WifiOff, Frown
 } from 'lucide-react';
+import { SKILLS } from '../config/constants';
 
 const EVENT_ICONS = {
   signup: UserCheck,
@@ -107,6 +109,37 @@ const AdminDashboard = () => {
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [activeTimeRange, setActiveTimeRange] = useState(30);
   const [helpReports, setHelpReports] = useState([]);
+  
+  // V2 Marketplace Metrics
+  const [demandHotspots, setDemandHotspots] = useState([]);
+  const [coverageGaps, setCoverageGaps] = useState([]);
+  const [failedExperiences, setFailedExperiences] = useState([]);
+
+  const fetchAllData = useCallback(async () => {
+    try {
+      const [statsRes, countsRes, timeseriesRes, eventsRes, reportsRes, hotspotsRes, gapsRes, failedRes] = await Promise.all([
+        api.getDashboardStats(),
+        api.getEventCounts(),
+        api.getDailyTimeseries(null, activeTimeRange),
+        api.getRecentEvents(50),
+        api.getHelpReports(),
+        api.getDemandHotspots(),
+        api.getCoverageGaps(),
+        api.getFailedFirstExperiences()
+      ]);
+
+      if (statsRes.data) setStats(statsRes.data);
+      if (countsRes.data) setEventCounts(countsRes.data);
+      if (timeseriesRes.data) setTimeseries(timeseriesRes.data);
+      if (eventsRes.data) setRecentEvents(eventsRes.data);
+      if (reportsRes.data) setHelpReports(reportsRes.data);
+      if (hotspotsRes.data) setDemandHotspots(hotspotsRes.data);
+      if (gapsRes.data) setCoverageGaps(gapsRes.data);
+      if (failedRes.data) setFailedExperiences(failedRes.data);
+    } catch (e) {
+      console.error('Dashboard data fetch error:', e);
+    }
+  }, [activeTimeRange]);
 
   // Verify admin on mount — double-check via DB even if isAdmin is true in state
   useEffect(() => {
@@ -133,27 +166,7 @@ const AdminDashboard = () => {
       setLoading(false);
     };
     verify();
-  }, [userId]);
-
-  const fetchAllData = useCallback(async () => {
-    try {
-      const [statsRes, countsRes, timeseriesRes, eventsRes, reportsRes] = await Promise.all([
-        api.getDashboardStats(),
-        api.getEventCounts(),
-        api.getDailyTimeseries(null, activeTimeRange),
-        api.getRecentEvents(50),
-        api.getHelpReports()
-      ]);
-
-      if (statsRes.data) setStats(statsRes.data);
-      if (countsRes.data) setEventCounts(countsRes.data);
-      if (timeseriesRes.data) setTimeseries(timeseriesRes.data);
-      if (eventsRes.data) setRecentEvents(eventsRes.data);
-      if (reportsRes.data) setHelpReports(reportsRes.data);
-    } catch (e) {
-      console.error('Dashboard data fetch error:', e);
-    }
-  }, [activeTimeRange]);
+  }, [userId, fetchAllData]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -269,7 +282,7 @@ const AdminDashboard = () => {
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         
-        {/* Summary Cards */}
+        {/* Core Platform Metrics */}
         <div className="grid grid-cols-2 gap-3">
           <StatCard 
             icon={Users} 
@@ -285,6 +298,10 @@ const AdminDashboard = () => {
             sub={`${stats?.jobs_today ?? 0} today`}
             color="orange"
           />
+        </div>
+
+        {/* Actionable Pipeline */}
+        <div className="grid grid-cols-2 gap-3">
           <StatCard 
             icon={TrendingUp} 
             label="Fill Rate" 
@@ -386,6 +403,103 @@ const AdminDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* V2 Metric: Demand Hotspots */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-orange-500" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-orange-500">Demand Hotspots</h3>
+            </div>
+          </div>
+          {demandHotspots.length === 0 ? (
+            <p className="text-xs text-gray-400 font-semibold py-4 text-center">No active hotspots</p>
+          ) : (
+            <div className="space-y-3">
+              {demandHotspots.map(hotspot => {
+                const skill = SKILLS.find(s => s.id === hotspot.categoryId);
+                return (
+                  <div key={hotspot.id} className="border border-orange-100 rounded-xl p-3 bg-orange-50/30">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="text-sm font-black text-dark">{hotspot.label}</h4>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                        hotspot.urgency === 'high' ? 'bg-red-100 text-red-600' : 
+                        hotspot.urgency === 'medium' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
+                      }`}>
+                        {hotspot.urgency.toUpperCase()}
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-bold text-gray-500 mb-2">Category: {skill ? skill.label : hotspot.categoryId}</p>
+                    <div className="flex justify-between text-xs">
+                      <span className="font-semibold"><span className="font-black text-dark">{hotspot.waitlistCount}</span> Waitlisted</span>
+                      <span className="font-semibold text-red-500"><span className="font-black text-red-600">{hotspot.supplyDeficit}</span> Missing Taskers</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* V2 Metric: Coverage Gaps */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <WifiOff className="w-4 h-4 text-red-500" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-red-500">Coverage Gaps</h3>
+            </div>
+          </div>
+          {coverageGaps.length === 0 ? (
+            <p className="text-xs text-gray-400 font-semibold py-4 text-center">No coverage gaps detected</p>
+          ) : (
+            <div className="space-y-3">
+              {coverageGaps.map(gap => {
+                const skill = SKILLS.find(s => s.id === gap.categoryId);
+                return (
+                  <div key={gap.id} className="border border-red-100 rounded-xl p-3 bg-red-50/30 flex justify-between items-center">
+                    <div>
+                      <h4 className="text-sm font-black text-dark">{gap.label}</h4>
+                      <p className="text-[10px] font-bold text-gray-500">{skill ? skill.label : gap.categoryId}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-black text-red-500">{gap.missingSupply} needed</div>
+                      <div className="text-[10px] font-semibold text-gray-500">Vol: {gap.demandVolume}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* V2 Metric: Failed First Experiences */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Frown className="w-4 h-4 text-purple-500" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-purple-500">Failed First Experiences</h3>
+            </div>
+          </div>
+          {failedExperiences.length === 0 ? (
+            <p className="text-xs text-gray-400 font-semibold py-4 text-center">No failures tracking</p>
+          ) : (
+            <div className="space-y-2">
+              {failedExperiences.map(failed => (
+                <div key={failed.id} className="flex justify-between items-center border border-gray-100 rounded-lg p-2 bg-gray-50">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                      <Frown className="w-3 h-3" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-dark">{failed.reason.replace(/_/g, ' ')}</div>
+                      <div className="text-[10px] font-semibold text-gray-500">Role: <span className="uppercase">{failed.role}</span> | {timeAgo(failed.date)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Recent Activity Feed */}
         <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">

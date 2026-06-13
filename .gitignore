@@ -26,3 +26,10 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Scratch, test, and temporary files
+onboarding_scrolled*.png
+pending_migrations.sql
+scratch_*.sql
+test_insert.js
+supabase/.temp/

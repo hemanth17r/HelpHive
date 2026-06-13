@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { trackEvent, EVENTS } from '../utils/eventTracker';
 import { ToastContext } from './ToastContext';
 import { parseEWKBPoint, getCurrentLocation } from '../utils/location';
+import { reverseGeocode } from '../utils/geocoding';
 
 export const AppContext = createContext();
 
@@ -30,11 +31,17 @@ export const AppProvider = ({ children }) => {
   const [taskerActivityScrollTarget, setTaskerActivityScrollTarget] = useState(null);
 
   // Global State for role & profiles
-  const [role, setRole] = useState(() => localStorage.getItem('activeRole')); // 'tasker' | 'poster'
+  const [role, setRole] = useState(localStorage.getItem('activeRole') || 'tasker');
+  
+  // Location Action Interceptor
+  const [locationActionCallback, setLocationActionCallback] = useState(null);
+  const [locationActionRole, setLocationActionRole] = useState('poster');
   const [userProfile, setUserProfileState] = useState(null); // { name, phone, skills, rating, tasksCompleted }
   const [userId, setUserId] = useState(() => localStorage.getItem('userId'));
   const [selectedBird, setSelectedBird] = useState('falcon'); // Bird avatar selection
   const [isAdmin, setIsAdmin] = useState(false); // Admin dashboard access
+
+  const [isOnline, setIsOnlineState] = useState(true);
   
   // Navigation stack state
   const [screenStack, setScreenStack] = useState(() => {
@@ -45,78 +52,231 @@ export const AppProvider = ({ children }) => {
     }
     return ['landing'];
   });
+  const [routeParams, setRouteParams] = useState(null);
   const currentScreen = screenStack[screenStack.length - 1];
 
   // Location States
   const [locationPermission, setLocationPermission] = useState('prompt'); // 'prompt' | 'granted' | 'denied'
-  const [userLocation, setUserLocation] = useState(SERVICE_AREAS[0]); // Always default to LPU
+  const [userLocation, setUserLocation] = useState(() => {
+    const saved = localStorage.getItem('userLocation');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse saved userLocation", e);
+      }
+    }
+    return null;
+  });
   const [manualLocationInput, setManualLocationInput] = useState('');
-  const [realLocation, setRealLocation] = useState(null); // Actual GPS coordinates {lat, lng}
+  const [realLocation, setRealLocation] = useState(() => {
+    const saved = localStorage.getItem('userLocation');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed?.lat && parsed?.lng) {
+          return { lat: parsed.lat, lng: parsed.lng };
+        }
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+    return null;
+  }); // Actual GPS coordinates {lat, lng}
+  
+  const [isLocationModalOpen, setLocationModalOpen] = useState(false);
+  const [showBlinkitPrompt, setShowBlinkitPrompt] = useState(false);
   
   // Saved Addresses
   const [savedAddresses, setSavedAddressesState] = useState(() => {
     const saved = localStorage.getItem('helphive_addresses_v2');
     const parsed = saved ? JSON.parse(saved) : [];
-    
-    // Keep only recent 3 addresses and ensure a single default address on load
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      let recent = parsed.slice(-3);
-      let defaultIndex = -1;
-      for (let i = recent.length - 1; i >= 0; i--) {
-        if (recent[i].isDefault) {
-          defaultIndex = i;
-          break;
-        }
-      }
-      if (defaultIndex === -1) {
-        defaultIndex = 0;
-      }
-      return recent.map((addr, idx) => ({
-        ...addr,
-        isDefault: idx === defaultIndex
-      }));
-    }
-    return parsed;
+    return Array.isArray(parsed) ? parsed : [];
   });
 
-  const setSavedAddresses = (newAddresses) => {
-    const processAddresses = (list) => {
-      if (!Array.isArray(list)) return list;
-      
-      // Keep only the last 3 (most recent) addresses
-      let recent = list.slice(-3);
-      
-      // Ensure exactly one address is marked as default
-      if (recent.length > 0) {
-        let defaultIndex = -1;
-        for (let i = recent.length - 1; i >= 0; i--) {
-          if (recent[i].isDefault) {
-            defaultIndex = i;
-            break;
-          }
-        }
-        if (defaultIndex === -1) {
-          defaultIndex = 0;
-        }
-        recent = recent.map((addr, idx) => ({
-          ...addr,
-          isDefault: idx === defaultIndex
-        }));
-      }
-      return recent;
-    };
+  const [hasMigratedLocalAddresses, setHasMigratedLocalAddresses] = useState(false);
 
-    if (typeof newAddresses === 'function') {
-      setSavedAddressesState(prev => processAddresses(newAddresses(prev)));
-    } else {
-      setSavedAddressesState(processAddresses(newAddresses));
-    }
-  };
-  
-  // Effect to persist savedAddresses
+  // Sync addresses with DB when user logs in
+  useEffect(() => {
+    const syncAddresses = async () => {
+      if (!userId) return;
+      const { data } = await api.fetchAddresses(userId);
+      if (data) {
+        if (data.length > 0) {
+          setSavedAddressesState(data);
+          setHasMigratedLocalAddresses(true); // Don't migrate if DB already has addresses
+        } else if (!hasMigratedLocalAddresses) {
+          // Migrate local addresses to DB ONCE
+          const localAddresses = JSON.parse(localStorage.getItem('helphive_addresses_v2') || '[]');
+          if (Array.isArray(localAddresses) && localAddresses.length > 0) {
+            for (const addr of localAddresses) {
+              await api.createAddress(userId, addr);
+            }
+            const { data: newData } = await api.fetchAddresses(userId);
+            if (newData) {
+              setSavedAddressesState(newData);
+            }
+          }
+          setHasMigratedLocalAddresses(true);
+        }
+      }
+    };
+    syncAddresses();
+  }, [userId, hasMigratedLocalAddresses]);
+
+  // Keep local storage in sync for offline/guest
   useEffect(() => {
     localStorage.setItem('helphive_addresses_v2', JSON.stringify(savedAddresses));
   }, [savedAddresses]);
+
+  // On startup or login, manage user location detection
+  useEffect(() => {
+    const initLocation = async () => {
+      // 1. If we already have a userLocation from state/local storage, we can proceed
+      if (userLocation) {
+        if (!realLocation && userLocation.lat && userLocation.lng) {
+          setRealLocation({ lat: userLocation.lat, lng: userLocation.lng });
+        }
+        return;
+      }
+
+      // 2. If logged in, check database first
+      if (userId) {
+        try {
+          const { data } = await api.fetchUserLocation(userId);
+          if (data && data.area_name) {
+            const loc = {
+              id: 'db_saved',
+              name: data.area_name,
+              lat: data.latitude,
+              lng: data.longitude
+            };
+            setUserLocation(loc);
+            localStorage.setItem('userLocation', JSON.stringify(loc));
+            setRealLocation({ lat: data.latitude, lng: data.longitude });
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to fetch user location from DB:", e);
+        }
+      }
+
+      // 3. Try to check permission and auto-detect location
+      if (navigator.geolocation && navigator.permissions && navigator.permissions.query) {
+        try {
+          const result = await navigator.permissions.query({ name: 'geolocation' });
+          if (result.state === 'granted') {
+            const coords = await getCurrentLocation();
+            const details = await reverseGeocode(coords.lat, coords.lng);
+            if (details) {
+              const loc = {
+                id: 'detected',
+                name: details.displayName,
+                lat: details.lat,
+                lng: details.lng
+              };
+              setUserLocation(loc);
+              setRealLocation(coords);
+              localStorage.setItem('userLocation', JSON.stringify(loc));
+              if (userId) {
+                await api.upsertUserLocation({
+                  user_id: userId,
+                  area_name: details.displayName,
+                  city: details.displayName.split(',')[1]?.trim() || 'Pan India',
+                  latitude: details.lat,
+                  longitude: details.lng,
+                  updated_at: new Date().toISOString()
+                });
+              }
+              return;
+            }
+          }
+        } catch (e) {
+          console.error("Startup geolocation check error", e);
+        }
+      }
+
+      // 4. If still no location, trigger the Blinkit prompt!
+      setShowBlinkitPrompt(true);
+    };
+
+    initLocation();
+  }, [userId]);
+
+  // New Address Methods
+  const addSavedAddress = async (newAddress) => {
+    const isFirst = savedAddresses.length === 0;
+    if (userId) {
+      const { data, error } = await api.createAddress(userId, { ...newAddress, isDefault: isFirst });
+      if (data) {
+        setSavedAddressesState(prev => {
+          const newAddresses = [data, ...prev].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || new Date(b.lastUsedAt || 0) - new Date(a.lastUsedAt || 0));
+          return newAddresses;
+        });
+        return data;
+      }
+      // DB write failed — log it and fall back to local state so the address is not lost
+      console.error('[addSavedAddress] DB write failed, falling back to local state:', error);
+    }
+    // Fallback: local-only (guest or DB failure)
+    const newAddrWithId = { ...newAddress, id: Date.now().toString(), isDefault: isFirst, lastUsedAt: new Date().toISOString() };
+    setSavedAddressesState(prev => {
+      const newAddresses = [newAddrWithId, ...prev].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || new Date(b.lastUsedAt || 0) - new Date(a.lastUsedAt || 0));
+      return newAddresses;
+    });
+    return newAddrWithId;
+  };
+
+  const updateSavedAddress = async (addressId, updates) => {
+    if (userId) {
+      const { data, error } = await api.updateAddress(addressId, updates);
+      if (data) {
+        setSavedAddressesState(prev => {
+          const newAddresses = prev.map(a => a.id === addressId ? data : a).sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || new Date(b.lastUsedAt || 0) - new Date(a.lastUsedAt || 0));
+          return newAddresses;
+        });
+        return;
+      }
+      // DB write failed — log it and fall back to updating local state so UI stays consistent
+      console.error('[updateSavedAddress] DB write failed, falling back to local state:', error);
+    }
+    // Fallback: local-only (guest or DB failure)
+    setSavedAddressesState(prev => {
+      const newAddresses = prev.map(a => a.id === addressId ? { ...a, ...updates } : a).sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || new Date(b.lastUsedAt || 0) - new Date(a.lastUsedAt || 0));
+      return newAddresses;
+    });
+  };
+
+  const removeSavedAddress = async (addressId) => {
+    if (userId) {
+      await api.deleteAddress(addressId);
+    }
+    setSavedAddressesState(prev => prev.filter(a => a.id !== addressId));
+  };
+
+  const setDefaultAddress = async (addressId) => {
+    if (userId) {
+      // Set all others to false, then set target to true
+      const promises = savedAddresses.map(a => {
+        if (a.id === addressId && !a.isDefault) {
+          return api.updateAddress(a.id, { isDefault: true, lastUsedAt: new Date().toISOString() });
+        } else if (a.id !== addressId && a.isDefault) {
+          return api.updateAddress(a.id, { isDefault: false });
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(promises);
+      const { data } = await api.fetchAddresses(userId);
+      if (data) setSavedAddressesState(data);
+    } else {
+      setSavedAddressesState(prev => {
+        const newAddresses = prev.map(a => 
+          a.id === addressId ? { ...a, isDefault: true, lastUsedAt: new Date().toISOString() } : { ...a, isDefault: false }
+        ).sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || new Date(b.lastUsedAt || 0) - new Date(a.lastUsedAt || 0));
+        return newAddresses;
+      });
+    }
+  };
   
   // Job and tasker registers
   const [jobs, setJobs] = useState([]);
@@ -192,26 +352,35 @@ export const AppProvider = ({ children }) => {
       const fetchProfile = async () => {
         const { data } = await api.fetchProfile(userId);
         if (data) {
+          const verifiedPhones = data.verifiedPhones || [];
+
+          const parsedLoc = data.location ? parseEWKBPoint(data.location) : null;
+
           setUserProfileState({
             id: data.id,
             name: data.name,
+            email: data.email,
             phone: data.phone,
             posterName: data.posterName || data.name,
             posterPhone: data.posterPhone || data.phone,
             taskerName: data.taskerName || data.name,
             taskerPhone: data.taskerPhone || data.phone,
-            verifiedPhones: data.verifiedPhones || [],
+            verifiedPhones: verifiedPhones,
             skills: data.skills || [],
             rating: data.rating,
             tasksCompleted: data.tasks_completed,
             bird: data.bird,
-            upiId: data.upi_id || ''
+            upiId: data.upi_id || '',
+            coverageRadius: data.coverage_radius,
+            coverageLevel: data.coverage_level,
+            serviceAreaName: data.service_area_name,
+            serviceAreaLat: parsedLoc?.lat || null,
+            serviceAreaLng: parsedLoc?.lng || null
           });
+          if (data.bird) setSelectedBird(data.bird);
           setIsAdmin(data.is_admin === true);
-          if (data.is_online !== undefined && data.is_online !== null) {
-            setIsOnlineState(data.is_online);
-            localStorage.setItem('isOnline', JSON.stringify(data.is_online));
-          }
+          setIsOnlineState(true);
+          localStorage.setItem('isOnline', 'true');
           const activeRole = localStorage.getItem('activeRole') || data.role;
           setRole(activeRole);
           localStorage.setItem('activeRole', activeRole);
@@ -229,66 +398,129 @@ export const AppProvider = ({ children }) => {
     }
   }, [userId]);
 
-  const loginWithPhone = async (phone) => {
-    try {
-      const { data, error } = await api.findProfileByPhone(phone);
-      
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // 0 rows returned - account not found
-          return { success: false, reason: 'not_found' };
-        }
-        // Other errors (timeout, connection, etc.)
-        console.error("Login DB error:", error);
-        return { success: false, reason: 'network' };
-      }
+  // Listen to Supabase Auth State Changes for Magic Link / OAuth
+  const authProcessingRef = useRef(false);
+  useEffect(() => {
+    const { data: { subscription } } = api.supabase.auth.onAuthStateChange(async (event, session) => {
+      // Only handle sign-in events, ignore token refreshes etc.
+      if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return;
+      if (!session?.user) return;
 
-      if (data) {
-        setUserId(data.id);
-        localStorage.setItem('userId', data.id);
-        setUserProfileState({
-          id: data.id,
-          name: data.name,
-          phone: data.phone,
-          posterName: data.posterName || data.name,
-          posterPhone: data.posterPhone || data.phone,
-          taskerName: data.taskerName || data.name,
-          taskerPhone: data.taskerPhone || data.phone,
-          verifiedPhones: data.verifiedPhones || [],
-          skills: data.skills || [],
-          rating: data.rating,
-          tasksCompleted: data.tasks_completed,
-          bird: data.bird,
-          upiId: data.upi_id || ''
-        });
-        setIsAdmin(data.is_admin === true);
-        if (data.is_online !== undefined && data.is_online !== null) {
-          setIsOnlineState(data.is_online);
-          localStorage.setItem('isOnline', JSON.stringify(data.is_online));
+      // Concurrency lock: prevent duplicate processing when both
+      // INITIAL_SESSION and SIGNED_IN fire near-simultaneously.
+      if (authProcessingRef.current) return;
+      authProcessingRef.current = true;
+
+      try {
+        const email = session.user.email;
+        const authId = session.user.id;
+
+        let profile = null;
+
+        // 1. Try to find by auth_id
+        const { data: profileByAuth, error: authErr } = await api.findProfileByAuthId(authId);
+        if (authErr && authErr.code !== 'PGRST116') {
+          console.error('[Auth] Error finding profile by auth_id:', authErr);
         }
-        const activeRole = data.role || 'tasker';
-        setRole(activeRole);
-        localStorage.setItem('activeRole', activeRole);
-        trackEvent(EVENTS.LOGIN, { userId: data.id, role: activeRole });
-        
-        pushScreen(activeRole === 'tasker' ? 'tasker_home' : 'poster_home');
-        showToast('Welcome back!', 'success');
-        return { success: true };
+
+        if (profileByAuth) {
+          profile = profileByAuth;
+        } else if (email) {
+          // 2. Try to find by email
+          const { data: profileByEmail, error: emailErr } = await api.findProfileByEmail(email);
+          if (emailErr && emailErr.code !== 'PGRST116') {
+            console.error('[Auth] Error finding profile by email:', emailErr);
+          }
+
+          if (profileByEmail) {
+            // Link auth_id to existing email-based profile
+            await api.updateProfile(profileByEmail.id, { auth_id: authId });
+            profile = profileByEmail;
+          } else {
+            // 3. New user — create profile
+            const activeRole = localStorage.getItem('activeRole') || 'tasker';
+            const { data: newProfile, error: createErr } = await api.createProfile({
+              name: session.user.user_metadata?.full_name || 'New User',
+              email: email,
+              auth_id: authId,
+              role: activeRole,
+              rating: 5.0,
+              tasks_completed: 0,
+              bird: selectedBird || 'falcon'
+            });
+
+            if (createErr) {
+              console.error('[Auth] Error creating profile:', createErr);
+              // If insert failed due to unique constraint (duplicate), try finding again
+              const { data: retryProfile } = await api.findProfileByAuthId(authId);
+              profile = retryProfile;
+            } else {
+              profile = newProfile;
+            }
+
+            if (profile) {
+              api.notifyAdmin('New User Registration', `A new user (${email}) just signed up!`);
+              trackEvent(EVENTS.SIGNUP, { userId: profile.id, role: activeRole });
+            }
+          }
+        }
+
+        if (profile) {
+          setUserId(profile.id);
+          localStorage.setItem('userId', profile.id);
+          const finalRole = profile.role || localStorage.getItem('activeRole') || 'tasker';
+          setRole(finalRole);
+          localStorage.setItem('activeRole', finalRole);
+
+          const verifiedPhones = profile.verifiedPhones || [];
+
+          const parsedLoc = profile.location ? parseEWKBPoint(profile.location) : null;
+
+          setUserProfileState({
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            phone: profile.phone,
+            posterName: profile.posterName || profile.name,
+            posterPhone: profile.posterPhone || profile.phone,
+            taskerName: profile.taskerName || profile.name,
+            taskerPhone: profile.taskerPhone || profile.phone,
+            verifiedPhones: verifiedPhones,
+            skills: profile.skills || [],
+            rating: profile.rating,
+            tasksCompleted: profile.tasks_completed,
+            bird: profile.bird,
+            upiId: profile.upi_id || '',
+            coverageRadius: profile.coverage_radius,
+            coverageLevel: profile.coverage_level,
+            serviceAreaName: profile.service_area_name,
+            serviceAreaLat: parsedLoc?.lat || null,
+            serviceAreaLng: parsedLoc?.lng || null
+          });
+
+          if (profile.bird) setSelectedBird(profile.bird);
+          setIsAdmin(profile.is_admin === true);
+
+          pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
+          showToast('Welcome back!', 'success');
+        } else {
+          console.error('[Auth] Could not find or create a profile for auth user:', authId);
+        }
+      } catch (err) {
+        console.error('[Auth] Unexpected error in onAuthStateChange handler:', err);
+      } finally {
+        authProcessingRef.current = false;
       }
-      
-      return { success: false, reason: 'not_found' };
-    } catch (err) {
-      console.error("Login throw:", err);
-      return { success: false, reason: 'network' };
-    }
-  };
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
+
+
 
   const setUserProfile = async (profileData) => {
-    let locationStr = null;
-    if (userLocation) {
-      locationStr = `POINT(${userLocation.lng} ${userLocation.lat})`;
-    }
-    
     const roleSpecificUpdates = {};
     if (profileData.verifiedPhone) {
       const currentVerified = userProfile?.verifiedPhones || [];
@@ -310,18 +542,35 @@ export const AppProvider = ({ children }) => {
     // Save previous state for rollback on failure
     const previousProfile = userProfile ? { ...userProfile } : null;
 
+    // Parse coordinates if locationStr is explicitly passed
+    const parsedLoc = profileData.locationStr ? parseEWKBPoint(profileData.locationStr) : null;
+    const locUpdates = profileData.locationStr !== undefined ? {
+      serviceAreaLat: parsedLoc?.lat || null,
+      serviceAreaLng: parsedLoc?.lng || null
+    } : {};
+
     // Optimistic update so UI reflects immediately
-    setUserProfileState(prev => prev ? { ...prev, ...profileData, ...roleSpecificUpdates } : { id: currentUserId || null, ...profileData, ...roleSpecificUpdates });
+    setUserProfileState(prev => prev ? { ...prev, ...profileData, ...roleSpecificUpdates, ...locUpdates } : { id: currentUserId || null, ...profileData, ...roleSpecificUpdates, ...locUpdates });
 
     if (currentUserId) {
-      const { data, error } = await api.updateProfile(currentUserId, {
+      const updatesPayload = {
         name: profileData.name !== undefined ? profileData.name : userProfile?.name,
+        email: profileData.email !== undefined ? profileData.email : userProfile?.email,
         phone: profileData.phone !== undefined ? profileData.phone : userProfile?.phone,
         upi_id: profileData.upiId !== undefined ? profileData.upiId : userProfile?.upiId,
         skills: profileData.skills || userProfile?.skills || [],
-        bird: selectedBird,
-        location: locationStr
-      });
+        bird: profileData.bird !== undefined ? profileData.bird : selectedBird,
+        coverage_radius: profileData.coverageRadius !== undefined ? profileData.coverageRadius : userProfile?.coverageRadius,
+        category_coverage: profileData.categoryCoverage !== undefined ? profileData.categoryCoverage : userProfile?.categoryCoverage,
+        coverage_level: profileData.coverageLevel !== undefined ? profileData.coverageLevel : userProfile?.coverageLevel,
+        service_area_name: profileData.serviceAreaName !== undefined ? profileData.serviceAreaName : userProfile?.serviceAreaName
+      };
+
+      if (profileData.locationStr !== undefined) {
+        updatesPayload.location = profileData.locationStr;
+      }
+
+      const { data, error } = await api.updateProfile(currentUserId, updatesPayload);
 
       if (error) {
         // Rollback optimistic update on failure
@@ -333,10 +582,13 @@ export const AppProvider = ({ children }) => {
       }
 
       if (data) {
+        const dbLoc = data.location ? parseEWKBPoint(data.location) : null;
         setUserProfileState(prev => ({
           ...prev,
           ...profileData,
-          ...roleSpecificUpdates
+          ...roleSpecificUpdates,
+          serviceAreaLat: dbLoc ? dbLoc.lat : prev?.serviceAreaLat,
+          serviceAreaLng: dbLoc ? dbLoc.lng : prev?.serviceAreaLng
         }));
       }
       return { success: true };
@@ -345,12 +597,11 @@ export const AppProvider = ({ children }) => {
         name: profileData.name || 'Guest User',
         phone: profileData.phone,
         role: role,
-        city_id: userLocation?.id,
         rating: profileData.rating || 5.0,
         tasks_completed: profileData.tasksCompleted || 0,
         skills: profileData.skills || [],
-        bird: selectedBird,
-        location: locationStr,
+        bird: profileData.bird !== undefined ? profileData.bird : selectedBird,
+        location: profileData.locationStr || null,
         upi_id: profileData.upiId || null
       });
 
@@ -370,6 +621,7 @@ export const AppProvider = ({ children }) => {
           id: data.id
         }));
         trackEvent(EVENTS.SIGNUP, { userId: data.id, role: role });
+        api.notifyAdmin('New User Registration', `A new user (${profileData.phone}) just signed up!`);
       }
       return { success: true };
     }
@@ -385,12 +637,10 @@ export const AppProvider = ({ children }) => {
   // Profile Action Interceptor
   const [profileActionCallback, setProfileActionCallback] = useState(null);
 
-  const requireProfile = (callback) => {
+  const requireProfile = (callback, isLocationSequence = false) => {
     const currentName = userProfile?.name;
     const currentPhone = userProfile?.phone;
     
-    // Validate if the user actually has a real name and phone set
-    // This ensures both Tasker and Hirer use the same unified profile data
     const hasValidName = currentName && currentName !== 'Guest User' && currentName !== 'New User';
     const hasValidPhone = currentPhone && currentPhone !== 'Add Phone';
     
@@ -401,17 +651,89 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const requireLocation = async (requiredRole, callback) => {
+    if (realLocation) {
+      callback();
+      return;
+    }
+    
+    if (!navigator.geolocation) {
+      callback();
+      return;
+    }
+
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const result = await navigator.permissions.query({ name: 'geolocation' });
+        if (result.state === 'granted') {
+          try {
+            const loc = await getCurrentLocation();
+            setRealLocation(loc);
+          } catch(e) {
+            console.error(e);
+          }
+          callback();
+          return;
+        } else if (result.state === 'denied') {
+          callback();
+          return;
+        }
+      } catch (e) {
+        console.error("Permissions query error", e);
+      }
+    }
+    
+    setLocationActionRole(requiredRole);
+    setLocationActionCallback(() => callback);
+  };
+
+  const completeLocationAction = async () => {
+    try {
+      const loc = await getCurrentLocation();
+      setRealLocation(loc);
+    } catch(e) {
+      console.error("Location access denied or failed", e);
+    }
+    if (locationActionCallback) {
+      const cb = locationActionCallback;
+      setLocationActionCallback(null);
+      Promise.resolve().then(() => cb()).catch(console.error);
+    }
+  };
+
+  const cancelLocationAction = () => {
+    if (locationActionCallback) {
+      const cb = locationActionCallback;
+      setLocationActionCallback(null);
+      Promise.resolve().then(() => cb()).catch(console.error);
+    }
+  };
+
   const completeProfileAction = async (name, phone) => {
-    const res = await setUserProfile({ name, phone, verifiedPhone: phone });
-    if (res && res.success === false) {
-      return res;
+    console.log('completeProfileAction: starting', name, phone);
+    try {
+      console.log('completeProfileAction: before setUserProfile');
+      const res = await setUserProfile({ name, phone, verifiedPhone: phone });
+      console.log('completeProfileAction: after setUserProfile, res:', res);
+      if (res && res.success === false) {
+        return res;
+      }
+      if (profileActionCallback) {
+        console.log('completeProfileAction: executing profileActionCallback asynchronously');
+        const cb = profileActionCallback;
+        setProfileActionCallback(null);
+        
+        // Execute the callback without blocking the return
+        // This ensures the modal closes immediately once the DB is updated!
+        Promise.resolve().then(() => cb()).catch(err => {
+          console.error("Error in profile action callback:", err);
+        });
+      }
+      return { success: true };
+    } catch (e) {
+      console.error('completeProfileAction: caught error', e);
+      throw e;
     }
-    if (profileActionCallback) {
-      // Await in case the callback is async (e.g. saving skills)
-      await profileActionCallback();
-      setProfileActionCallback(null);
-    }
-    return { success: true };
   };
 
   const cancelProfileAction = () => {
@@ -421,18 +743,13 @@ export const AppProvider = ({ children }) => {
   // Tasker-specific states
   const [acceptedJob, setAcceptedJob] = useState(null); 
   const [otpEntered, setOtpEntered] = useState('');
-  
-  const [isOnline, setIsOnlineState] = useState(() => {
-    const saved = localStorage.getItem('isOnline');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
 
   const setIsOnline = async (online) => {
-    setIsOnlineState(online);
-    localStorage.setItem('isOnline', JSON.stringify(online));
+    setIsOnlineState(true);
+    localStorage.setItem('isOnline', 'true');
     const currentUserId = userId || localStorage.getItem('userId');
     if (currentUserId) {
-      await api.updateProfile(currentUserId, { is_online: online });
+      await api.updateProfile(currentUserId, { is_online: true });
     }
   };
   
@@ -442,6 +759,7 @@ export const AppProvider = ({ children }) => {
   const [liveStatus, setLiveStatus] = useState('posted'); // 'posted', 'crew_set', 'completed'
   const [otpGenerated, setOtpGenerated] = useState('');
   const [editJobData, setEditJobData] = useState(null);
+  const [editAddressData, setEditAddressData] = useState(null);
   const [jobHistoryTab, setJobHistoryTab] = useState('active'); // 'active', 'unfulfilled', 'completed'
 
   const deleteJob = async (jobId) => {
@@ -475,7 +793,8 @@ export const AppProvider = ({ children }) => {
   const activeTabRef = useRef('home');
   useEffect(() => { screenStackRef.current = screenStack; }, [screenStack]);
 
-  const pushScreen = (screen, replaceStack = false) => {
+  function pushScreen(screen, replaceStack = false, params = null) {
+    setRouteParams(params);
     if (screen === 'landing' || screen === 'tasker_home' || screen === 'poster_home') {
       // Reset stack to base screen
       setScreenStack([screen]);
@@ -489,15 +808,16 @@ export const AppProvider = ({ children }) => {
       setScreenStack(prev => [...prev, screen]);
       window.history.pushState({ screen }, '', window.location.pathname);
     }
-  };
+  }
 
-  const popScreen = () => {
+  function popScreen() {
+    setRouteParams(null);
     const firstScreens = ['landing', 'tasker_home', 'poster_home'];
     if (firstScreens.includes(currentScreen) || screenStack.length <= 1) {
       return; // Block accidental exits from home screens
     }
     window.history.back(); // Triggers popstate → handled below
-  };
+  }
 
   const switchRole = async (newRole) => {
     setRole(newRole);
@@ -519,8 +839,9 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     // Establish a "floor" history entry so the browser always has somewhere to go
     // without leaving the app. We push TWO entries: the floor + the current screen.
-    window.history.replaceState({ screen: '__floor__', floor: true }, '', window.location.pathname);
-    window.history.pushState({ screen: screenStackRef.current[screenStackRef.current.length - 1] || 'landing' }, '', window.location.pathname);
+    const currentUrl = window.location.pathname + window.location.search + window.location.hash;
+    window.history.replaceState({ screen: '__floor__', floor: true }, '', currentUrl);
+    window.history.pushState({ screen: screenStackRef.current[screenStackRef.current.length - 1] || 'landing' }, '', currentUrl);
 
     const handlePopState = (e) => {
       const stack = screenStackRef.current;
@@ -564,34 +885,50 @@ export const AppProvider = ({ children }) => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []); // Empty deps — uses refs for latest values
 
-  // Change user location helper (kept for future expansion, currently defaults to LPU)
+  // Change user location helper
   const changeLocation = async (area) => {
     setUserLocation(area);
+    if (area?.lat && area?.lng) {
+      setRealLocation({ lat: area.lat, lng: area.lng });
+    } else {
+      setRealLocation(null);
+    }
     
     // Save to local storage
     localStorage.setItem('userLocation', JSON.stringify(area));
 
     // Save to backend if user is logged in
-    if (userId) {
+    if (userId && area) {
+      // Extract city from the area name (comma-separated formatting)
+      const parts = area.name.split(',');
+      const city = parts.length > 1 ? parts[parts.length - 2].trim() : 'Pan India';
+
       await api.upsertUserLocation({
         user_id: userId,
         area_name: area.name,
-        city: 'LPU',
-        latitude: 0,
-        longitude: 0,
+        city: city,
+        latitude: area.lat || 0,
+        longitude: area.lng || 0,
         updated_at: new Date().toISOString()
       });
     }
+
+    setShowBlinkitPrompt(false);
   };
 
   // Radius Logic for Job Feeds
   const getJobsInRadius = () => {
     const openJobs = (jobs || []).filter(j => j?.status === 'open');
     
+    // Decouple tasker distance calculation: use tasker's serviceAreaLat/Lng if active role is tasker
+    const referenceCenter = (role === 'tasker')
+      ? (userProfile?.serviceAreaLat && userProfile?.serviceAreaLng ? { lat: userProfile.serviceAreaLat, lng: userProfile.serviceAreaLng } : null)
+      : realLocation;
+    
     let enrichedJobs = openJobs.map(job => {
       let distanceVal = 5.0; // fallback radius max
-      if (realLocation && job?.lat && job?.lng) {
-        distanceVal = calculateDistance(realLocation.lat, realLocation.lng, job.lat, job.lng);
+      if (referenceCenter && job?.lat && job?.lng) {
+        distanceVal = calculateDistance(referenceCenter.lat, referenceCenter.lng, job.lat, job.lng);
       } else if (job?.distanceVal) {
         distanceVal = job.distanceVal || 5.0;
       }
@@ -601,7 +938,7 @@ export const AppProvider = ({ children }) => {
       };
     });
 
-    if (realLocation) {
+    if (referenceCenter) {
       enrichedJobs.sort((a, b) => (a?.distanceVal || 0) - (b?.distanceVal || 0));
     }
 
@@ -612,20 +949,28 @@ export const AppProvider = ({ children }) => {
     };
   };
 
-  // Tasker accepts a job
   const acceptJob = async (jobId) => {
     const tId = userProfile?.id || userId || localStorage.getItem('userId');
     const tName = userProfile?.taskerName || userProfile?.name || 'Tasker';
     const tBird = userProfile?.bird || 'falcon';
+
+    // Call V2 RPC first to ensure atomic acceptance safety
+    const { data: success } = await api.acceptJobOffer(jobId, tId);
+    if (!success) {
+      if (showToast) showToast('This job is no longer available.', 'error');
+      // Force refresh of jobs
+      const { data } = await api.fetchJobs();
+      if (data) setJobs(data);
+      return;
+    }
+
     setJobs(prevJobs => 
       prevJobs.map(j => j.id === jobId ? { ...j, status: 'accepted', taskerId: tId, taskerName: tName, taskerBird: tBird } : j)
     );
-    const job = jobs.find(j => j.id === jobId);
+    const job = jobs.find(j => j.id === jobId) || {};
     const updatedJob = { ...job, status: 'accepted', taskerId: tId, taskerName: tName, taskerBird: tBird };
     setAcceptedJob(updatedJob);
     
-    // Backend update (removed tasker_name since it is not in DB schema)
-    await api.updateJob(jobId, { status: 'accepted', tasker_id: tId });
     trackEvent(EVENTS.TASK_ACCEPTANCE, { userId: tId, role, entityId: jobId });
 
     // Send Notification to Hirer
@@ -635,7 +980,8 @@ export const AppProvider = ({ children }) => {
         "Job Accepted!",
         `${tName} has accepted your job and is on their way.`,
         'crew_confirmed',
-        'job_accepted'
+        'job_accepted',
+        'poster'
       );
     }
 
@@ -664,7 +1010,8 @@ export const AppProvider = ({ children }) => {
         "Job Completed!",
         "Your tasker has marked the job as complete. Please review and pay.",
         'rating_screen',
-        'job_completed'
+        'job_completed',
+        'poster'
       );
     }
 
@@ -680,7 +1027,9 @@ export const AppProvider = ({ children }) => {
     }
 
     let locationStr = null;
-    if (userLocation) {
+    if (newJobData.lng !== undefined && newJobData.lat !== undefined) {
+      locationStr = `POINT(${newJobData.lng} ${newJobData.lat})`;
+    } else if (userLocation) {
       locationStr = `POINT(${userLocation.lng} ${userLocation.lat})`;
     }
 
@@ -711,8 +1060,13 @@ export const AppProvider = ({ children }) => {
       peopleNeeded: newJobData.peopleNeeded || 1,
       amount: newJobData.amount,
       locationStr: locationStr,
+      primaryAddressId: newJobData.address?.id || null,
       otp: otp
     });
+
+    if (newJobData.address?.id) {
+      updateSavedAddress(newJobData.address.id, { lastUsedAt: new Date().toISOString() });
+    }
 
     if (data) {
       const dbJob = {
@@ -726,16 +1080,22 @@ export const AppProvider = ({ children }) => {
         skillId: data.skill_id,
         timePosted: data.created_at,
         expiresAt,
-        lng: userLocation?.lng || 0,
-        lat: userLocation?.lat || 0
+        lng: newJobData.lng !== undefined ? newJobData.lng : (userLocation?.lng || 0),
+        lat: newJobData.lat !== undefined ? newJobData.lat : (userLocation?.lat || 0)
       };
       setJobs(prev => [dbJob, ...prev]);
       setCurrentPostedJob(dbJob);
       trackEvent(EVENTS.TASK_CREATION, { userId: currentUserId, role, entityId: data.id, metadata: { amount: newJobData.amount } });
+      api.notifyAdmin('New Job Posted', `A new job was just posted for ₹${newJobData.amount}!`);
+      
       // OTP state update
       setOtpGenerated(otp);
 
-      pushScreen('live_status');
+      // Reset crew state from any previous job session
+      setCrewTaskers([]);
+      setLiveStatus('posted');
+
+      pushScreen('live_status', true);
       showToast('Job posted successfully!', 'success');
     } else {
       console.error('Failed to post job:', error);
@@ -797,12 +1157,33 @@ export const AppProvider = ({ children }) => {
     };
   }, [currentScreen, acceptedJob, currentPostedJob, crewTaskers, role]);
 
-  // Listen for real job acceptance via Supabase
+  // Track the taskerId that was already on the job when we entered live_status.
+  // This prevents stale DB data (e.g. a previous session's accepted tasker) from
+  // immediately triggering crew_confirmed on the new job broadcast.
+  const liveStatusInitialTaskerIdRef = useRef(null);
+
+  useEffect(() => {
+    if (currentScreen === 'live_status' && currentPostedJob) {
+      // Snapshot the current taskerId whenever we arrive at live_status
+      const currentJob = jobs.find(j => j.id === currentPostedJob.id);
+      if (liveStatusInitialTaskerIdRef.current === null) {
+        liveStatusInitialTaskerIdRef.current = currentJob?.taskerId || '';
+      }
+    } else {
+      // Reset snapshot when leaving live_status
+      liveStatusInitialTaskerIdRef.current = null;
+    }
+  }, [currentScreen, currentPostedJob]);
+
   useEffect(() => {
     if (currentScreen === 'live_status' && currentPostedJob) {
       const updatedJob = jobs.find(j => j.id === currentPostedJob.id);
       
-      if (updatedJob && updatedJob.taskerId && updatedJob.status === 'accepted') {
+      // Only navigate if taskerId is genuinely NEW (not the one that existed at mount)
+      const isNewTasker = updatedJob?.taskerId &&
+        updatedJob.taskerId !== liveStatusInitialTaskerIdRef.current;
+
+      if (updatedJob && isNewTasker && updatedJob.status === 'accepted') {
         const taskerInfo = {
           id: updatedJob.taskerId,
           name: updatedJob.taskerName || 'Helper',
@@ -823,7 +1204,8 @@ export const AppProvider = ({ children }) => {
   const resetApp = () => {
     if (userId) trackEvent(EVENTS.LOGOUT, { userId, role });
     setRole(null);
-    setUserLocation(SERVICE_AREAS[0]);
+    setUserLocation(null);
+    localStorage.removeItem('userLocation');
     setLocationPermission('prompt');
     setUserProfileState(null);
     setUserId(null);
@@ -859,10 +1241,14 @@ export const AppProvider = ({ children }) => {
         manualLocationInput,
         setManualLocationInput,
         savedAddresses,
-        setSavedAddresses,
+        addSavedAddress,
+        updateSavedAddress,
+        removeSavedAddress,
+        setDefaultAddress,
         userProfile,
         setUserProfile,
         currentScreen,
+        routeParams,
         pushScreen,
         popScreen,
         switchRole,
@@ -881,6 +1267,8 @@ export const AppProvider = ({ children }) => {
         postJob,
         editJobData,
         setEditJobData,
+        editAddressData,
+        setEditAddressData,
         jobHistoryTab,
         setJobHistoryTab,
         taskerActivityScrollTarget,
@@ -902,17 +1290,28 @@ export const AppProvider = ({ children }) => {
         setTrackingTaskerPos,
         realLocation,
         setRealLocation,
+        isLocationModalOpen,
+        setLocationModalOpen,
+        showBlinkitPrompt,
+        setShowBlinkitPrompt,
         
         selectedBird,
         setSelectedBird,
         isOnline,
         setIsOnline,
         
+        // Interceptors
         profileActionCallback,
         requireProfile,
-        completeProfileAction,
         cancelProfileAction,
-        loginWithPhone,
+        completeProfileAction,
+        locationActionCallback,
+        locationActionRole,
+        requireLocation,
+        completeLocationAction,
+        cancelLocationAction,
+        
+
         isAdmin,
         userId
       }}

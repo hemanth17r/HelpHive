@@ -48,7 +48,7 @@ function urlB64ToUint8Array(base64String) {
 }
 
 export const NotificationProvider = ({ children }) => {
-  const { userId } = useContext(AppContext);
+  const { userId, role } = useContext(AppContext);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pushSupported, setPushSupported] = useState(false);
@@ -65,7 +65,7 @@ export const NotificationProvider = ({ children }) => {
     setPushPermission(getNotificationPermission());
   }, []);
 
-  // Fetch initial notifications when user logs in
+  // Fetch initial notifications when user logs in and when role changes
   useEffect(() => {
     if (!userId) {
       setNotifications([]);
@@ -75,10 +75,12 @@ export const NotificationProvider = ({ children }) => {
 
     const fetchNotifications = async () => {
       try {
+        // Query notifications filtered by both user_id and target role
         const { data } = await api.supabase
           .from('notifications')
           .select('*')
           .eq('user_id', userId)
+          .eq('role', role)
           .order('created_at', { ascending: false })
           .limit(50);
           
@@ -102,18 +104,23 @@ export const NotificationProvider = ({ children }) => {
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           (payload) => {
-            setNotifications(prev => [payload.new, ...prev]);
-            setUnreadCount(prev => prev + 1);
+            // Client-side role matching check
+            if (payload.new.role === role) {
+              setNotifications(prev => [payload.new, ...prev]);
+              setUnreadCount(prev => prev + 1);
+            }
           }
         )
         .on(
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           (payload) => {
-            setNotifications(prev => prev.map(n => n.id === payload.new.id ? payload.new : n));
-            setUnreadCount(prev => {
-               return payload.new.is_read ? Math.max(0, prev - 1) : prev;
-            });
+            if (payload.new.role === role) {
+              setNotifications(prev => prev.map(n => n.id === payload.new.id ? payload.new : n));
+              setUnreadCount(prev => {
+                 return payload.new.is_read ? Math.max(0, prev - 1) : prev;
+              });
+            }
           }
         )
         .subscribe();
@@ -123,10 +130,10 @@ export const NotificationProvider = ({ children }) => {
 
     return () => {
       if (sub) {
-        try { api.supabase.removeChannel(sub); } catch {}
+        try { api.supabase.removeChannel(sub); } catch (e) { /* ignore */ }
       }
     };
-  }, [userId]);
+  }, [userId, role]);
 
   const markAsRead = useCallback(async (notificationId) => {
     // Optimistic update
@@ -153,12 +160,13 @@ export const NotificationProvider = ({ children }) => {
           .from('notifications')
           .update({ is_read: true })
           .eq('user_id', userId)
+          .eq('role', role)
           .eq('is_read', false);
       } catch (err) {
         console.error('Failed to mark all notifications as read:', err);
       }
     }
-  }, [userId]);
+  }, [userId, role]);
 
   const subscribeToPush = useCallback(async () => {
     // Check API availability first

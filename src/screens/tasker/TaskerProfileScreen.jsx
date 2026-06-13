@@ -97,7 +97,7 @@ const TaskerProfileScreen = () => {
           <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Service Scope</h3>
           <div className="flex items-center space-x-2 text-xs font-bold text-dark">
             <Calendar className="w-4.5 h-4.5 text-primary" />
-            <span>Active in {userLocation?.name || 'Koramangala, Bangalore'}</span>
+            <span>Active in {userProfile?.serviceAreaName || 'No service area selected'}</span>
           </div>
         </div>
 

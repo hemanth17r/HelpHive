@@ -17,6 +17,8 @@ const TaskerRatingScreen = () => {
   const [isReporting, setIsReporting] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   const posterBadges = [
     { id: 'paid_promptly', label: 'Paid Promptly', icon: Award, color: 'green' },
@@ -31,34 +33,59 @@ const TaskerRatingScreen = () => {
     'Other'
   ];
 
-  const handleSubmit = () => {
-    setIsSubmitted(true);
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    
+    // Simulate short network delay for UX
+    await new Promise(res => setTimeout(res, 400));
     
     trackEvent(EVENTS.RATING_SUBMITTED, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { rating } });
+    
+    const badgeObj = selectedBadge ? posterBadges.find(b => b.id === selectedBadge) : null;
+    const notificationText = badgeObj 
+      ? `Your helper rated you ${rating} stars and awarded you the "${badgeObj.label}" badge!`
+      : `Your helper rated you ${rating} stars for the recent task.`;
+
+    if (acceptedJob?.posterId) {
+      await api.sendNotification(
+        acceptedJob.posterId,
+        "New Rating Received!",
+        notificationText,
+        'my_profile',
+        selectedBadge ? 'badge_received' : 'rating_received',
+        'poster'
+      );
+    }
+
     if (selectedBadge) {
-      const badgeObj = posterBadges.find(b => b.id === selectedBadge);
       trackEvent(EVENTS.BADGE_SENT, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { badge_type: selectedBadge } });
       showToast(`🏅 ${acceptedJob?.posterName || 'Hirer'} will receive your "${badgeObj?.label}" badge!`, 'success');
-
-
     } else {
       showToast('Rating submitted!', 'success');
     }
 
+    setIsSubmitting(false);
+    setIsSubmitted(true);
     setTimeout(() => {
       setAcceptedJob(null);
       pushScreen('tasker_home');
     }, 1800);
   };
 
-  const handleReportSubmit = () => {
+  const handleReportSubmit = async () => {
     if (!reportReason) {
       showToast('Please select a reason', 'error');
       return;
     }
-    showToast('Report submitted for moderation', 'success');
-    trackEvent(EVENTS.REPORT_SUBMITTED, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { reason: reportReason } });
-    setIsReporting(false);
+    setIsSubmittingReport(true);
+    try {
+      await new Promise(res => setTimeout(res, 400));
+      showToast('Report submitted for moderation', 'success');
+      trackEvent(EVENTS.REPORT_SUBMITTED, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { reason: reportReason } });
+      setIsReporting(false);
+    } finally {
+      setIsSubmittingReport(false);
+    }
   };
 
   return (
@@ -135,9 +162,13 @@ const TaskerRatingScreen = () => {
             </button>
             <button
               onClick={handleReportSubmit}
-              className="flex-1 py-3 text-xs font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-md cursor-pointer"
+              disabled={isSubmittingReport}
+              className="flex-1 flex justify-center items-center gap-2 py-3 text-xs font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-md cursor-pointer transition-all active:scale-[0.98] disabled:opacity-70"
             >
-              Submit Report
+              {isSubmittingReport ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : null}
+              <span>{isSubmittingReport ? 'Submitting...' : 'Submit Report'}</span>
             </button>
           </div>
         </div>
@@ -222,10 +253,15 @@ const TaskerRatingScreen = () => {
           <Tooltip text="Submit feedback">
             <button
               onClick={handleSubmit}
-              className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer"
+              disabled={isSubmitting}
+              className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-70"
             >
-              <Send className="w-5 h-5" />
-              <span>Submit Review</span>
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+              <span>{isSubmitting ? 'Submitting...' : 'Submit Review'}</span>
             </button>
           </Tooltip>
         </div>

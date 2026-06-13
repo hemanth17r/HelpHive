@@ -30,7 +30,9 @@ class ErrorBoundary extends React.Component {
     try {
       localStorage.removeItem('activeRole');
       localStorage.removeItem('userId');
-    } catch {}
+    } catch (e) {
+      // Ignore error when removing items from localStorage
+    }
     this.setState({ hasError: false });
     window.location.href = window.location.origin + window.location.pathname;
   };

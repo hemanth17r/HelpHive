@@ -13,6 +13,7 @@ const TaskerActivityScreen = () => {
   const [isEditingUpi, setIsEditingUpi] = useState(false);
   const [editedUpiId, setEditedUpiId] = useState('');
   const [pulseUpi, setPulseUpi] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const activeRef = useRef(null);
   const completedRef = useRef(null);
@@ -27,6 +28,7 @@ const TaskerActivityScreen = () => {
       showToast('Please enter a valid UPI ID (e.g. name@bank)', 'error');
       return;
     }
+    setIsSaving(true);
     try {
       const result = await setUserProfile({ upiId: finalUpi });
       if (result && result.success === false) {
@@ -38,6 +40,8 @@ const TaskerActivityScreen = () => {
     } catch (err) {
       console.error('Failed to save UPI ID:', err);
       showToast('Failed to save UPI ID. Please try again.', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -216,8 +220,11 @@ const TaskerActivityScreen = () => {
                     placeholder="e.g. username@okhdfcbank"
                     className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold text-dark focus:outline-none focus:border-primary"
                   />
-                  <button type="submit" disabled={!editedUpiId.trim()} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50 flex justify-center">
-                    Save UPI ID
+                  <button type="submit" disabled={!editedUpiId.trim() || isSaving} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50 flex justify-center items-center gap-2">
+                    {isSaving ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : null}
+                    <span>{isSaving ? 'Saving...' : 'Save UPI ID'}</span>
                   </button>
                 </form>
               </div>
@@ -243,8 +250,12 @@ const TaskerActivityScreen = () => {
                     <button type="button" onClick={() => setIsEditingUpi(false)} className="text-gray-400 hover:text-red-500 p-1.5 cursor-pointer flex-shrink-0">
                       <X className="w-4 h-4" />
                     </button>
-                    <button type="submit" disabled={!editedUpiId.trim()} className="text-primary hover:text-primary/80 p-1.5 cursor-pointer disabled:opacity-50 flex-shrink-0">
-                      <Check className="w-4 h-4" />
+                    <button type="submit" disabled={!editedUpiId.trim() || isSaving} className="text-primary hover:text-primary/80 p-1.5 cursor-pointer disabled:opacity-50 flex-shrink-0 flex items-center justify-center min-w-[28px]">
+                      {isSaving ? (
+                        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )}
                     </button>
                   </form>
                 ) : (

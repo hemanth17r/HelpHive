@@ -10,19 +10,16 @@ const MapView = ({
   jobLocation = null, // { lat, lng }
   taskerLocation = null, // { lat, lng }
   taskerBirdName = 'falcon',
-  height = '300px'
+  height = '300px',
+  resolvedAddressText = 'Location pinned on map',
+  coverageRadius = null // new prop for coverage circle
 }) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const draggableMarkerRef = useRef(null);
   const taskerMarkerRef = useRef(null);
   const routeLineRef = useRef(null);
-
-  // Address simulation based on coordinates offset
-  const [resolvedAddress, setResolvedAddress] = useState('Fetching address...');
-
-
-
+  const coverageCircleRef = useRef(null);
   useEffect(() => {
     if (!window.L || !mapContainerRef.current) return;
 
@@ -58,8 +55,6 @@ const MapView = ({
 
     // Flow 1: Draggable Mode (Job Posting)
     if (draggable) {
-      setResolvedAddress('Location pinned on map');
-
       const marker = L.marker(initialCenter, {
         draggable: true,
         icon: orangeIcon
@@ -67,14 +62,30 @@ const MapView = ({
 
       draggableMarkerRef.current = marker;
 
-      // Handle drag ends with debounce simulation
+      // Handle drag ends
       marker.on('dragend', () => {
         const position = marker.getLatLng();
-        setResolvedAddress('Location pinned on map');
+        if (coverageCircleRef.current) {
+          coverageCircleRef.current.setLatLng(position);
+        }
         if (typeof onDragEnd === 'function') {
           onDragEnd({ lat: parseFloat(position.lat.toFixed(5)), lng: parseFloat(position.lng.toFixed(5)) });
         }
       });
+    }
+
+    if (coverageRadius && L) {
+      coverageCircleRef.current = L.circle(initialCenter, {
+        color: '#ff8a00',
+        fillColor: '#ff8a00',
+        fillOpacity: 0.15,
+        radius: coverageRadius
+      }).addTo(map);
+      
+      // Auto-fit bounds to circle if not draggable, else just show it
+      if (!draggable) {
+        map.fitBounds(coverageCircleRef.current.getBounds());
+      }
     }
 
     // Flow 2: Live Tracking Mode (Job Destination Pin)
@@ -82,6 +93,13 @@ const MapView = ({
       // Add Job Destination Marker
       L.marker([jobLocation.lat, jobLocation.lng], { icon: orangeIcon }).addTo(map);
     }
+
+    // Handle container resize issues for modals (e.g. animation delays)
+    setTimeout(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    }, 250);
 
     // Clean up Leaflet on unmount to prevent container errors
     return () => {
@@ -91,6 +109,31 @@ const MapView = ({
       }
     };
   }, []);
+
+  // Update coverage radius dynamically if it changes
+  useEffect(() => {
+    if (mapInstanceRef.current && window.L && coverageRadius !== null) {
+      if (coverageCircleRef.current) {
+        coverageCircleRef.current.setRadius(coverageRadius);
+      } else {
+        const center = draggableMarkerRef.current ? draggableMarkerRef.current.getLatLng() : mapInstanceRef.current.getCenter();
+        coverageCircleRef.current = window.L.circle(center, {
+          color: '#ff8a00',
+          fillColor: '#ff8a00',
+          fillOpacity: 0.15,
+          radius: coverageRadius
+        }).addTo(mapInstanceRef.current);
+      }
+      
+      // Optionally fit bounds when radius changes during draggable mode
+      if (coverageCircleRef.current) {
+         mapInstanceRef.current.fitBounds(coverageCircleRef.current.getBounds(), { animate: true, padding: [20, 20] });
+      }
+    } else if (coverageCircleRef.current && mapInstanceRef.current) {
+      mapInstanceRef.current.removeLayer(coverageCircleRef.current);
+      coverageCircleRef.current = null;
+    }
+  }, [coverageRadius]);
 
   // Update Tasker Marker and Route Polyline dynamically when position prop updates
   useEffect(() => {
@@ -134,11 +177,11 @@ const MapView = ({
   }, [taskerLocation, jobLocation, draggable, taskerBirdName]);
 
   return (
-    <div className="w-full flex flex-col space-y-2 select-none">
+    <div className={`w-full flex flex-col space-y-2 select-none ${height === '100%' ? 'h-full flex-1' : ''}`}>
       <div 
         ref={mapContainerRef} 
         style={{ height, width: '100%' }} 
-        className="rounded-2xl overflow-hidden shadow-inner border border-border z-10"
+        className={`rounded-2xl overflow-hidden shadow-inner border border-border z-10 ${height === '100%' ? 'flex-1 min-h-0' : ''}`}
       />
       {draggable && (
         <div className="bg-orange-50 border border-primary/10 rounded-xl px-3.5 py-2 flex items-center space-x-2.5">
@@ -147,7 +190,7 @@ const MapView = ({
           </div>
           <div className="text-[10px] font-bold text-dark truncate">
             <span className="text-gray-400 block font-black uppercase text-[8px] leading-none mb-0.5">Resolved Address</span>
-            {resolvedAddress}
+            {resolvedAddressText}
           </div>
         </div>
       )}

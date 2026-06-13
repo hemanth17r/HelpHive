@@ -10,7 +10,6 @@ import { api } from '../../services/api';
 
 const TaskerHomeScreen = () => {
   const { 
-    userLocation, 
     userProfile, 
     getJobsInRadius, 
     selectedBird,
@@ -102,8 +101,8 @@ const TaskerHomeScreen = () => {
             >
               Hi, {userProfile?.name?.split(' ')[0] || 'Tasker'}
             </span>
-            <div className="text-[9px] font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20 shrink-0">
-              LPU Campus
+            <div className="text-[9px] font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20 shrink-0 max-w-[120px] truncate" title={userProfile?.serviceAreaName || 'No service area selected'}>
+              {userProfile?.serviceAreaName ? userProfile.serviceAreaName.split(',')[0].trim() : 'No service area selected'}
             </div>
             <button 
               onClick={handleRefreshFeed} 
@@ -113,27 +112,11 @@ const TaskerHomeScreen = () => {
             </button>
           </div>
 
-          {/* Online / Offline Toggle */}
-          <Tooltip text={isOnline ? 'Go Offline' : 'Go Online'}>
-            <button
-              onClick={() => setIsOnline(!isOnline)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full border border-border cursor-pointer select-none"
-            >
-              {isOnline ? (
-                <>
-                  <Wifi className="w-3.5 h-3.5 text-green-500 animate-pulse" />
-                  <span className="text-[10px] font-black uppercase text-green-600">Online</span>
-                  <ToggleRight className="w-5 h-5 text-green-500 shrink-0" />
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="text-[10px] font-black uppercase text-gray-500">Offline</span>
-                  <ToggleLeft className="w-5 h-5 text-gray-400 shrink-0" />
-                </>
-              )}
-            </button>
-          </Tooltip>
+          {/* Active Status Badge */}
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 select-none">
+            <Wifi className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase text-emerald-600">Active</span>
+          </div>
         </div>
       </div>
 
@@ -202,17 +185,7 @@ const TaskerHomeScreen = () => {
           </div>
         )}
 
-        {!isOnline ? (
-          <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 bg-white rounded-3xl p-6 border border-border">
-            <div className="p-4 bg-gray-100 rounded-full text-gray-400">
-              <WifiOff className="w-10 h-10" />
-            </div>
-            <h3 className="text-base font-black text-dark">You are Offline</h3>
-            <p className="text-xs font-semibold text-gray-400 max-w-[200px]">
-              Turn online to see real-time task requests in your location.
-            </p>
-          </div>
-        ) : visibleJobs.length === 0 ? (
+        {visibleJobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 bg-white rounded-3xl p-6 border border-border">
             <div className="p-4 bg-orange-50 rounded-full text-primary">
               <Inbox className="w-10 h-10" />
@@ -237,9 +210,9 @@ const TaskerHomeScreen = () => {
                     {((userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? matchingSkillsJobs : visibleJobs).length} Live
                   </span>
                 </div>
-                {((userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? matchingSkillsJobs : visibleJobs).map((job) => (
+                {((userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? matchingSkillsJobs : visibleJobs).map((job, idx) => (
                   <JobCard
-                    key={job?.id || Math.random()}
+                    key={job?.id || idx}
                     job={{ ...job, distance: `${job?.distanceVal || 0} km` }}
                     onDecline={handleDeclineJob}
                   />

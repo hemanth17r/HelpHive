@@ -64,7 +64,7 @@ const AboutUsScreen = () => {
         {/* Footer */}
         <div className="mt-8 text-center pb-8">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Designed by HelpHive Team</p>
-          <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-1">© 2026 HelpHive Technologies</p>
+          <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-1">© 2026 AHR Technologies</p>
         </div>
       </div>
     </div>

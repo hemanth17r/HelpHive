@@ -11,8 +11,15 @@
  */
 export const getCurrentLocation = () => {
   return new Promise((resolve, reject) => {
+    const overallTimeout = setTimeout(() => {
+      reject(new Error('Location request timed out (user did not respond to prompt or system hung).'));
+    }, 15000); // 15 seconds max wait time for the whole process including prompt
+
+    const clearOverallTimeout = () => clearTimeout(overallTimeout);
+
     if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by your browser'));
+      clearOverallTimeout();
+      reject(new Error('Geolocation is not supported by your browser.'));
       return;
     }
 
@@ -20,17 +27,27 @@ export const getCurrentLocation = () => {
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'geolocation' }).then((result) => {
         if (result.state === 'denied') {
+          clearOverallTimeout();
           reject(new Error('Location permission has been denied. Please enable it in your browser settings.'));
           return;
         }
         // Permission is 'granted' or 'prompt' - proceed to get position
-        requestPosition(resolve, reject);
+        requestPosition(
+          (pos) => { clearOverallTimeout(); resolve(pos); },
+          (err) => { clearOverallTimeout(); reject(err); }
+        );
       }).catch(() => {
         // permissions.query not supported for geolocation in this browser, try directly
-        requestPosition(resolve, reject);
+        requestPosition(
+          (pos) => { clearOverallTimeout(); resolve(pos); },
+          (err) => { clearOverallTimeout(); reject(err); }
+        );
       });
     } else {
-      requestPosition(resolve, reject);
+      requestPosition(
+        (pos) => { clearOverallTimeout(); resolve(pos); },
+        (err) => { clearOverallTimeout(); reject(err); }
+      );
     }
   });
 };
@@ -143,6 +160,12 @@ export const parseEWKBPoint = (ewkb) => {
   }
   
   try {
+    if (ewkb.toLowerCase().startsWith('point')) {
+      const match = ewkb.match(/point\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
+      if (match) {
+        return { lng: parseFloat(match[1]), lat: parseFloat(match[2]) };
+      }
+    }
     if (ewkb.startsWith('{')) {
       const geo = JSON.parse(ewkb);
       return { lng: geo.coordinates[0], lat: geo.coordinates[1] };

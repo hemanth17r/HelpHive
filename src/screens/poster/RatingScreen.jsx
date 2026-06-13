@@ -16,10 +16,11 @@ const RatingScreen = () => {
   const [badges, setBadges] = useState({});
 
 
-  // Report state
   const [reportingTaskerId, setReportingTaskerId] = useState(null);
   const [reportReason, setReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
 
   // The actual crew taskers
   const taskersList = crewTaskers;
@@ -48,53 +49,79 @@ const RatingScreen = () => {
     });
   };
 
-  const handleSubmit = () => {
-    // Mark job as rated in global state so it doesn't prompt again
-    if (currentPostedJob) {
-      setJobs(prev => prev.map(j => j.id === currentPostedJob.id ? { ...j, hasBeenRated: true } : j));
-      setCurrentPostedJob(prev => prev ? { ...prev, hasBeenRated: true } : null);
-    }
-    
-    // Log ratings and badges, and send badge notifications
-    let badgeGiven = false;
-    taskersList.forEach(tasker => {
-      const star = ratings[tasker.id] || 5;
-      const badge = badges[tasker.id];
-      trackEvent(EVENTS.RATING_SUBMITTED, { userId: userProfile?.id, role, entityId: tasker.id, metadata: { rating: star } });
-      if (badge) {
-        badgeGiven = true;
-        const badgeObj = taskerBadges.find(b => b.id === badge);
-        trackEvent(EVENTS.BADGE_SENT, { userId: userProfile?.id, role, entityId: tasker.id, metadata: { badge_type: badge } });
-        showToast(`🏅 ${tasker.name} will receive your "${badgeObj?.label}" badge!`, 'success');
-
-        // Send notification to the Tasker
-        api.sendNotification(
-          tasker.id,
-          "New Badge Earned! 🏅",
-          `You received the "${badgeObj?.label}" badge for your recent task!`,
-          'my_profile',
-          'badge_received'
-        );
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      // Mark job as rated in global state so it doesn't prompt again
+      if (currentPostedJob) {
+        setJobs(prev => prev.map(j => j.id === currentPostedJob.id ? { ...j, hasBeenRated: true } : j));
+        setCurrentPostedJob(prev => prev ? { ...prev, hasBeenRated: true } : null);
       }
-    });
+      
+      // Log ratings and badges, and send badge notifications
+      let badgeGiven = false;
+      const promises = taskersList.map(async (tasker) => {
+        const star = ratings[tasker.id] || 5;
+        const badge = badges[tasker.id];
+        trackEvent(EVENTS.RATING_SUBMITTED, { userId: userProfile?.id, role, entityId: tasker.id, metadata: { rating: star } });
+        if (badge) {
+          badgeGiven = true;
+          const badgeObj = taskerBadges.find(b => b.id === badge);
+          trackEvent(EVENTS.BADGE_SENT, { userId: userProfile?.id, role, entityId: tasker.id, metadata: { badge_type: badge } });
+          showToast(`🏅 ${tasker.name} will receive your "${badgeObj?.label}" badge!`, 'success');
 
-    if (!badgeGiven) {
-      showToast('Rating submitted!', 'success');
+          // Send notification to the Tasker
+          await api.sendNotification(
+            tasker.id,
+            "New Badge Earned! 🏅",
+            `You received a ${star}-star rating and the "${badgeObj?.label}" badge for your recent task!`,
+            'my_profile',
+            'badge_received',
+            'tasker'
+          );
+        } else {
+          // Send rating-only notification to the Tasker
+          await api.sendNotification(
+            tasker.id,
+            "Task Rated!",
+            `You received a ${star}-star rating for your recent task.`,
+            'tasker_activity',
+            'rating_received',
+            'tasker'
+          );
+        }
+      });
+      await Promise.all(promises);
+
+      if (!badgeGiven) {
+        showToast('Rating submitted!', 'success');
+      }
+
+      pushScreen('poster_home');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    pushScreen('poster_home');
   };
 
-  const handleReportSubmit = () => {
+  const handleReportSubmit = async () => {
     if (!reportReason) {
       showToast('Please select a reason', 'error');
       return;
     }
-    showToast('Report submitted for moderation', 'success');
-    trackEvent(EVENTS.REPORT_SUBMITTED, { userId: userProfile?.id, role, entityId: reportingTaskerId, metadata: { reason: reportReason } });
-    setReportingTaskerId(null);
-    setReportReason('');
-    setReportDetails('');
+    setIsReporting(true);
+    try {
+      showToast('Report submitted for moderation', 'success');
+      trackEvent(EVENTS.REPORT_SUBMITTED, { userId: userProfile?.id, role, entityId: reportingTaskerId, metadata: { reason: reportReason } });
+      
+      // Artificial small delay for UX if trackEvent is synchronous
+      await new Promise(res => setTimeout(res, 400));
+      
+      setReportingTaskerId(null);
+      setReportReason('');
+      setReportDetails('');
+    } finally {
+      setIsReporting(false);
+    }
   };
 
   const reportingTasker = taskersList.find(t => t.id === reportingTaskerId);
@@ -162,9 +189,13 @@ const RatingScreen = () => {
             </button>
             <button
               onClick={handleReportSubmit}
-              className="flex-1 py-3 text-xs font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-md cursor-pointer"
+              disabled={isReporting}
+              className="flex-1 flex justify-center items-center gap-2 py-3 text-xs font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-md cursor-pointer transition-all active:scale-[0.98] disabled:opacity-70"
             >
-              Submit Report
+              {isReporting ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : null}
+              <span>{isReporting ? 'Submitting...' : 'Submit Report'}</span>
             </button>
           </div>
         </div>
@@ -255,10 +286,15 @@ const RatingScreen = () => {
           <Tooltip text="Submit helper feedback">
             <button
               onClick={handleSubmit}
-              className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer"
+              disabled={isSubmitting}
+              className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-70"
             >
-              <Send className="w-5 h-5" />
-              <span>Submit Feedback</span>
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+              <span>{isSubmitting ? 'Submitting...' : 'Submit Feedback'}</span>
             </button>
           </Tooltip>
         </div>

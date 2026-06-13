@@ -3,7 +3,7 @@ import { AppContext } from '../store/AppContext';
 import { NotificationContext } from '../store/NotificationContext';
 
 export const useProfileCompletion = () => {
-  const { userProfile, role, realLocation } = useContext(AppContext);
+  const { userProfile, role, realLocation, savedAddresses = [] } = useContext(AppContext);
   const { pushPermission, pushSupported } = useContext(NotificationContext);
   
   const [locationPermission, setLocationPermission] = useState('prompt');
@@ -30,11 +30,14 @@ export const useProfileCompletion = () => {
 
   const hasSkills = userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0;
   const hasUpiId = !!userProfile?.upiId;
-  const hasLocation = locationPermission === 'granted' || !!realLocation;
+  const hasJobLocation = savedAddresses.length > 0;
+  const hasOsLocation = locationPermission === 'granted' || !!realLocation;
   const hasNotifications = !pushSupported || pushPermission === 'granted';
+  const hasEmail = !!userProfile?.email && userProfile.email !== 'Add Email';
 
   let completionPercentage = 0;
   const missingItems = [];
+
 
   if (role === 'tasker') {
     if (hasValidNameAndPhone) completionPercentage += 20;
@@ -46,16 +49,16 @@ export const useProfileCompletion = () => {
     if (hasUpiId) completionPercentage += 20;
     else missingItems.push('upi');
 
-    if (hasLocation) completionPercentage += 20;
-    else missingItems.push('location');
+    if (hasOsLocation) completionPercentage += 20;
+    else missingItems.push('os_location');
 
     if (hasNotifications) completionPercentage += 20;
     else missingItems.push('notifications');
 
   } else {
     // Poster (Hirer)
-    if (hasLocation) completionPercentage += 40;
-    else missingItems.push('location');
+    if (hasJobLocation) completionPercentage += 40;
+    else missingItems.push('job_location');
 
     if (hasValidNameAndPhone) completionPercentage += 30;
     else missingItems.push('profile');
@@ -67,10 +70,12 @@ export const useProfileCompletion = () => {
   return {
     completionPercentage,
     missingItems,
-    hasLocation,
+    hasJobLocation,
+    hasOsLocation,
     hasNotifications,
     hasValidNameAndPhone,
     hasSkills,
-    hasUpiId
+    hasUpiId,
+    hasEmail
   };
 };

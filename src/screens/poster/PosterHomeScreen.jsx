@@ -16,6 +16,7 @@ const PosterHomeScreen = () => {
     pushScreen,
     setCurrentPostedJob,
     requireProfile,
+    requireLocation,
     deleteJob,
     expireJob,
     setEditJobData,
@@ -24,16 +25,10 @@ const PosterHomeScreen = () => {
   } = useContext(AppContext);
 
   const handlePostJobClick = () => {
-    requireProfile(async () => {
-      if (!realLocation && navigator.geolocation) {
-        try {
-          const loc = await getCurrentLocation();
-          setRealLocation(loc);
-        } catch(e) {
-          console.error("Location access denied or failed", e);
-        }
-      }
-      pushScreen('post_job');
+    requireProfile(() => {
+      requireLocation('poster', () => {
+        pushScreen('post_job');
+      });
     });
   };
 
@@ -48,11 +43,11 @@ const PosterHomeScreen = () => {
   const displayDraftJobs = draftJobs;
 
   const [activeDropdownId, setActiveDropdownId] = useState(null);
-  const LPU_EXAMPLES = [
-    "Need someone to deliver Blinkit parcel from main gate to BH 3 - ₹30",
-    "Need 5 players for a friendly cricket match near BH 4 playground - ₹500",
-    "Does anyone have a second-hand workbook for CSC 321? - ₹80",
-    "Anybody going to Jalandhar Cantt station? Let's split a cab from main gate"
+  const EXAMPLE_TASKS = [
+    "Need someone to pick up urgent medicines and deliver to my parents - ₹150",
+    "Need 2 people to help shift heavy furniture during house moving - ₹500",
+    "Need someone to stand in queue for a hospital OPD token early morning - ₹250",
+    "Need urgent help to fix a leaking tap in my kitchen - ₹300"
   ];
 
   const [exampleIndex, setExampleIndex] = useState(0);
@@ -63,7 +58,7 @@ const PosterHomeScreen = () => {
       const interval = setInterval(() => {
         setFadeState('fade-out');
         setTimeout(() => {
-          setExampleIndex(prev => (prev + 1) % LPU_EXAMPLES.length);
+          setExampleIndex(prev => (prev + 1) % EXAMPLE_TASKS.length);
           setFadeState('fade-in');
         }, 300);
       }, 2000);
@@ -147,12 +142,12 @@ const PosterHomeScreen = () => {
               
               <div className="min-h-[48px] flex items-center justify-center px-4 w-full">
                 <p className={`text-sm font-extrabold text-gray-700 italic leading-relaxed transition-opacity duration-300 ${fadeState === 'fade-out' ? 'opacity-0' : 'opacity-100'}`}>
-                  "{LPU_EXAMPLES[exampleIndex]}"
+                  "{EXAMPLE_TASKS[exampleIndex]}"
                 </p>
               </div>
 
               <div className="flex justify-center space-x-1.5 pt-1">
-                {LPU_EXAMPLES.map((_, idx) => (
+                {EXAMPLE_TASKS.map((_, idx) => (
                   <div 
                     key={idx}
                     className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === exampleIndex ? 'bg-orange-500 w-3' : 'bg-orange-200'}`}

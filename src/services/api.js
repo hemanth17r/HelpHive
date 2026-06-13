@@ -3,9 +3,75 @@ import { parseEWKBPoint } from '../utils/location';
 
 export const api = {
   supabase,
+  
+  // --- Auth API ---
+  loginWithGoogle: async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+    return { data, error };
+  },
+
+  loginWithMagicLink: async (email) => {
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: window.location.origin
+      }
+    });
+    return { data, error };
+  },
+
+  logout: async () => {
+    const { error } = await supabase.auth.signOut();
+    return { error };
+  },
+
+  getSession: async () => {
+    const { data, error } = await supabase.auth.getSession();
+    return { data, error };
+  },
+
   // --- Jobs API ---
   fetchJobs: async () => {
-    const { data, error } = await supabase.from('jobs').select('*');
+    const userId = localStorage.getItem('userId');
+    const role = localStorage.getItem('activeRole');
+    
+    let query = supabase.from('jobs').select('*');
+    
+    // Poster only sees their own jobs
+    if (role === 'poster') {
+      if (userId) {
+        query = query.eq('poster_id', userId);
+      } else {
+        return { data: [], error: null };
+      }
+    } 
+    // Tasker only sees jobs offered to them or assigned to them, excluding their own posted jobs
+    else if (role === 'tasker') {
+      if (!userId) return { data: [], error: null };
+      
+      // Get all pending offers for this tasker
+      const { data: offers } = await supabase
+        .from('job_offers')
+        .select('job_id')
+        .eq('tasker_id', userId)
+        .eq('status', 'pending');
+        
+      const offerJobIds = offers ? offers.map(o => o.job_id) : [];
+      
+      if (offerJobIds.length > 0) {
+        query = query.neq('poster_id', userId).or(`tasker_id.eq.${userId},id.in.(${offerJobIds.join(',')})`);
+      } else {
+        query = query.neq('poster_id', userId).eq('tasker_id', userId);
+      }
+    }
+
+    const { data, error } = await query;
     if (data) {
       const posterIds = [...new Set(data.map(j => j.poster_id).filter(Boolean))];
       const taskerIds = [...new Set(data.map(j => j.tasker_id).filter(Boolean))];
@@ -55,8 +121,18 @@ export const api = {
       people_needed: jobData.peopleNeeded,
       amount: jobData.amount,
       location: jobData.locationStr, // formatted POINT(...)
-      otp: jobData.otp
+      primary_address_id: jobData.primaryAddressId || null,
+      otp: jobData.otp,
+      v2_status: 'searching',
+      status: 'open'
     }).select().single();
+    
+    if (data) {
+      // Trigger Wave 1 automatically
+      supabase.rpc('dispatch_job_wave', { p_job_id: data.id, p_wave_number: 1 }).then(({ error: waveError }) => {
+        if (waveError) console.error("Wave 1 dispatch failed:", waveError);
+      });
+    }
     
     return { data, error };
   },
@@ -81,26 +157,31 @@ export const api = {
     return { data, error };
   },
 
-  sendNotification: async (userId, title, body, actionUrl, type = 'system') => {
-    // Check if user is online before sending notifications
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_online')
-        .eq('id', userId)
-        .single();
-        
-      if (profile && profile.is_online === false) {
-        console.log(`User ${userId} is offline. Skipping notification.`);
-        return { data: null, error: null, skipped: true };
-      }
-    } catch (err) {
-      console.warn("Failed to check recipient's online status, proceeding with notification:", err);
-    }
+  acceptJobOffer: async (jobId, taskerId) => {
+    const { data, error } = await supabase.rpc('accept_job_offer', {
+      p_job_id: jobId,
+      p_tasker_id: taskerId
+    });
+    return { data, error };
+  },
 
+  dispatchJobWave: async (jobId, waveNumber) => {
+    const { data, error } = await supabase.rpc('dispatch_job_wave', {
+      p_job_id: jobId,
+      p_wave_number: waveNumber
+    });
+    return { data, error };
+  },
+
+  updateLastActive: async () => {
+    const { data, error } = await supabase.rpc('update_last_active');
+    return { data, error };
+  },
+
+  sendNotification: async (userId, title, body, actionUrl, type = 'system', role = null) => {
     // 1. Try to invoke edge function (sends push AND saves to DB)
     const { data, error } = await supabase.functions.invoke('push-notification', {
-      body: { user_id: userId, title, body, action_url: actionUrl, type }
+      body: { user_id: userId, title, body, action_url: actionUrl, type, role }
     });
 
     // 2. If edge function fails (e.g. not deployed yet), fallback to just inserting into DB so in-app works
@@ -113,11 +194,55 @@ export const api = {
           type,
           title,
           body,
-          action_url: actionUrl
+          action_url: actionUrl,
+          role
         });
     }
     
     return { data, error };
+  },
+
+  notifyAdmin: async (title, body) => {
+    try {
+      const { data: adminProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('phone', '9347442426')
+        .single();
+      
+      if (adminProfile && adminProfile.id) {
+        await api.sendNotification(adminProfile.id, title, body, null, 'admin_alert');
+      }
+    } catch (err) {
+      console.warn("Failed to notify admin:", err);
+    }
+  },
+
+  // --- V2 Notification Strategy ---
+  triggerDensityNudge: async (categoryId, locationStr, metrics) => {
+    // Implementation outline for Notification Throttling
+    // Uses MARKETPLACE_RULES.NOTIFICATION_THROTTLING
+    
+    // 1. Check last nudge timestamp for this category/location from DB or Redis
+    // const lastNudge = await getLastNudgeTime(categoryId, locationStr);
+    
+    // 2. Calculate hours since last nudge
+    // const hoursSinceLast = (Date.now() - lastNudge) / (1000 * 60 * 60);
+    
+    // 3. Evaluate cooldown override (demand spike)
+    // const demandGrowth = calculateDemandGrowth(metrics);
+    // const isSpike = demandGrowth >= MARKETPLACE_RULES.NOTIFICATION_THROTTLING.MIN_DEMAND_SPIKE_PERCENTAGE;
+    
+    // 4. Trigger if cooldown elapsed OR demand spike overrides it
+    // if (hoursSinceLast >= MARKETPLACE_RULES.NOTIFICATION_THROTTLING.COOLDOWN_HOURS || isSpike) {
+    //   console.log(`[Notification] Triggering Density Nudge for ${categoryId}`);
+    //   await sendDensityNudgePushNotifications(categoryId, locationStr);
+    //   await updateLastNudgeTime(categoryId, locationStr, Date.now());
+    // } else {
+    //   console.log(`[Notification] Density Nudge throttled for ${categoryId} (Cooldown active)`);
+    // }
+    
+    return { success: true };
   },
 
   subscribeToJobs: (callback) => {
@@ -126,9 +251,104 @@ export const api = {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
         callback();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'job_offers' }, () => {
+        callback();
+      })
       .subscribe();
       
     return { unsubscribe: () => supabase.removeChannel(channel) };
+  },
+
+  // --- Addresses API ---
+  fetchAddresses: async (userId) => {
+    const { data, error } = await supabase
+      .from('user_addresses')
+      .select('*')
+      .eq('user_id', userId)
+      .order('is_default', { ascending: false })
+      .order('last_used_at', { ascending: false });
+    
+    if (data) {
+      const mapped = data.map(addr => {
+        const coords = parseEWKBPoint(addr.coordinates) || { lng: 0, lat: 0 };
+        return {
+          id: addr.id,
+          type: addr.label || 'Other',
+          city: '', 
+          area: '', 
+          completeAddress: addr.formatted_address,
+          landmark: addr.landmark,
+          isDefault: addr.is_default,
+          lat: coords.lat,
+          lng: coords.lng,
+          lastUsedAt: addr.last_used_at
+        };
+      });
+      return { data: mapped, error };
+    }
+    return { data, error };
+  },
+
+  createAddress: async (userId, address) => {
+    const coordsStr = `POINT(${address.lng || 0} ${address.lat || 0})`;
+    const { data, error } = await supabase.from('user_addresses').insert({
+      user_id: userId,
+      label: address.type || 'Other',
+      formatted_address: address.completeAddress || '',
+      landmark: address.landmark || null,
+      coordinates: coordsStr,
+      is_default: address.isDefault || false,
+      last_used_at: new Date().toISOString()
+    }).select().single();
+    
+    if (data) {
+      const coords = parseEWKBPoint(data.coordinates) || { lng: 0, lat: 0 };
+      return { data: {
+        id: data.id,
+        type: data.label,
+        completeAddress: data.formatted_address,
+        landmark: data.landmark,
+        isDefault: data.is_default,
+        lat: coords.lat,
+        lng: coords.lng,
+        lastUsedAt: data.last_used_at
+      }, error };
+    }
+    return { data, error };
+  },
+
+  updateAddress: async (addressId, updates) => {
+    const dbUpdates = {};
+    if (updates.type !== undefined) dbUpdates.label = updates.type;
+    if (updates.completeAddress !== undefined) dbUpdates.formatted_address = updates.completeAddress;
+    if (updates.landmark !== undefined) dbUpdates.landmark = updates.landmark;
+    if (updates.isDefault !== undefined) dbUpdates.is_default = updates.isDefault;
+    if (updates.lastUsedAt !== undefined) dbUpdates.last_used_at = updates.lastUsedAt;
+    
+    if (updates.lat !== undefined && updates.lng !== undefined) {
+      dbUpdates.coordinates = `POINT(${updates.lng} ${updates.lat})`;
+    }
+
+    const { data, error } = await supabase.from('user_addresses').update(dbUpdates).eq('id', addressId).select().single();
+    
+    if (data) {
+      const coords = parseEWKBPoint(data.coordinates) || { lng: 0, lat: 0 };
+      return { data: {
+        id: data.id,
+        type: data.label,
+        completeAddress: data.formatted_address,
+        landmark: data.landmark,
+        isDefault: data.is_default,
+        lat: coords.lat,
+        lng: coords.lng,
+        lastUsedAt: data.last_used_at
+      }, error };
+    }
+    return { data, error };
+  },
+
+  deleteAddress: async (addressId) => {
+    return await supabase.from('user_addresses').delete().eq('id', addressId);
   },
 
   // --- Profiles API ---
@@ -142,9 +362,31 @@ export const api = {
       .from('profiles')
       .select('*')
       .eq('phone', phone)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .is('email', null)
+      .order('created_at', { ascending: false });
+
+    if (error) return { data: null, error };
+    if (!data || data.length === 0) {
+      return { data: null, error: { code: 'PGRST116' } };
+    }
+    return { data: data[0], error: null };
+  },
+
+  findProfileByAuthId: async (authId) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('auth_id', authId)
+      .maybeSingle();
+    return { data, error };
+  },
+
+  findProfileByEmail: async (email) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
     return { data, error };
   },
 
@@ -158,9 +400,49 @@ export const api = {
     if (error) console.error("updateProfile error:", error);
     return { data, error };
   },
+
+  // --- Marketplace Evolution API ---
+  getLocalSupply: async (categoryId, lat, lng, radiusMeters) => {
+    const { data, error } = await supabase.rpc('get_local_supply', {
+      p_category_id: categoryId,
+      p_lat: lat,
+      p_lng: lng,
+      p_radius_meters: radiusMeters
+    });
+    return { count: data, error };
+  },
+
+  joinWaitlist: async (posterId, categoryId, lat, lng) => {
+    const { data, error } = await supabase.rpc('join_waitlist', {
+      p_poster_id: posterId,
+      p_category_id: categoryId,
+      p_lat: lat,
+      p_lng: lng
+    });
+    return { data, error };
+  },
+
+  getWaitlistCount: async (categoryId, lat, lng, radiusMeters) => {
+    const { data, error } = await supabase.rpc('get_waitlist_count', {
+      p_category_id: categoryId,
+      p_lat: lat,
+      p_lng: lng,
+      p_radius_meters: radiusMeters
+    });
+    return { count: data, error };
+  },
   
   upsertUserLocation: async (locationData) => {
     const { data, error } = await supabase.from('user_locations').upsert(locationData);
+    return { data, error };
+  },
+
+  fetchUserLocation: async (userId) => {
+    const { data, error } = await supabase
+      .from('user_locations')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
     return { data, error };
   },
 
@@ -212,6 +494,22 @@ export const api = {
   getRecentEvents: async (limit = 50) => {
     const { data, error } = await supabase.rpc('get_recent_events', { p_limit: limit });
     return { data, error };
+  },
+
+  // --- V2 Marketplace Metrics ---
+  getDemandHotspots: async () => {
+    const { data, error } = await supabase.rpc('get_demand_hotspots');
+    return { data: data || [], error };
+  },
+
+  getCoverageGaps: async () => {
+    const { data, error } = await supabase.rpc('get_coverage_gaps');
+    return { data: data || [], error };
+  },
+
+  getFailedFirstExperiences: async () => {
+    const { data, error } = await supabase.rpc('get_failed_first_experiences');
+    return { data: data || [], error };
   },
 
   // --- Help & Support ---

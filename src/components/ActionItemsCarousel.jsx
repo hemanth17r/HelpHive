@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { User, MapPin, Bell, Briefcase, IndianRupee } from 'lucide-react';
+import { User, MapPin, Bell, Briefcase, IndianRupee, Navigation, Mail } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { NotificationContext } from '../store/NotificationContext';
 import { ToastContext } from '../store/ToastContext';
@@ -7,14 +7,14 @@ import { useProfileCompletion } from '../hooks/useProfileCompletion';
 import { getCurrentLocation } from '../utils/location';
 
 const ActionItemsCarousel = () => {
-  const { requireProfile, pushScreen, setRealLocation, setActiveTab, setTaskerActivityScrollTarget } = useContext(AppContext);
+  const { requireProfile, pushScreen, realLocation, setRealLocation, setActiveTab, setTaskerActivityScrollTarget } = useContext(AppContext);
   const { subscribeToPush, pushSupported, pushPermission } = useContext(NotificationContext);
   const { showToast } = useContext(ToastContext);
   const { missingItems } = useProfileCompletion();
 
   if (missingItems.length === 0) return null;
 
-  const handleLocationRequest = async () => {
+  const handleOsLocationRequest = async () => {
     if (!navigator.geolocation) {
       showToast('Geolocation is not supported by your browser.', 'error');
       return;
@@ -22,11 +22,24 @@ const ActionItemsCarousel = () => {
     try {
       const loc = await getCurrentLocation();
       setRealLocation(loc);
-      showToast('Location enabled successfully!', 'success');
+      showToast('Location permission granted!', 'success');
     } catch (e) {
       console.error("Location access denied or failed", e);
-      showToast(e.message || 'Location permission denied. Please allow location access in your browser settings.', 'error');
+      showToast('Location permission denied. Please enable it in browser settings.', 'error');
     }
+  };
+
+  const handleJobLocationRequest = async () => {
+    // If we don't have OS location permission yet, request it first before opening the map
+    if (navigator.geolocation && !realLocation) {
+      try {
+        const loc = await getCurrentLocation();
+        setRealLocation(loc);
+      } catch (e) {
+        console.log("OS Location denied, proceeding to manual map picker");
+      }
+    }
+    pushScreen('add_edit_address');
   };
 
   const handleNotificationRequest = async () => {
@@ -76,13 +89,21 @@ const ActionItemsCarousel = () => {
       color: 'bg-amber-50 text-amber-700 border-amber-200',
       action: handleProfileRequest
     },
-    location: {
-      id: 'location',
-      icon: MapPin,
+    os_location: {
+      id: 'os_location',
+      icon: Navigation,
       title: 'Enable Location',
       desc: 'Find nearby tasks',
       color: 'bg-red-50 text-red-500 border-red-200',
-      action: handleLocationRequest
+      action: handleOsLocationRequest
+    },
+    job_location: {
+      id: 'job_location',
+      icon: MapPin,
+      title: 'Add Job Location',
+      desc: 'Where do you need help?',
+      color: 'bg-indigo-50 text-indigo-500 border-indigo-200',
+      action: handleJobLocationRequest
     },
     notifications: {
       id: 'notifications',
