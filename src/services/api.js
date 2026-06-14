@@ -9,7 +9,7 @@ export const api = {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: window.location.href
       }
     });
     return { data, error };
@@ -20,7 +20,7 @@ export const api = {
       email,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: window.location.origin
+        emailRedirectTo: window.location.href
       }
     });
     return { data, error };
@@ -353,8 +353,13 @@ export const api = {
 
   // --- Profiles API ---
   fetchProfile: async (userId) => {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    return { data, error };
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      return { data, error };
+    } catch (err) {
+      console.warn("fetchProfile crashed:", err);
+      return { data: null, error: err };
+    }
   },
 
   findProfileByPhone: async (phone) => {

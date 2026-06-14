@@ -1203,8 +1203,9 @@ export const AppProvider = ({ children }) => {
   }, [jobs, currentScreen, currentPostedJob, pushScreen]);
 
   // Reset helper
-  const resetApp = () => {
+  const resetApp = async () => {
     if (userId) trackEvent(EVENTS.LOGOUT, { userId, role });
+    await api.logout();
     setRole(null);
     setUserLocation(null);
     localStorage.removeItem('userLocation');
