@@ -57,14 +57,17 @@ export const useProfileCompletion = () => {
 
   } else {
     // Poster (Hirer)
-    if (hasJobLocation) completionPercentage += 40;
+    if (hasJobLocation) completionPercentage += 30;
     else missingItems.push('job_location');
 
     if (hasValidNameAndPhone) completionPercentage += 30;
     else missingItems.push('profile');
 
-    if (hasNotifications) completionPercentage += 30;
+    if (hasNotifications) completionPercentage += 20;
     else missingItems.push('notifications');
+
+    if (hasOsLocation) completionPercentage += 20;
+    else missingItems.push('os_location');
   }
 
   return {

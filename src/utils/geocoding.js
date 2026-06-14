@@ -60,7 +60,13 @@ export const searchAddress = async (query) => {
 export const reverseGeocode = async (lat, lng) => {
   if (!OLA_MAPS_API_KEY) {
     console.warn('Ola Maps API key is missing. Please add VITE_OLA_MAPS_API_KEY to your .env file.');
-    return null;
+    return {
+      lat: parseFloat(lat),
+      lng: parseFloat(lng),
+      displayName: `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`,
+      fullAddress: `Location at Latitude ${lat}, Longitude ${lng}`,
+      address: []
+    };
   }
 
   try {
@@ -85,9 +91,21 @@ export const reverseGeocode = async (lat, lng) => {
       };
     }
     
-    return null;
+    return {
+      lat: parseFloat(lat),
+      lng: parseFloat(lng),
+      displayName: `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`,
+      fullAddress: `Location at Latitude ${lat}, Longitude ${lng}`,
+      address: []
+    };
   } catch (error) {
     console.error('Error in reverseGeocode:', error);
-    return null;
+    return {
+      lat: parseFloat(lat),
+      lng: parseFloat(lng),
+      displayName: `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`,
+      fullAddress: `Location at Latitude ${lat}, Longitude ${lng}`,
+      address: []
+    };
   }
 };

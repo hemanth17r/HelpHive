@@ -196,8 +196,8 @@ export const AppProvider = ({ children }) => {
         }
       }
 
-      // 4. If still no location, trigger the Blinkit prompt!
-      setShowBlinkitPrompt(true);
+      // 4. If still no location, do not trigger the Blinkit prompt (friction removed)
+      // setShowBlinkitPrompt(true);
     };
 
     initLocation();
@@ -675,6 +675,7 @@ export const AppProvider = ({ children }) => {
           callback();
           return;
         } else if (result.state === 'denied') {
+          showToast('Location permission is blocked. Please enable it in browser settings for automatic location detection.', 'warning');
           callback();
           return;
         }
@@ -693,6 +694,7 @@ export const AppProvider = ({ children }) => {
       setRealLocation(loc);
     } catch(e) {
       console.error("Location access denied or failed", e);
+      showToast('Location permission denied. You can still proceed manually.', 'warning');
     }
     if (locationActionCallback) {
       const cb = locationActionCallback;

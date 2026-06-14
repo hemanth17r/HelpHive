@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import MapView from './MapView';
 import { searchAddress, reverseGeocode } from '../utils/geocoding';
 import { Search, MapPin, Loader2, Navigation } from 'lucide-react';
 import { getCurrentLocation } from '../utils/location';
+import { ToastContext } from '../store/ToastContext';
 
-const LocationPicker = ({ initialLat = 17.3850, initialLng = 78.4867, onLocationChange }) => {
+const LocationPicker = ({ initialLat = 17.3850, initialLng = 78.4867, onLocationChange, onLocationError }) => {
+  const { showToast } = useContext(ToastContext);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -76,18 +78,15 @@ const LocationPicker = ({ initialLat = 17.3850, initialLng = 78.4867, onLocation
     const result = await reverseGeocode(lat, lng);
     setIsGeocoding(false);
     
-    if (result) {
-      setSearchQuery(result.displayName);
-      setResolvedAddressText(result.displayName);
+    const displayName = result?.displayName && result.displayName !== 'Unknown Location'
+      ? result.displayName
+      : `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
       
-      if (onLocationChange) {
-        onLocationChange({ lat, lng, completeAddress: result.displayName });
-      }
-    } else {
-      setResolvedAddressText('Unknown Location');
-      if (onLocationChange) {
-        onLocationChange({ lat, lng, completeAddress: 'Unknown Location' });
-      }
+    setSearchQuery(displayName);
+    setResolvedAddressText(displayName);
+    
+    if (onLocationChange) {
+      onLocationChange({ lat, lng, completeAddress: displayName });
     }
   }
 
@@ -106,6 +105,11 @@ const LocationPicker = ({ initialLat = 17.3850, initialLng = 78.4867, onLocation
       handleReverseGeocode(loc.lat, loc.lng);
     } catch (e) {
       console.error('Failed to get current location', e);
+      if (onLocationError) {
+        onLocationError(e);
+      } else {
+        showToast(e.message || 'Failed to detect location. Please check browser settings.', 'error');
+      }
     }
   };
 

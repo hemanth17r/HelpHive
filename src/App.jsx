@@ -47,7 +47,6 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import NotificationsScreen from './screens/NotificationsScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import LocationPermissionModal from './components/LocationPermissionModal';
-import LocationSelectorModal from './components/LocationSelectorModal';
 import { useProfileCompletion } from './hooks/useProfileCompletion';
 
 // Navigation Components
@@ -78,7 +77,9 @@ const AppContent = () => {
     locationActionRole,
     completeLocationAction,
     cancelLocationAction,
-    setLocationModalOpen
+    setLocationModalOpen,
+    realLocation,
+    setRealLocation
   } = useContext(AppContext);
 
   const { 
@@ -139,28 +140,53 @@ const AppContent = () => {
     pushScreen('notifications');
   };
 
-  // First Line of Defense: Ask for OS Permissions on first app load
+  // First Line of Defense: Ask for OS Permissions on first app load (industry standard)
   React.useEffect(() => {
-    const hasPrompted = localStorage.getItem('hasPromptedInitialPermissions');
-    if (!hasPrompted && currentScreen !== 'landing') {
-      // Delay slightly to not interrupt immediate UI rendering
-      const timer = setTimeout(() => {
-        // Notification Permission
-        if ('Notification' in window && Notification.permission === 'default') {
-          Notification.requestPermission();
+    if (currentScreen === 'landing') return;
+
+    // Delay slightly to not interrupt immediate UI rendering
+    const timer = setTimeout(async () => {
+      // 1. Notification Permission System Pop-up
+      if (pushSupported && (pushPermission === 'prompt' || pushPermission === 'default')) {
+        try {
+          await subscribeToPush();
+        } catch (e) {
+          console.log("Initial notification subscription prompt failed/ignored", e);
         }
-        // Location Permission
-        if (navigator.geolocation) {
+      }
+
+      // 2. Location Permission System Pop-up
+      if (navigator.geolocation) {
+        let shouldPromptLocation = false;
+        if (navigator.permissions && navigator.permissions.query) {
+          try {
+            const res = await navigator.permissions.query({ name: 'geolocation' });
+            if (res.state === 'prompt') {
+              shouldPromptLocation = true;
+            }
+          } catch (e) {
+            shouldPromptLocation = !realLocation;
+          }
+        } else {
+          shouldPromptLocation = !realLocation;
+        }
+
+        if (shouldPromptLocation) {
           navigator.geolocation.getCurrentPosition(
-            (pos) => { console.log("Initial location granted"); },
-            (err) => { console.log("Initial location denied/failed"); }
+            (pos) => {
+              console.log("Initial location granted");
+              setRealLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            },
+            (err) => {
+              console.log("Initial location denied/failed", err);
+            }
           );
         }
-        localStorage.setItem('hasPromptedInitialPermissions', 'true');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [currentScreen]);
+      }
+    }, 2000); // 2 seconds delay for a smooth entry
+
+    return () => clearTimeout(timer);
+  }, [currentScreen, pushSupported, pushPermission]);
 
   // Render correct screen based on routing state
   const renderScreen = () => {
@@ -229,8 +255,8 @@ const AppContent = () => {
         {role && isMainScreen && currentScreen !== 'landing' && (
           <header className="h-[72px] mx-auto w-full lg:max-w-2xl bg-white border-b border-border lg:border-x lg:border-gray-100 flex items-center px-4 md:px-6 shrink-0 justify-between shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative z-10">
             
-            {/* Left: Location & Back Button */}
-            <div className="flex items-center flex-1 justify-start overflow-hidden pr-2">
+            {/* Left: Branding & Back Button */}
+            <div className="flex items-center space-x-3 justify-start overflow-hidden pr-2">
               {!isMainScreen && (
                 <button 
                   onClick={popScreen}
@@ -240,31 +266,14 @@ const AppContent = () => {
                   <span className="hidden sm:inline">Back</span>
                 </button>
               )}
-              {role !== 'tasker' && (
-                <button 
-                  onClick={() => setLocationModalOpen(true)}
-                  className="flex items-center space-x-2 text-left hover:opacity-85 active:scale-98 transition-all cursor-pointer shrink-0 max-w-[200px] sm:max-w-[250px] md:max-w-[300px]"
-                >
-                  <MapPin className="w-5 h-5 md:w-6 md:h-6 text-primary shrink-0" />
-                  <div className="flex flex-col items-start leading-none overflow-hidden">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Your Location</span>
-                    <span className="text-sm md:text-base font-black text-dark truncate w-full flex items-center gap-0.5">
-                      {formatHeaderLocation(userLocation)}
-                      <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
-                    </span>
-                  </div>
-                </button>
-              )}
-            </div>
-
-            {/* Center: Branding */}
-            <div 
-              className="flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity absolute left-1/2 -translate-x-1/2"
-              onClick={resetApp}
-            >
-              <span className="text-lg md:text-xl font-black text-dark tracking-tight hidden sm:block bg-white px-2 rounded-md shadow-[0_0_10px_rgba(255,255,255,1)]">
-                Help<span className="text-primary">Hive</span>
-              </span>
+              <div 
+                className="flex items-center cursor-pointer hover:opacity-90 transition-opacity shrink-0"
+                onClick={resetApp}
+              >
+                <span className="text-lg md:text-xl font-black text-dark tracking-tight bg-white px-2 rounded-md shadow-[0_0_10px_rgba(255,255,255,1)]">
+                  Help<span className="text-primary">Hive</span>
+                </span>
+              </div>
             </div>
 
             {/* Right: Actions */}
@@ -341,22 +350,15 @@ const AppContent = () => {
             style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}
           >
             <div className="flex items-center">
-              {/* Location Badge (Mobile) */}
-              {role !== 'tasker' && (
-                <button 
-                  onClick={() => setLocationModalOpen(true)}
-                  className="flex items-center space-x-2 text-left hover:opacity-85 active:scale-98 transition-all cursor-pointer shrink-0 max-w-[260px] sm:max-w-[320px]"
-                >
-                  <MapPin className="w-5 h-5 text-primary shrink-0" />
-                  <div className="flex flex-col items-start leading-none overflow-hidden">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Your Location</span>
-                    <span className="text-base font-black text-dark truncate w-full flex items-center gap-0.5">
-                      {formatHeaderLocation(userLocation)}
-                      <ChevronDown className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-                    </span>
-                  </div>
-                </button>
-              )}
+              {/* Branding (Mobile) */}
+              <div 
+                className="flex items-center cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={resetApp}
+              >
+                <span className="text-lg font-black text-dark tracking-tight">
+                  Help<span className="text-primary">Hive</span>
+                </span>
+              </div>
             </div>
             
             {/* Right side actions */}
@@ -433,8 +435,6 @@ const AppContent = () => {
       onAllow={completeLocationAction}
       role={locationActionRole}
     />
-
-    <LocationSelectorModal />
 
     <PWAInstallPrompt />
 
