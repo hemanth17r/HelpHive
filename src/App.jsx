@@ -340,8 +340,8 @@ const AppContent = () => {
         </div>
       </div>
 
-      {/* Mobile/Tablet Layout (below 1024px) */}
-      <div className="lg:hidden w-full h-[100dvh] bg-white relative flex flex-col overflow-hidden transition-all duration-300">
+      {/* Mobile/Tablet Card Layout (below 1024px) */}
+      <div className="lg:hidden w-full h-screen bg-white relative flex flex-col overflow-hidden transition-all duration-300">
         
         {/* Top bar on Mobile */}
         {role && isMainScreen && currentScreen !== 'landing' && (
