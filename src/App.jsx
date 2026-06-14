@@ -246,7 +246,7 @@ const AppContent = () => {
   const showBottomNav = currentScreen === 'tasker_home' || currentScreen === 'poster_home';
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-0 md:p-4 lg:p-0 select-none font-sans overflow-hidden">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-0 select-none font-sans overflow-hidden">
       
       {/* Desktop Dashboard Layout (above 1024px) */}
       <div className="hidden lg:flex flex-col w-full h-screen bg-[#F8F9FA] overflow-hidden">
@@ -340,8 +340,8 @@ const AppContent = () => {
         </div>
       </div>
 
-      {/* Mobile/Tablet Card Layout (below 1024px) */}
-      <div className="lg:hidden w-full max-w-md h-screen md:h-[844px] md:max-h-[90vh] bg-white md:rounded-[40px] md:shadow-2xl md:border-[8px] md:border-dark relative flex flex-col overflow-hidden transition-all duration-300">
+      {/* Mobile/Tablet Layout (below 1024px) */}
+      <div className="lg:hidden w-full md:max-w-md h-[100dvh] bg-white relative flex flex-col overflow-hidden transition-all duration-300 md:shadow-2xl md:border-x md:border-gray-200">
         
         {/* Top bar on Mobile */}
         {role && isMainScreen && currentScreen !== 'landing' && (
