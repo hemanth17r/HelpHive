@@ -25,7 +25,7 @@ const BottomNav = () => {
   };
 
   return (
-    <div className="grid grid-cols-3 items-center bg-white border-t border-border py-2.5 shadow-lg shrink-0 w-full">
+    <div className="grid grid-cols-3 items-center bg-white border-t border-border py-2.5 pb-safe shadow-lg shrink-0 w-full">
       <button
         onClick={handleHomeClick}
         className={`flex flex-col items-center space-y-1 px-1 py-1.5 rounded-xl transition-all cursor-pointer ${

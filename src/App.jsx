@@ -246,10 +246,10 @@ const AppContent = () => {
   const showBottomNav = currentScreen === 'tasker_home' || currentScreen === 'poster_home';
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-0 select-none font-sans overflow-hidden">
+    <div className="min-h-dvh bg-gray-100 flex items-center justify-center p-0 select-none font-sans overflow-hidden">
       
       {/* Desktop Dashboard Layout (above 1024px) */}
-      <div className="hidden lg:flex flex-col w-full h-screen bg-[#F8F9FA] overflow-hidden">
+      <div className="hidden lg:flex flex-col w-full h-dvh bg-[#F8F9FA] overflow-hidden">
         
         {/* Top Header Bar */}
         {role && isMainScreen && currentScreen !== 'landing' && (
@@ -325,7 +325,7 @@ const AppContent = () => {
 
           {/* Main scrollable body */}
           <main className="flex-1 overflow-y-auto relative flex justify-center w-full bg-[#F8F9FA]">
-            <div key={currentScreen} className="w-full lg:max-w-2xl bg-white lg:shadow-[0_0_20px_rgba(0,0,0,0.03)] lg:border-x lg:border-gray-100 flex flex-col min-h-screen relative animate-[fadeIn_200ms_ease-in-out]">
+            <div key={currentScreen} className="w-full lg:max-w-2xl bg-white lg:shadow-[0_0_20px_rgba(0,0,0,0.03)] lg:border-x lg:border-gray-100 flex flex-col min-h-dvh relative animate-[fadeIn_200ms_ease-in-out]">
               <ErrorBoundary key={currentScreen}>
                 {renderScreen()}
               </ErrorBoundary>
@@ -341,7 +341,7 @@ const AppContent = () => {
       </div>
 
       {/* Mobile/Tablet Card Layout (below 1024px) */}
-      <div className="lg:hidden w-full h-screen bg-white relative flex flex-col overflow-hidden transition-all duration-300">
+      <div className="lg:hidden w-full h-dvh bg-white relative flex flex-col overflow-hidden transition-all duration-300">
         
         {/* Top bar on Mobile */}
         {role && isMainScreen && currentScreen !== 'landing' && (

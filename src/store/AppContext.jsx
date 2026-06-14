@@ -503,6 +503,10 @@ export const AppProvider = ({ children }) => {
 
           pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
           showToast('Welcome back!', 'success');
+          
+          if (window.location.hash.includes('access_token')) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
         } else {
           console.error('[Auth] Could not find or create a profile for auth user:', authId);
         }
@@ -1216,7 +1220,9 @@ export const AppProvider = ({ children }) => {
     setIsAdmin(false);
     localStorage.removeItem('activeRole');
     localStorage.removeItem('userId');
-    setScreenStack(['landing']);
+    localStorage.removeItem('isOnline');
+    localStorage.removeItem('helphive_addresses_v2');
+    pushScreen('landing', true);
     setAcceptedJob(null);
     setCurrentPostedJob(null);
     setCrewTaskers([]);
