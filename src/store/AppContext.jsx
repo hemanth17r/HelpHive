@@ -551,9 +551,13 @@ export const AppProvider = ({ children }) => {
           }
         } else {
           console.error('[Auth] Could not find or create a profile for auth user:', authId);
+          showToast('Login failed: Could not load user profile.', 'error');
+          resetApp();
         }
       } catch (err) {
         console.error('[Auth] Unexpected error in onAuthStateChange handler:', err);
+        showToast('Login failed due to an unexpected error.', 'error');
+        resetApp();
       } finally {
         authProcessingRef.current = false;
       }
@@ -563,6 +567,20 @@ export const AppProvider = ({ children }) => {
       subscription?.unsubscribe();
     };
   }, []);
+
+  // Guard stuck auth_loading screens
+  useEffect(() => {
+    if (currentScreen === 'auth_loading') {
+      const timer = setTimeout(() => {
+        if (currentScreen === 'auth_loading') {
+          console.warn('[Auth] Auth loading timed out after 8 seconds. Resetting stack.');
+          showToast('Login timed out. Please try again.', 'error');
+          resetApp();
+        }
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentScreen]);
 
 
 
