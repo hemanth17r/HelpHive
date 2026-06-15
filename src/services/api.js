@@ -9,7 +9,7 @@ export const api = {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.href
+        redirectTo: window.location.origin
       }
     });
     return { data, error };
@@ -20,7 +20,7 @@ export const api = {
       email,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: window.location.href
+        emailRedirectTo: window.location.origin
       }
     });
     return { data, error };

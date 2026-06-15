@@ -45,6 +45,11 @@ export const AppProvider = ({ children }) => {
   
   // Navigation stack state
   const [screenStack, setScreenStack] = useState(() => {
+    const hash = window.location.hash;
+    const search = window.location.search;
+    if (hash.includes('access_token') || search.includes('code=')) {
+      return ['auth_loading'];
+    }
     const activeRole = localStorage.getItem('activeRole');
     const storedUserId = localStorage.getItem('userId');
     if (activeRole && storedUserId) {
@@ -425,6 +430,13 @@ export const AppProvider = ({ children }) => {
 
         if (profileByAuth) {
           profile = profileByAuth;
+          
+          // Update name from Google if it is still 'New User'
+          if (profile.name === 'New User' && session.user.user_metadata?.full_name) {
+            const googleName = session.user.user_metadata.full_name;
+            await api.updateProfile(profile.id, { name: googleName });
+            profile.name = googleName;
+          }
         } else if (email) {
           // 2. Try to find by email
           const { data: profileByEmail, error: emailErr } = await api.findProfileByEmail(email);
@@ -504,7 +516,7 @@ export const AppProvider = ({ children }) => {
           pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
           showToast('Welcome back!', 'success');
           
-          if (window.location.hash.includes('access_token')) {
+          if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
             window.history.replaceState({}, document.title, window.location.pathname);
           }
         } else {

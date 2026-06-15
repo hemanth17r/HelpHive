@@ -191,6 +191,13 @@ const AppContent = () => {
   // Render correct screen based on routing state
   const renderScreen = () => {
     switch (currentScreen) {
+      case 'auth_loading':
+        return (
+          <div className="flex-1 flex flex-col items-center justify-center min-h-dvh bg-white w-full">
+            <div className="w-10 h-10 border-4 border-gray-200 border-t-primary rounded-full animate-spin mb-4"></div>
+            <p className="text-sm font-bold text-gray-500">Securely logging you in...</p>
+          </div>
+        );
       case 'landing':
         return <LandingScreen />;
       case 'service_unavailable':
