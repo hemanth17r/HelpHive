@@ -78,18 +78,6 @@ const LandingScreen = () => {
         </button>
       </div>
 
-      <div className="flex justify-center mb-8">
-        <button 
-          onClick={() => {
-            localStorage.removeItem('activeRole');
-            setShowLoginModal(true);
-          }}
-          className="text-xs font-bold text-gray-400 hover:text-primary transition-colors cursor-pointer flex items-center space-x-1"
-        >
-          <span>Already have an account?</span>
-          <span className="text-primary underline">Log In</span>
-        </button>
-      </div>
 
       {/* Footer Branding */}
       <div className="text-center text-[9px] font-black text-gray-400 tracking-wider uppercase shrink-0 pt-2 border-t border-border/10">
