@@ -355,6 +355,18 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     if (userId && !userProfile) {
       const fetchProfile = async () => {
+        // Validate that we have a valid active Supabase Auth session first
+        const { data: sessionData } = await api.getSession();
+        if (!sessionData?.session) {
+          console.warn('[Auth] No active Supabase session found on startup. Logging out.');
+          localStorage.removeItem('userId');
+          localStorage.removeItem('activeRole');
+          setUserId(null);
+          setRole(null);
+          setScreenStack(['landing']);
+          return;
+        }
+
         const { data } = await api.fetchProfile(userId);
         if (data) {
           const verifiedPhones = data.verifiedPhones || [];
@@ -407,6 +419,20 @@ export const AppProvider = ({ children }) => {
   const authProcessingRef = useRef(false);
   useEffect(() => {
     const { data: { subscription } } = api.supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        if (localStorage.getItem('userId')) {
+          localStorage.removeItem('userId');
+          localStorage.removeItem('activeRole');
+          localStorage.removeItem('isOnline');
+          setUserId(null);
+          setRole(null);
+          setUserProfileState(null);
+          setScreenStack(['landing']);
+          setActiveTab('home');
+        }
+        return;
+      }
+
       // Only handle sign-in events, ignore token refreshes etc.
       if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return;
       if (!session?.user) return;
@@ -480,9 +506,13 @@ export const AppProvider = ({ children }) => {
         if (profile) {
           setUserId(profile.id);
           localStorage.setItem('userId', profile.id);
-          const finalRole = profile.role || localStorage.getItem('activeRole') || 'tasker';
+          const finalRole = localStorage.getItem('activeRole') || profile.role || 'tasker';
           setRole(finalRole);
           localStorage.setItem('activeRole', finalRole);
+
+          if (profile.role !== finalRole) {
+            api.updateProfile(profile.id, { role: finalRole }).then();
+          }
 
           const verifiedPhones = profile.verifiedPhones || [];
 
@@ -608,40 +638,8 @@ export const AppProvider = ({ children }) => {
         }));
       }
       return { success: true };
-    } else if (profileData.phone) {
-      const { data, error } = await api.createProfile({
-        name: profileData.name || 'Guest User',
-        phone: profileData.phone,
-        role: role,
-        rating: profileData.rating || 5.0,
-        tasks_completed: profileData.tasksCompleted || 0,
-        skills: profileData.skills || [],
-        bird: profileData.bird !== undefined ? profileData.bird : selectedBird,
-        location: profileData.locationStr || null,
-        upi_id: profileData.upiId || null
-      });
-
-      if (error) {
-        console.error('setUserProfile: DB create failed, rolling back', error);
-        if (previousProfile) {
-          setUserProfileState(previousProfile);
-        }
-        return { success: false, error: 'Failed to create profile. Please try again.' };
-      }
-
-      if (data) {
-        setUserId(data.id);
-        localStorage.setItem('userId', data.id);
-        setUserProfileState(prev => ({
-          ...prev,
-          id: data.id
-        }));
-        trackEvent(EVENTS.SIGNUP, { userId: data.id, role: role });
-        api.notifyAdmin('New User Registration', `A new user (${profileData.phone}) just signed up!`);
-      }
-      return { success: true };
     }
-    return { success: true };
+    return { success: false, error: 'User is not logged in.' };
   };
 
   const [activeTab, setActiveTabState] = useState('home'); // For tasker: 'home' | 'profile'
@@ -838,13 +836,16 @@ export const AppProvider = ({ children }) => {
   }
 
   const switchRole = async (newRole) => {
+    if (!userId) {
+      setScreenStack(['landing']);
+      return;
+    }
+
     setRole(newRole);
     localStorage.setItem('activeRole', newRole);
     
-    if (userId) {
-      api.updateProfile(userId, { role: newRole }).then();
-      trackEvent(EVENTS.ROLE_SWITCH, { userId, role: newRole });
-    }
+    api.updateProfile(userId, { role: newRole }).then();
+    trackEvent(EVENTS.ROLE_SWITCH, { userId, role: newRole });
 
     if (newRole === 'tasker') {
       pushScreen('tasker_home');
@@ -1221,7 +1222,10 @@ export const AppProvider = ({ children }) => {
   // Reset helper
   const resetApp = async () => {
     if (userId) trackEvent(EVENTS.LOGOUT, { userId, role });
-    await api.logout();
+    
+    // Fire and forget the logout API call so the UI updates immediately
+    api.logout().catch(e => console.warn('[Auth] Error during logout API call:', e));
+    
     setRole(null);
     setUserLocation(null);
     localStorage.removeItem('userLocation');

@@ -5,11 +5,16 @@ import Tooltip from '../components/Tooltip';
 import LoginModal from '../components/LoginModal';
 
 const LandingScreen = () => {
-  const { switchRole } = useContext(AppContext);
+  const { switchRole, userId } = useContext(AppContext);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const selectRole = (selectedRole) => {
-    switchRole(selectedRole);
+    if (!userId) {
+      localStorage.setItem('activeRole', selectedRole);
+      setShowLoginModal(true);
+    } else {
+      switchRole(selectedRole);
+    }
   };
 
 
@@ -75,7 +80,10 @@ const LandingScreen = () => {
 
       <div className="flex justify-center mb-8">
         <button 
-          onClick={() => setShowLoginModal(true)}
+          onClick={() => {
+            localStorage.removeItem('activeRole');
+            setShowLoginModal(true);
+          }}
           className="text-xs font-bold text-gray-400 hover:text-primary transition-colors cursor-pointer flex items-center space-x-1"
         >
           <span>Already have an account?</span>
