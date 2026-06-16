@@ -55,20 +55,66 @@ export const api = {
     else if (role === 'tasker') {
       if (!userId) return { data: [], error: null };
       
-      // Get all pending offers for this tasker
+      // Get all pending and accepted offers for this tasker
       const { data: offers } = await supabase
         .from('job_offers')
-        .select('job_id')
+        .select('job_id, status, expires_at')
         .eq('tasker_id', userId)
-        .eq('status', 'pending');
+        .in('status', ['pending', 'accepted']);
         
       const offerJobIds = offers ? offers.map(o => o.job_id) : [];
+      const acceptedJobIds = offers ? offers.filter(o => o.status === 'accepted').map(o => o.job_id) : [];
       
       if (offerJobIds.length > 0) {
         query = query.neq('poster_id', userId).or(`tasker_id.eq.${userId},id.in.(${offerJobIds.join(',')})`);
       } else {
         query = query.neq('poster_id', userId).eq('tasker_id', userId);
       }
+      
+      const { data, error } = await query;
+      if (data) {
+        const posterIds = [...new Set(data.map(j => j.poster_id).filter(Boolean))];
+        const taskerIds = [...new Set(data.map(j => j.tasker_id).filter(Boolean))];
+        const profileIds = [...new Set([...posterIds, ...taskerIds])];
+        
+        let profileMap = {};
+        if (profileIds.length > 0) {
+          const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone, upi_id').in('id', profileIds);
+          if (profiles) {
+            profiles.forEach(p => { profileMap[p.id] = p; });
+          }
+        }
+
+        const mappedJobs = data.map(j => {
+          const coords = parseEWKBPoint(j.location) || { lng: 0, lat: 0 };
+          const poster = profileMap[j.poster_id] || {};
+          const tasker = profileMap[j.tasker_id] || {};
+          const offer = offers ? offers.find(o => o.job_id === j.id) : null;
+          
+          return {
+            ...j,
+            posterId: j.poster_id,
+            taskerId: j.tasker_id,
+            skillId: j.skill_id,
+            peopleNeeded: j.people_needed,
+            timePosted: j.created_at,
+            lng: coords.lng,
+            lat: coords.lat,
+            posterName: poster.name,
+            posterBird: poster.bird,
+            posterPhone: poster.phone,
+            taskerName: tasker.name,
+            taskerBird: tasker.bird,
+            taskerPhone: tasker.phone,
+            taskerUpi: tasker.upi_id,
+            isAcceptedByMe: acceptedJobIds.includes(j.id) || j.tasker_id === userId,
+            isPendingOffer: offerJobIds.includes(j.id) && !acceptedJobIds.includes(j.id),
+            offerExpiresAt: offer ? offer.expires_at : null
+          };
+        });
+        return { data: mappedJobs, error };
+      }
+      return { data, error };
     }
 
     const { data, error } = await query;
@@ -163,6 +209,48 @@ export const api = {
       p_tasker_id: taskerId
     });
     return { data, error };
+  },
+
+  declineJobOffer: async (jobId, taskerId) => {
+    const { data, error } = await supabase.rpc('decline_job_offer', {
+      p_job_id: jobId,
+      p_tasker_id: taskerId
+    });
+    return { data, error };
+  },
+
+  cancelAcceptedJobOffer: async (jobId, taskerId) => {
+    const { data, error } = await supabase.rpc('cancel_accepted_job_offer', {
+      p_job_id: jobId,
+      p_tasker_id: taskerId
+    });
+    return { data, error };
+  },
+
+  commitPartialCrew: async (jobId) => {
+    const { data, error } = await supabase.rpc('commit_partial_crew', {
+      p_job_id: jobId
+    });
+    return { data, error };
+  },
+  
+  fetchJobCrew: async (jobId) => {
+    const { data, error } = await supabase
+      .from('job_offers')
+      .select('tasker_id, profiles(id, name, bird, phone, upi_id)')
+      .eq('job_id', jobId)
+      .eq('status', 'accepted');
+      
+    if (data) {
+      return { data: data.map(d => ({
+        id: d.profiles.id,
+        name: d.profiles.name,
+        bird: d.profiles.bird,
+        phone: d.profiles.phone,
+        upiId: d.profiles.upi_id
+      })), error };
+    }
+    return { data: [], error };
   },
 
   dispatchJobWave: async (jobId, waveNumber) => {

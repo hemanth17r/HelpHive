@@ -151,15 +151,6 @@ const LocationPicker = ({ initialLat = 17.3850, initialLng = 78.4867, onLocation
         )}
       </div>
 
-      {/* Floating GPS Button */}
-      <button 
-        onClick={handleUseCurrentLocation}
-        className="absolute bottom-6 right-4 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer border border-gray-100"
-        aria-label="Use current location"
-      >
-        <Navigation className="w-5 h-5" />
-      </button>
-
       {/* The Map itself */}
       <div className="w-full h-full flex-1 relative z-10">
         <MapView 
@@ -172,6 +163,15 @@ const LocationPicker = ({ initialLat = 17.3850, initialLng = 78.4867, onLocation
           resolvedAddressText={isGeocoding ? 'Loading...' : resolvedAddressText}
         />
       </div>
+
+      {/* Floating GPS Button */}
+      <button 
+        onClick={handleUseCurrentLocation}
+        className="absolute bottom-6 right-4 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer border border-gray-100"
+        aria-label="Use current location"
+      >
+        <Navigation className="w-5 h-5" />
+      </button>
     </div>
   );
 };

@@ -2,7 +2,7 @@ import {
   Package,
   HeartHandshake,
   Truck,
-  MapPin,
+  Home,
   Users,
   Laptop,
   Camera,
@@ -18,10 +18,10 @@ const CONFIG_CATEGORIES = [
     description: 'Pickups, deliveries, and errands',
     matchingBehavior: 'location_critical',
     examples: [
-      'Need someone to bring keys from home to office',
-      'Pick up medicines and deliver them',
-      'Deliver important documents nearby',
-      'Collect a parcel and drop it off'
+      'Pick up groceries',
+      'Deliver a package',
+      'Pick up a prescription',
+      'Wait in line for an item'
     ]
   },
   {
@@ -32,39 +32,38 @@ const CONFIG_CATEGORIES = [
     description: 'Queue standing, accompanying, and personal help',
     matchingBehavior: 'location_critical',
     examples: [
-      'Need someone to stand in a queue',
-      'Need help accompanying an elderly family member',
-      'Need someone to wait for a courier',
-      'Looking for a helper for an hour'
+      'Personal shopping help',
+      'Appointment assistance',
+      'Administrative assistance',
+      'Senior companionship'
     ]
   },
   {
     id: 'moving',
-    label: 'Moving & Lifting',
+    label: 'Moving & Heavy Lifting',
     shortLabel: 'Moving',
     icon: Truck,
     description: 'Heavy lifting and moving assistance',
     matchingBehavior: 'location_critical',
     examples: [
-      'Need 2 people to unload items from a truck',
-      'Help moving furniture upstairs',
-      'Need assistance shifting heavy boxes',
-      'Help with apartment moving'
+      'Move furniture',
+      'Load or unload a truck',
+      'Help with moving homes',
+      'Lift heavy items'
     ]
   },
   {
     id: 'local_helpers',
-    label: 'Local Helpers',
-    shortLabel: 'Local',
-    icon: MapPin,
-    description: 'Small local tasks and neighborhood help',
+    label: 'Home Help',
+    shortLabel: 'Home Help',
+    icon: Home,
+    description: 'Furniture assembly, yard cleanup, and household tasks',
     matchingBehavior: 'location_critical',
     examples: [
-      'Check a property',
-      'Water plants',
-      'Organize a room',
-      'Small local tasks',
-      'Quick neighborhood help'
+      'Furniture assembly',
+      'Organizing a room or garage',
+      'Yard cleanup',
+      'Household assistance'
     ]
   },
   {
@@ -75,11 +74,10 @@ const CONFIG_CATEGORIES = [
     description: 'Temporary workers and event assistance',
     matchingBehavior: 'location_important',
     examples: [
-      'Event helpers needed',
-      'Temporary workers for today',
-      'Wedding helpers',
-      'Registration desk helpers',
-      'Setup assistance'
+      'Event setup',
+      'Event teardown',
+      'Registration desk assistance',
+      'Temporary event staffing'
     ]
   },
   {
@@ -90,9 +88,8 @@ const CONFIG_CATEGORIES = [
     description: 'Photography, design, and content creation',
     matchingBehavior: 'location_important',
     examples: [
-      'Photography for an hour',
-      'Videography needed',
-      'Editing assistance',
+      'Photography',
+      'Videography',
       'Graphic design',
       'Content creation'
     ]
@@ -105,8 +102,7 @@ const CONFIG_CATEGORIES = [
     description: 'Any other miscellaneous tasks',
     matchingBehavior: 'generic',
     examples: [
-      'Anything not covered above',
-      'Miscellaneous request'
+      'Tasks not covered by the categories above'
     ]
   }
 ];

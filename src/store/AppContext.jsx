@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useRef, useContext } from 'react';
+import React, { createContext, useState, useEffect, useRef, useContext, useCallback } from 'react';
 import { SERVICE_AREAS } from '../config/serviceAreas';
 import { api } from '../services/api';
 import { trackEvent, EVENTS } from '../utils/eventTracker';
@@ -288,68 +288,69 @@ export const AppProvider = ({ children }) => {
   const [taskers, setTaskers] = useState([]);
 
   // Fetch jobs from API
-  useEffect(() => {
-    const fetchJobs = async () => {
-      const { data, error } = await api.fetchJobs();
-      if (data) {
-        const mappedJobs = data.map(j => {
-          let expiresAt = null;
-          let cleanDesc = j.description || '';
-          const match = cleanDesc.match(/\n\[Time: ([^\]]+)\]/);
-          if (match) {
-            expiresAt = match[1];
-            cleanDesc = cleanDesc.replace(/\n\[Time: [^\]]+\]/, '');
-          } else {
-            expiresAt = new Date(j.created_at).toISOString();
-          }
+  const fetchJobs = useCallback(async () => {
+    const { data, error } = await api.fetchJobs();
+    if (data) {
+      const mappedJobs = data.map(j => {
+        let expiresAt = null;
+        let cleanDesc = j.description || '';
+        const match = cleanDesc.match(/\n\[Time: ([^\]]+)\]/);
+        if (match) {
+          expiresAt = match[1];
+          cleanDesc = cleanDesc.replace(/\n\[Time: [^\]]+\]/, '');
+        } else {
+          expiresAt = new Date(j.created_at).toISOString();
+        }
 
-          const coords = parseEWKBPoint(j.location) || { lng: j.lng || 0, lat: j.lat || 0 };
-          return {
-            ...j,
-            description: cleanDesc,
-            expiresAt: expiresAt,
-            posterId: j.posterId || j.poster_id,
-            taskerId: j.taskerId || j.tasker_id,
-            skillId: j.skillId || j.skill_id,
-            peopleNeeded: j.peopleNeeded || j.people_needed,
-            timePosted: j.timePosted || j.created_at,
-            lng: coords.lng,
-            lat: coords.lat,
-          };
-        });
+        const coords = parseEWKBPoint(j.location) || { lng: j.lng || 0, lat: j.lat || 0 };
+        return {
+          ...j,
+          description: cleanDesc,
+          expiresAt: expiresAt,
+          posterId: j.posterId || j.poster_id,
+          taskerId: j.taskerId || j.tasker_id,
+          skillId: j.skillId || j.skill_id,
+          peopleNeeded: j.peopleNeeded || j.people_needed,
+          timePosted: j.timePosted || j.created_at,
+          lng: coords.lng,
+          lat: coords.lat,
+        };
+      });
 
-        // Check for active jobs that should be automatically expired (unfulfilled)
-        // after 5 days from their selected time (expiresAt).
-        const now = new Date();
-        const updatedJobs = mappedJobs.map(j => {
-          if (j.status !== 'completed' && j.status !== 'expired' && j.status !== 'draft') {
-            const selectedDate = new Date(j.expiresAt);
-            if (!isNaN(selectedDate.getTime())) {
-              const diffTime = now - selectedDate;
-              const diffDays = diffTime / (1000 * 60 * 60 * 24);
-              if (diffDays > 5) {
-                // Update in backend asynchronously
-                api.updateJob(j.id, { status: 'expired' }).then();
-                return { ...j, status: 'expired' };
-              }
+      // Check for active jobs that should be automatically expired (unfulfilled)
+      // after 5 days from their selected time (expiresAt).
+      const now = new Date();
+      const updatedJobs = mappedJobs.map(j => {
+        if (j.status !== 'completed' && j.status !== 'expired' && j.status !== 'draft') {
+          const selectedDate = new Date(j.expiresAt);
+          if (!isNaN(selectedDate.getTime())) {
+            const diffTime = now - selectedDate;
+            const diffDays = diffTime / (1000 * 60 * 60 * 24);
+            if (diffDays > 5) {
+              // Update in backend asynchronously
+              api.updateJob(j.id, { status: 'expired' }).then();
+              return { ...j, status: 'expired' };
             }
           }
-          return j;
-        });
+        }
+        return j;
+      });
 
-        setJobs(updatedJobs);
-      }
-    };
+      setJobs(updatedJobs);
+    }
+  }, []);
+
+  useEffect(() => {
     fetchJobs();
 
     const sub = api.subscribeToJobs(() => {
-        fetchJobs();
-      });
+      fetchJobs();
+    });
 
     return () => {
       if (sub && sub.unsubscribe) sub.unsubscribe();
     };
-  }, []);
+  }, [fetchJobs]);
 
   // Fetch profile if returning user
   useEffect(() => {
@@ -485,6 +486,7 @@ export const AppProvider = ({ children }) => {
       }
 
       if (profile) {
+        const isAlreadyLoggedIn = localStorage.getItem('userId') === profile.id;
         setUserId(profile.id);
         localStorage.setItem('userId', profile.id);
         const finalRole = localStorage.getItem('activeRole') || profile.role || 'tasker';
@@ -524,7 +526,9 @@ export const AppProvider = ({ children }) => {
         setIsAdmin(profile.is_admin === true);
 
         pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
-        showToast('Welcome back!', 'success');
+        if (!isAlreadyLoggedIn) {
+          showToast('Welcome back!', 'success');
+        }
         
         if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
           window.history.replaceState({}, document.title, window.location.pathname);
@@ -993,7 +997,7 @@ export const AppProvider = ({ children }) => {
 
   // Radius Logic for Job Feeds
   const getJobsInRadius = () => {
-    const openJobs = (jobs || []).filter(j => j?.status === 'open');
+    const openJobs = (jobs || []).filter(j => j?.status === 'open' && !j?.isAcceptedByMe);
     
     // Decouple tasker distance calculation: use tasker's serviceAreaLat/Lng if active role is tasker
     const referenceCenter = (role === 'tasker')
@@ -1067,6 +1071,42 @@ export const AppProvider = ({ children }) => {
     setAnimationTick(0);
 
     pushScreen('tasker_accepted_job', true);
+  };
+
+  const declineJob = async (jobId) => {
+    const tId = userProfile?.id || userId || localStorage.getItem('userId');
+    await api.declineJobOffer(jobId, tId);
+    setJobs(prevJobs => prevJobs.filter(j => j.id !== jobId));
+    trackEvent(EVENTS.TASK_REJECTION, { userId: tId, role, entityId: jobId });
+  };
+
+  const cancelTaskerAssignment = async (jobId) => {
+    const tId = userProfile?.id || userId || localStorage.getItem('userId');
+    const { data: success } = await api.cancelAcceptedJobOffer(jobId, tId);
+    if (success) {
+      if (showToast) showToast('You have cancelled your assignment for this task.', 'info');
+      const { data } = await api.fetchJobs();
+      if (data) setJobs(data);
+      setAcceptedJob(null);
+      pushScreen('tasker_home', true);
+    } else {
+      if (showToast) showToast('Could not cancel assignment.', 'error');
+    }
+  };
+
+  const acceptPartialCrew = async (jobId) => {
+    const { data: success } = await api.commitPartialCrew(jobId);
+    if (success) {
+      if (showToast) showToast('Crew finalized. Proceeding with active helper(s)!', 'success');
+      // Update local job states
+      setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: 'accepted', v2_status: 'accepted' } : j));
+      const { data: crew } = await api.fetchJobCrew(jobId);
+      setCrewTaskers(crew || []);
+      setLiveStatus('crew_set');
+      pushScreen('crew_confirmed', true);
+    } else {
+      if (showToast) showToast('No taskers have accepted this job yet.', 'error');
+    }
   };
 
   // Tasker completes a job
@@ -1215,7 +1255,9 @@ export const AppProvider = ({ children }) => {
       } else {
         // For poster view without real-time backend updates in this demo,
         // we just show the destination pin.
-        setTrackingTaskerPos({ lat: targetJob.lat, lng: targetJob.lng });
+        setTimeout(() => {
+          setTrackingTaskerPos({ lat: targetJob.lat, lng: targetJob.lng });
+        }, 0);
       }
     } else {
       if (trackingIntervalRef.current) {
@@ -1336,12 +1378,16 @@ export const AppProvider = ({ children }) => {
         screenStack,
         jobs,
         setJobs,
+        fetchJobs,
         taskers,
         activeTab,
         setActiveTab,
         acceptedJob,
         setAcceptedJob,
         acceptJob,
+        declineJob,
+        cancelTaskerAssignment,
+        acceptPartialCrew,
         completeJob,
         currentPostedJob,
         setCurrentPostedJob,

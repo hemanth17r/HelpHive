@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Radio, Users, Eye, ArrowRight, IndianRupee, Trash2, MapPin } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
+import { ToastContext } from '../../store/ToastContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import { api } from '../../services/api';
 const LiveStatusScreen = () => {
-  const { currentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs } = useContext(AppContext);
+  const { currentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs, acceptPartialCrew } = useContext(AppContext);
+  const { showToast } = useContext(ToastContext);
   const [viewers, setViewers] = useState(0);
   // Track the tasker_id that existed when this screen first mounted.
   // We only navigate to crew_confirmed if a NEW tasker_id appears after mount.
@@ -57,42 +59,39 @@ const LiveStatusScreen = () => {
       }
     };
 
+    const fetchCrew = async () => {
+      if (!currentPostedJob?.id) return;
+      const { data } = await api.fetchJobCrew(currentPostedJob.id);
+      if (data && isMounted) {
+        setCrewTaskers(data);
+      }
+    };
+    fetchCrew();
     fetchViewersCount();
     
     // Refresh count and job status every 5 seconds (not 1s — avoids test-simulation feel)
     const timer = setInterval(async () => {
       fetchViewersCount();
+      fetchCrew();
       
       // Also poll job status just in case realtime subscription is delayed/missing
       if (currentPostedJob?.id && !hasNavigatedRef.current) {
         try {
           const { data } = await api.supabase
             .from('jobs')
-            .select('status, tasker_id')
+            .select('status, tasker_id, v2_status')
             .eq('id', currentPostedJob.id)
             .single();
 
-          // Only navigate if: status is accepted AND tasker_id is genuinely NEW
-          // (different from the snapshot taken at mount time)
-          const isNewTasker = data?.tasker_id &&
-            data.tasker_id !== initialTaskerIdRef.current;
-            
-          if (data && data.status === 'accepted' && isNewTasker) {
+          if (data && (data.status === 'accepted' || data.v2_status === 'accepted')) {
             hasNavigatedRef.current = true;
             const { data: allJobs } = await api.fetchJobs();
             if (allJobs) {
               setJobs(allJobs);
               const updatedJob = allJobs.find(j => j.id === currentPostedJob.id);
               if (updatedJob) {
-                const taskerInfo = {
-                  id: updatedJob.taskerId,
-                  name: updatedJob.taskerName || 'Helper',
-                  rating: 5.0,
-                  tasksCompleted: 1,
-                  bird: updatedJob.taskerBird || 'falcon',
-                  upiId: updatedJob.taskerUpi
-                };
-                setCrewTaskers([taskerInfo]);
+                const { data: crew } = await api.fetchJobCrew(currentPostedJob.id);
+                setCrewTaskers(crew || []);
                 setLiveStatus('crew_set');
                 pushScreen('crew_confirmed', true);
               }
@@ -193,11 +192,34 @@ const LiveStatusScreen = () => {
         </div>
       </div>
 
-      {/* Cancel Broadcast button */}
-      <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-4 border-t border-border shrink-0">
+      {/* Bottom Action buttons */}
+      <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-4 border-t border-border shrink-0 space-y-3">
+        {currentPostedJob.peopleNeeded > 1 && crewTaskers.length > 0 && (
+          <button
+            onClick={() => acceptPartialCrew(currentPostedJob.id)}
+            className="w-full flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <span>Proceed with {crewTaskers.length} Helper{crewTaskers.length > 1 ? 's' : ''}</span>
+          </button>
+        )}
         <Tooltip text="Cancel this job broadcast" position="top">
           <button
-            onClick={() => pushScreen('post_job')}
+            onClick={async () => {
+              if (window.confirm("Are you sure you want to cancel this job search?")) {
+                try {
+                  await api.updateJob(currentPostedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
+                  await api.supabase
+                    .from('job_offers')
+                    .update({ status: 'expired' })
+                    .eq('job_id', currentPostedJob.id)
+                    .eq('status', 'pending');
+                  showToast('Job broadcast cancelled.', 'info');
+                  pushScreen('poster_home', true);
+                } catch (err) {
+                  console.error("Failed to cancel broadcast:", err);
+                }
+              }
+            }}
             className="w-full flex items-center justify-center space-x-2 bg-gray-100 hover:bg-red-50 hover:text-red-500 text-gray-500 font-bold py-3.5 px-6 rounded-2xl transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />

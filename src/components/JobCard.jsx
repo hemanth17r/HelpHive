@@ -7,7 +7,7 @@ import Tooltip from './Tooltip';
 import { formatSelectedTime, getCurrentLocation } from '../utils/location';
 
 const JobCard = ({ job, onDecline }) => {
-  const { acceptJob, requireProfile, realLocation, setRealLocation, userProfile, pushScreen, setTaskerActivityScrollTarget, role } = useContext(AppContext);
+  const { acceptJob, requireProfile, requireLocation, realLocation, setRealLocation, userProfile, pushScreen, setTaskerActivityScrollTarget, role } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
 
   const hasReferenceLocation = role === 'tasker'
@@ -44,6 +44,43 @@ const JobCard = ({ job, onDecline }) => {
         acceptJob(job.id);
       });
     });
+  };
+
+  const [timeLeft, setTimeLeft] = useState(null);
+
+  React.useEffect(() => {
+    if (!job.offerExpiresAt || !job.isPendingOffer) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const calculateTimeLeft = () => {
+      const difference = new Date(job.offerExpiresAt).getTime() - Date.now();
+      if (difference <= 0) {
+        return 0;
+      }
+      return Math.floor(difference / 1000);
+    };
+
+    setTimeLeft(calculateTimeLeft());
+
+    const timer = setInterval(() => {
+      const left = calculateTimeLeft();
+      setTimeLeft(left);
+      if (left <= 0) {
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [job.offerExpiresAt, job.isPendingOffer]);
+
+  const formatTimeLeft = (seconds) => {
+    if (seconds === null || seconds === undefined) return '';
+    if (seconds <= 0) return ' (Expired)';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return ` (${mins}:${secs.toString().padStart(2, '0')})`;
   };
 
   return (
@@ -112,10 +149,11 @@ const JobCard = ({ job, onDecline }) => {
         <Tooltip text="Accept job and get details" className="flex-1">
           <button
             onClick={handleAcceptJob}
-            className="w-full flex items-center justify-center space-x-1.5 bg-primary hover:bg-primary/95 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-xs shadow-primary/30 transition-all cursor-pointer"
+            disabled={timeLeft === 0}
+            className={`w-full flex items-center justify-center space-x-1.5 bg-primary hover:bg-primary/95 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-xs shadow-primary/30 transition-all cursor-pointer ${timeLeft === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <Check className="w-3.5 h-3.5" />
-            <span>Accept</span>
+            <span>Accept{timeLeft !== null ? formatTimeLeft(timeLeft) : ''}</span>
           </button>
         </Tooltip>
       </div>

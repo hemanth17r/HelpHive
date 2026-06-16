@@ -23,7 +23,8 @@ const TaskerJobDetailsScreen = () => {
     trackingTaskerPos,
     userProfile,
     role,
-    pushScreen
+    pushScreen,
+    cancelTaskerAssignment
   } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   
@@ -141,8 +142,6 @@ const TaskerJobDetailsScreen = () => {
           });
         }
 
-        await api.updateJob(acceptedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
-        
         if (acceptedJob.posterId) {
           api.sendNotification(
             acceptedJob.posterId,
@@ -153,9 +152,8 @@ const TaskerJobDetailsScreen = () => {
             'poster'
           );
         }
-        
-        showToast('Task cancelled successfully', 'info');
-        pushScreen('tasker_home', true);
+
+        await cancelTaskerAssignment(acceptedJob.id);
       } finally {
         setIsCancelling(false);
       }

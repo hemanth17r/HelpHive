@@ -6,6 +6,7 @@ import Tooltip from '../../components/Tooltip';
 import BirdAvatar from '../../components/BirdAvatars';
 import { getCurrentLocation } from '../../utils/location';
 import ActionItemsCarousel from '../../components/ActionItemsCarousel';
+import SetupWizardModal from '../../components/SetupWizardModal';
 
 const PosterHomeScreen = () => {
   const { 
@@ -21,8 +22,13 @@ const PosterHomeScreen = () => {
     expireJob,
     setEditJobData,
     realLocation,
-    setRealLocation
+    setRealLocation,
+    fetchJobs
   } = useContext(AppContext);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
 
   const handlePostJobClick = () => {
     requireProfile(() => {
@@ -113,7 +119,7 @@ const PosterHomeScreen = () => {
             <PlusCircle className="w-8 h-8 md:w-9 md:h-9 mr-4 shrink-0" />
             <div className="flex flex-col">
               <h2 className="text-lg md:text-xl font-black leading-tight">Post a Job</h2>
-              <p className="text-[11px] md:text-xs font-bold text-white/80 mt-0.5">Get local helpers in seconds</p>
+              <p className="text-[11px] md:text-xs font-bold text-white/80 mt-0.5">Get local help in seconds</p>
             </div>
           </button>
         </Tooltip>
@@ -348,6 +354,7 @@ const PosterHomeScreen = () => {
 
 
       </div>
+      <SetupWizardModal />
     </div>
   );
 };

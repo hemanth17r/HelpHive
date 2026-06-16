@@ -326,15 +326,6 @@ const TaskerOnboardingScreen = () => {
                   )}
                 </div>
 
-                {/* Floating GPS Button */}
-                <button 
-                  onClick={handleUseCurrentLocation}
-                  className="absolute bottom-6 right-4 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer border border-gray-100"
-                  aria-label="Use current location"
-                >
-                  <Navigation className="w-5 h-5" />
-                </button>
-
                 <MapView
                   key={mapKey}
                   center={[serviceAreaLocation.lat, serviceAreaLocation.lng]}
@@ -344,6 +335,15 @@ const TaskerOnboardingScreen = () => {
                   coverageRadius={coverageRadius}
                   height="100%"
                 />
+
+                {/* Floating GPS Button */}
+                <button 
+                  onClick={handleUseCurrentLocation}
+                  className="absolute bottom-6 right-4 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer border border-gray-100"
+                  aria-label="Use current location"
+                >
+                  <Navigation className="w-5 h-5" />
+                </button>
               </div>
               <p className="text-[10px] text-gray-400 mt-2 text-center">Drag the pin or use search to adjust the center of your service area.</p>
             </div>

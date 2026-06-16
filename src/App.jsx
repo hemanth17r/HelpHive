@@ -11,13 +11,9 @@ import {
   HelpCircle, 
   LogOut, 
   Bell, 
-  Wifi, 
-  WifiOff, 
-  ToggleRight, 
-  ToggleLeft,
-  MapPin,
-  Search,
-  ArrowLeft,
+  MapPin, 
+  Search, 
+  ArrowLeft, 
   ChevronDown
 } from 'lucide-react';
 
@@ -140,53 +136,7 @@ const AppContent = () => {
     pushScreen('notifications');
   };
 
-  // First Line of Defense: Ask for OS Permissions on first app load (industry standard)
-  React.useEffect(() => {
-    if (currentScreen === 'landing') return;
 
-    // Delay slightly to not interrupt immediate UI rendering
-    const timer = setTimeout(async () => {
-      // 1. Notification Permission System Pop-up
-      if (pushSupported && (pushPermission === 'prompt' || pushPermission === 'default')) {
-        try {
-          await subscribeToPush();
-        } catch (e) {
-          console.log("Initial notification subscription prompt failed/ignored", e);
-        }
-      }
-
-      // 2. Location Permission System Pop-up
-      if (navigator.geolocation) {
-        let shouldPromptLocation = false;
-        if (navigator.permissions && navigator.permissions.query) {
-          try {
-            const res = await navigator.permissions.query({ name: 'geolocation' });
-            if (res.state === 'prompt') {
-              shouldPromptLocation = true;
-            }
-          } catch (e) {
-            shouldPromptLocation = !realLocation;
-          }
-        } else {
-          shouldPromptLocation = !realLocation;
-        }
-
-        if (shouldPromptLocation) {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              console.log("Initial location granted");
-              setRealLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-            },
-            (err) => {
-              console.log("Initial location denied/failed", err);
-            }
-          );
-        }
-      }
-    }, 2000); // 2 seconds delay for a smooth entry
-
-    return () => clearTimeout(timer);
-  }, [currentScreen, pushSupported, pushPermission]);
 
   // Render correct screen based on routing state
   const renderScreen = () => {

@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { ToggleLeft, ToggleRight, Wifi, WifiOff, Inbox, Users, RefreshCw } from 'lucide-react';
+import { Inbox, Users, RefreshCw } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import JobCard from '../../components/JobCard';
 import Tooltip from '../../components/Tooltip';
@@ -7,6 +7,7 @@ import { SKILLS } from '../../config/constants';
 import { getCurrentLocation } from '../../utils/location';
 import ActionItemsCarousel from '../../components/ActionItemsCarousel';
 import { api } from '../../services/api';
+import SetupWizardModal from '../../components/SetupWizardModal';
 
 const TaskerHomeScreen = () => {
   const { 
@@ -21,26 +22,34 @@ const TaskerHomeScreen = () => {
     requireProfile,
     realLocation,
     setRealLocation,
-    setActiveTab
+    setActiveTab,
+    fetchJobs,
+    declineJob
   } = useContext(AppContext);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
 
   const handleRefreshFeed = async () => {
     setIsRefreshing(true);
     try {
       const loc = await getCurrentLocation();
       setRealLocation(loc);
+      await fetchJobs();
     } catch (err) {
-      console.error("Failed to refresh location", err);
+      console.error("Failed to refresh location or jobs", err);
     }
     setIsRefreshing(false);
   };
 
   const [declinedJobIds, setDeclinedJobIds] = useState([]);
 
-  const handleDeclineJob = (jobId) => {
+  const handleDeclineJob = async (jobId) => {
     setDeclinedJobIds(prev => [...prev, jobId]);
+    await declineJob(jobId);
   };
 
   const { jobsList = [] } = getJobsInRadius() || {};
@@ -55,8 +64,8 @@ const TaskerHomeScreen = () => {
   );
 
   const displayActiveTasks = (jobs || []).filter(job => 
-    (job?.taskerId === userProfile?.id || job?.taskerName === userProfile?.name) &&
-    (job?.status === 'active' || job?.status === 'in_progress')
+    job?.isAcceptedByMe &&
+    (job?.v2_status === 'searching' || job?.v2_status === 'accepted' || job?.v2_status === 'in_progress')
   );
 
   useEffect(() => {
@@ -112,11 +121,7 @@ const TaskerHomeScreen = () => {
             </button>
           </div>
 
-          {/* Active Status Badge */}
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 select-none">
-            <Wifi className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase text-emerald-600">Active</span>
-          </div>
+          {/* Active Status Badge removed */}
         </div>
       </div>
 
@@ -222,6 +227,7 @@ const TaskerHomeScreen = () => {
           </div>
         )}
       </div>
+      <SetupWizardModal />
     </div>
   );
 };

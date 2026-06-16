@@ -38,8 +38,7 @@ const CrewConfirmedScreen = () => {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  const handlePayOnline = () => {
-    const tasker = crewTaskers[0];
+  const handlePayOnlineForTasker = (tasker) => {
     const taskerUpi = tasker?.upiId || 'helphive@upi';
     const amount = currentPostedJob?.amount || 0;
     const taskTitle = currentPostedJob?.description || 'Task';
@@ -49,12 +48,13 @@ const CrewConfirmedScreen = () => {
     
     // Save to localStorage
     if (currentPostedJob?.id) {
-      localStorage.setItem(`payment_initiated_${currentPostedJob.id}`, 'true');
+      localStorage.setItem(`payment_initiated_${currentPostedJob.id}_${tasker.id}`, 'true');
     }
-    setPaymentInitiated(true);
+    // Toggle state to trigger re-evaluation of localStorage
+    setPaymentOption(prev => prev);
 
     // Open link
-    window.location.href = upiLink;
+    window.location.assign(upiLink);
   };
 
   const handleCompleteTask = async () => {
@@ -79,6 +79,9 @@ const CrewConfirmedScreen = () => {
       }
 
       // Clean up local storage
+      crewTaskers.forEach(tasker => {
+        localStorage.removeItem(`payment_initiated_${jobId}_${tasker.id}`);
+      });
       localStorage.removeItem(`payment_initiated_${jobId}`);
 
       setShowConfirmModal(false);
@@ -137,16 +140,17 @@ const CrewConfirmedScreen = () => {
 
         await api.updateJob(currentPostedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
         
-        const tasker = crewTaskers[0];
-        if (tasker) {
-          api.sendNotification(
-            tasker.id,
-            "Task Cancelled",
-            `The customer cancelled the task.`,
-            'tasker_home',
-            'job_cancelled',
-            'tasker'
-          );
+        if (crewTaskers && crewTaskers.length > 0) {
+          crewTaskers.forEach(tasker => {
+            api.sendNotification(
+              tasker.id,
+              "Task Cancelled",
+              `The customer cancelled the task.`,
+              'tasker_home',
+              'job_cancelled',
+              'tasker'
+            );
+          });
         }
         
         showToast('Task cancelled successfully', 'info');
@@ -274,91 +278,55 @@ const CrewConfirmedScreen = () => {
             Payment & Completion
           </label>
           
-          <div className="bg-white border border-border p-4 rounded-xl mb-3 flex flex-col space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-500 font-bold">Helper</span>
-              <span className="text-sm font-black text-dark">{crewTaskers[0]?.name || 'Helper'}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-500 font-bold">UPI ID</span>
-              <span className="text-xs font-bold text-gray-600">{crewTaskers[0]?.upiId || 'Not provided'}</span>
-            </div>
-            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-              <span className="text-sm font-bold text-dark">Amount</span>
-              <span className="text-lg font-black text-primary">₹{currentPostedJob?.amount || 0}</span>
-            </div>
-          </div>
-
-          {(currentPostedJob?.amount > 0) && (
-            <div className="space-y-2.5">
-              {/* Pay Online Card */}
-              <button
-                onClick={() => setPaymentOption('online')}
-                className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
-                  paymentOption === 'online'
-                    ? 'border-green-600 bg-green-50/30'
-                    : 'border-border bg-white hover:bg-gray-50/50'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center shrink-0 ${
-                    paymentOption === 'online' ? 'border-green-600' : 'border-gray-300'
-                  }`}>
-                    {paymentOption === 'online' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
-                  </div>
-                  <div>
-                    <span className="text-xs font-black text-dark block">Pay Online</span>
-                    <span className="text-[9px] font-bold text-gray-400 mt-0.5 block">Pay instantly using PhonePe, GPay, Paytm, etc.</span>
-                  </div>
+          {crewTaskers.map((tasker) => {
+            const hasInitiated = localStorage.getItem(`payment_initiated_${currentPostedJob?.id}_${tasker.id}`) === 'true';
+            return (
+              <div key={tasker.id} className="bg-white border border-border p-4 rounded-xl mb-3 flex flex-col space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500 font-bold">Helper</span>
+                  <span className="text-sm font-black text-dark">{tasker.name}</span>
                 </div>
-              </button>
-
-              {/* Pay Offline Card */}
-              <button
-                onClick={() => setPaymentOption('offline')}
-                className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
-                  paymentOption === 'offline'
-                    ? 'border-green-600 bg-green-50/30'
-                    : 'border-border bg-white hover:bg-gray-50/50'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center shrink-0 ${
-                    paymentOption === 'offline' ? 'border-green-600' : 'border-gray-300'
-                  }`}>
-                    {paymentOption === 'offline' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
-                  </div>
-                  <div>
-                    <span className="text-xs font-black text-dark block">Pay Offline</span>
-                    <span className="text-[9px] font-bold text-gray-400 mt-0.5 block">Pay cash directly or through other offline methods.</span>
-                  </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500 font-bold">UPI ID</span>
+                  <span className="text-xs font-bold text-gray-600">{tasker.upiId || 'Not provided'}</span>
                 </div>
-              </button>
-            </div>
-          )}
+                <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                  <span className="text-sm font-bold text-dark">Amount</span>
+                  <span className="text-lg font-black text-primary">₹{currentPostedJob?.amount || 0}</span>
+                </div>
+                
+                {currentPostedJob?.amount > 0 && (
+                  <div className="pt-2">
+                    {hasInitiated ? (
+                      <span className="text-xs text-green-600 font-extrabold flex items-center justify-center space-x-1 py-2">
+                        <Check className="w-4.5 h-4.5" />
+                        <span>Payment Initiated</span>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handlePayOnlineForTasker(tasker)}
+                        className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-2 rounded-xl active:scale-[0.99] transition-all cursor-pointer text-center text-xs"
+                      >
+                        Pay {tasker.name.split(' ')[0]} Online
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {/* Primary Action Button */}
           <div className="pt-2">
             {(currentPostedJob?.amount > 0) ? (
-              (paymentOption === 'online' && !paymentInitiated) ? (
-                <Tooltip text={`Initiate payment of ₹${currentPostedJob?.amount || 0} via UPI`}>
-                  <button
-                    onClick={handlePayOnline}
-                    className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide"
-                  >
-                    Pay Online
-                  </button>
-                </Tooltip>
-              ) : (
-                <Tooltip text="Confirm payment to complete the task">
-                  <button
-                    onClick={() => setShowConfirmModal(true)}
-                    className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide"
-                  >
-                    I Have Paid
-                  </button>
-                </Tooltip>
-              )
+              <Tooltip text="Confirm payment to complete the task">
+                <button
+                  onClick={() => setShowConfirmModal(true)}
+                  className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide"
+                >
+                  Confirm Payments & Complete
+                </button>
+              </Tooltip>
             ) : (
               <Tooltip text="Complete the task and submit helper review">
                 <button

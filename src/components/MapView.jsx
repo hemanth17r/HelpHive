@@ -12,6 +12,7 @@ const MapView = ({
   taskerBirdName = 'falcon',
   height = '300px',
   resolvedAddressText = 'Location pinned on map',
+  showAddressBanner = false,
   coverageRadius = null // new prop for coverage circle
 }) => {
   const mapContainerRef = useRef(null);
@@ -180,10 +181,10 @@ const MapView = ({
     <div className={`w-full flex flex-col space-y-2 select-none ${height === '100%' ? 'h-full flex-1' : ''}`}>
       <div 
         ref={mapContainerRef} 
-        style={{ height, width: '100%' }} 
+        style={{ height: height === '100%' ? 'auto' : height, width: '100%' }} 
         className={`rounded-2xl overflow-hidden shadow-inner border border-border z-10 ${height === '100%' ? 'flex-1 min-h-0' : ''}`}
       />
-      {draggable && (
+      {draggable && showAddressBanner && (
         <div className="bg-orange-50 border border-primary/10 rounded-xl px-3.5 py-2 flex items-center space-x-2.5">
           <div className="p-1 bg-white rounded-md border border-primary/5 text-primary shrink-0 animate-pulse">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>

@@ -52,6 +52,32 @@ export const searchAddress = async (query) => {
 };
 
 /**
+ * Fetch the closest landmark name using Ola Maps Nearby Search API
+ * @param {number} lat 
+ * @param {number} lng 
+ * @returns {Promise<string|null>}
+ */
+export const getNearbyLandmark = async (lat, lng) => {
+  if (!OLA_MAPS_API_KEY) return null;
+  try {
+    const response = await fetch(`${OLA_MAPS_BASE_URL}/nearbysearch?location=${lat},${lng}&api_key=${OLA_MAPS_API_KEY}`, {
+      headers: {
+        'Accept-Language': 'en'
+      }
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.status === 'ok' && data.predictions && data.predictions.length > 0) {
+      const best = data.predictions[0];
+      return best.structured_formatting?.main_text || best.name || best.description;
+    }
+  } catch (error) {
+    console.error('Error fetching nearby landmark:', error);
+  }
+  return null;
+};
+
+/**
  * Perform a reverse geocode from coordinates
  * @param {number} lat 
  * @param {number} lng 
@@ -81,29 +107,37 @@ export const reverseGeocode = async (lat, lng) => {
     
     if (data.status === 'ok' && data.results && data.results.length > 0) {
       const bestResult = data.results[0];
+      let displayName = bestResult.formatted_address.split(',').slice(0, 3).join(', ').trim();
+      
+      if (!displayName || displayName.toLowerCase().includes('unknown location')) {
+        const landmark = await getNearbyLandmark(lat, lng);
+        displayName = landmark ? `Near ${landmark}` : `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
+      }
       
       return {
         lat: parseFloat(bestResult.geometry?.location?.lat || lat),
         lng: parseFloat(bestResult.geometry?.location?.lng || lng),
-        displayName: bestResult.formatted_address.split(',').slice(0, 3).join(', ').trim(),
+        displayName: displayName,
         fullAddress: bestResult.formatted_address,
         address: bestResult.address_components
       };
     }
     
+    const landmark = await getNearbyLandmark(lat, lng);
     return {
       lat: parseFloat(lat),
       lng: parseFloat(lng),
-      displayName: `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`,
+      displayName: landmark ? `Near ${landmark}` : `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`,
       fullAddress: `Location at Latitude ${lat}, Longitude ${lng}`,
       address: []
     };
   } catch (error) {
     console.error('Error in reverseGeocode:', error);
+    const landmark = await getNearbyLandmark(lat, lng);
     return {
       lat: parseFloat(lat),
       lng: parseFloat(lng),
-      displayName: `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`,
+      displayName: landmark ? `Near ${landmark}` : `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`,
       fullAddress: `Location at Latitude ${lat}, Longitude ${lng}`,
       address: []
     };

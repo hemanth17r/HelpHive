@@ -41,7 +41,6 @@ Issue: `;
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [editedName, setEditedName] = useState('');
-  const [editedEmail, setEditedEmail] = useState('');
   const [editedPhone, setEditedPhone] = useState('');
   const [isEditingSkills, setIsEditingSkills] = useState(false);
   const [editedSkills, setEditedSkills] = useState([]);
@@ -95,7 +94,7 @@ Issue: `;
   const profile = {
     ...userProfile,
     name: userProfile?.name || 'New User',
-    email: userProfile?.email || 'Add Email',
+    email: (userProfile?.email && userProfile.email !== 'Add Email') ? userProfile.email : '',
     phone: userProfile?.phone || 'Add Phone',
     skills: userProfile?.skills || [],
     rating: userProfile?.rating || 0,
@@ -146,14 +145,10 @@ Issue: `;
     if (e) e.preventDefault();
     const updates = {};
     const finalName = editedName.trim() || 'New User'; // Fallback if they empty it completely
-    const finalEmail = editedEmail.trim() || 'Add Email';
     const finalPhone = editedPhone.trim() || 'Add Phone';
 
     if (finalName !== profile.name) {
       updates.name = finalName;
-    }
-    if (finalEmail !== profile.email) {
-      updates.email = finalEmail;
     }
     if (finalPhone !== profile.phone) {
       updates.phone = finalPhone;
@@ -282,19 +277,15 @@ Issue: `;
                   </div>
                 </div>
                 <div>
-                    <div className="flex flex-col space-y-2">
-                      <div className="flex items-center space-x-2 opacity-70">
-                        <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-                        <input
-                          type="email"
-                          value={profile.email}
-                          readOnly
-                          className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 cursor-not-allowed"
-                          placeholder="name@example.com"
-                        />
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center space-x-2 opacity-70">
+                      <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                      <div className="flex-1 bg-gray-100/50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 select-none">
+                        {profile.email || '\u00A0'}
                       </div>
                     </div>
                   </div>
+                </div>
                 
                 <div className="pt-2 flex justify-end">
                   <button
@@ -671,19 +662,15 @@ Issue: `;
                   </div>
                 </div>
                 <div>
-                    <div className="flex flex-col space-y-2">
-                      <div className="flex items-center space-x-2 opacity-70">
-                        <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-                        <input
-                          type="email"
-                          value={profile.email}
-                          readOnly
-                          className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 cursor-not-allowed"
-                          placeholder="name@example.com"
-                        />
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center space-x-2 opacity-70">
+                      <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                      <div className="flex-1 bg-gray-100/50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 select-none">
+                        {profile.email || '\u00A0'}
                       </div>
                     </div>
                   </div>
+                </div>
                 
                 <div className="pt-2 flex justify-end">
                   <button
