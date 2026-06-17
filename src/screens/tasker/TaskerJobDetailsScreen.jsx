@@ -1,5 +1,5 @@
-import React, { useState, useContext } from 'react';
-import { MapPin, Phone, MessageSquare, ShieldCheck, CheckCircle2, User, Compass } from 'lucide-react';
+import React, { useState, useContext, useEffect } from 'react';
+import { MapPin, Phone, MessageSquare, ShieldCheck, CheckCircle2, User, Compass, ShieldAlert } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
 import { SKILLS } from '../../config/constants';
@@ -34,18 +34,33 @@ const TaskerJobDetailsScreen = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (acceptedJob && userProfile) {
       trackEvent(EVENTS.TASK_VIEWED, { userId: userProfile.id, role, entityId: acceptedJob.id });
     }
   }, [acceptedJob, userProfile, role]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (acceptedJob?.status === 'in_progress') {
       setIsVerified(true);
     }
   }, [acceptedJob?.status]);
+
+  // Real-time synchronization redirect loop
+  useEffect(() => {
+    if (!acceptedJob) {
+      pushScreen('tasker_home', true);
+      return;
+    }
+    if (acceptedJob.status === 'cancelled') {
+      showToast('This task has been cancelled.', 'info');
+      pushScreen('tasker_home', true);
+    } else if (acceptedJob.status === 'completed') {
+      pushScreen('tasker_rating', true);
+    }
+  }, [acceptedJob, pushScreen, showToast]);
 
   if (!acceptedJob) return null;
 
@@ -132,38 +147,8 @@ const TaskerJobDetailsScreen = () => {
     const whatsappUrl = `https://wa.me/919347442426?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
-  const handleCancelTask = async () => {
-    if (window.confirm("Are you sure you want to cancel this task? This action is recorded.")) {
-      setIsCancelling(true);
-      try {
-        api.logEvent('task_cancelled_by_tasker', { userId: userProfile?.id, role, entityId: acceptedJob.id });
-        
-        // Analytics: V2 Marketplace Metric
-        if (!userProfile?.tasksCompleted) {
-          api.logEvent('first_job_failed', { 
-            userId: userProfile?.id, 
-            role: 'tasker', 
-            entityId: acceptedJob.id,
-            failure_reason: 'TASKER_CANCELLED'
-          });
-        }
-
-        if (acceptedJob.posterId) {
-          api.sendNotification(
-            acceptedJob.posterId,
-            "Task Cancelled",
-            `${userProfile?.name || 'Your helper'} cancelled the task.`,
-            'poster_home',
-            'job_cancelled',
-            'poster'
-          );
-        }
-
-        await cancelTaskerAssignment(acceptedJob.id);
-      } finally {
-        setIsCancelling(false);
-      }
-    }
+  const handleCancelTask = () => {
+    setShowCancelModal(true);
   };
 
   return (
@@ -172,10 +157,10 @@ const TaskerJobDetailsScreen = () => {
       {/* Header */}
       <div className="text-center pb-3 border-b border-border shrink-0">
         <span className="text-[10px] font-black tracking-widest text-primary bg-primary/10 px-2.5 py-1 rounded-full uppercase">
-          {acceptedJob.status === 'accepted' ? 'Helper Confirmed' : 'Active Engagement'}
+          {acceptedJob.status === 'accepted' ? 'Confirmed' : 'Active Engagement'}
         </span>
         <h2 className="text-base font-extrabold text-dark mt-2">
-          {acceptedJob.status === 'accepted' ? 'On The Way' : 'Job in Progress'}
+          {acceptedJob.status === 'accepted' ? 'Head to Customer' : 'Working on Task'}
         </h2>
       </div>
 
@@ -277,27 +262,29 @@ const TaskerJobDetailsScreen = () => {
               </div>
             ) : (
               <div className="space-y-2 animate-scale-up">
-                <div className="flex space-x-2">
+                <div className="flex gap-2">
                   <input
                     type="text"
                     maxLength={4}
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                     placeholder="Enter OTP"
-                    className="flex-1 bg-white border border-border focus:border-primary rounded-xl px-4 py-2.5 text-center font-bold tracking-widest outline-hidden text-sm text-dark"
+                    className="flex-1 bg-white border border-border focus:border-primary rounded-xl px-4 py-2.5 text-center font-bold tracking-widest outline-hidden text-sm text-dark min-w-0"
                   />
-                  <Tooltip text="Verify OTP code">
-                    <button
-                      onClick={handleVerifyOtp}
-                      disabled={isVerifying}
-                      className={`flex justify-center items-center gap-2 bg-primary hover:bg-primary/95 text-white font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer transition-colors ${isVerifying ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {isVerifying ? (
-                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      ) : null}
-                      <span>{isVerifying ? 'Verifying...' : 'Verify'}</span>
-                    </button>
-                  </Tooltip>
+                  <div className="shrink-0">
+                    <Tooltip text="Verify OTP code">
+                      <button
+                        onClick={handleVerifyOtp}
+                        disabled={isVerifying}
+                        className={`flex justify-center items-center gap-2 bg-primary hover:bg-primary/95 text-white font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer transition-colors whitespace-nowrap ${isVerifying ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {isVerifying ? (
+                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        ) : null}
+                        <span>{isVerifying ? 'Verifying...' : 'Verify'}</span>
+                      </button>
+                    </Tooltip>
+                  </div>
                 </div>
                 {errorMsg && (
                   <p className="text-[10px] text-red-500 font-bold">{errorMsg}</p>
@@ -355,6 +342,70 @@ const TaskerJobDetailsScreen = () => {
           </button>
         </div>
       </div>
+
+      {/* Custom Confirmation Modal */}
+      {showCancelModal && (
+        <div 
+          onClick={() => setShowCancelModal(false)}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 modal-backdrop-open"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full sm:max-w-md sm:rounded-[32px] rounded-t-[32px] flex flex-col overflow-hidden shadow-2xl p-6 space-y-6 modal-content-open"
+          >
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="text-lg font-black text-dark">Cancel Assignment?</h3>
+              <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
+                Are you sure you want to cancel this task? This action is recorded and may affect your completion rate.
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 py-3.5 border border-border text-gray-600 hover:bg-gray-50 rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
+              >
+                No, Keep Task
+              </button>
+              <button
+                onClick={async () => {
+                  setShowCancelModal(false);
+                  setIsCancelling(true);
+                  try {
+                    api.logEvent('task_cancelled_by_tasker', { userId: userProfile?.id, role, entityId: acceptedJob.id });
+                    if (!userProfile?.tasksCompleted) {
+                      api.logEvent('first_job_failed', { 
+                        userId: userProfile?.id, 
+                        role: 'tasker', 
+                        entityId: acceptedJob.id,
+                        failure_reason: 'TASKER_CANCELLED'
+                      });
+                    }
+                    if (acceptedJob.posterId) {
+                      api.sendNotification(
+                        acceptedJob.posterId,
+                        "Task Cancelled",
+                        `${userProfile?.name || 'Your helper'} cancelled the task.`,
+                        'poster_home',
+                        'job_cancelled',
+                        'poster'
+                      );
+                    }
+                    await cancelTaskerAssignment(acceptedJob.id);
+                  } finally {
+                    setIsCancelling(false);
+                  }
+                }}
+                className="flex-1 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

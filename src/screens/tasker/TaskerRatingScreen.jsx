@@ -35,42 +35,54 @@ const TaskerRatingScreen = () => {
   ];
 
   const handleSubmit = async () => {
+    if (!acceptedJob) return;
     setIsSubmitting(true);
     
-    // Simulate short network delay for UX
-    await new Promise(res => setTimeout(res, 400));
-    
-    trackEvent(EVENTS.RATING_SUBMITTED, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { rating } });
-    
-    const badgeObj = selectedBadge ? posterBadges.find(b => b.id === selectedBadge) : null;
-    const notificationText = badgeObj 
-      ? `Your helper rated you ${rating} stars and awarded you the "${badgeObj.label}" badge!`
-      : `Your helper rated you ${rating} stars for the recent task.`;
+    try {
+      // Persist rating in database
+      const { error: dbError } = await api.submitUserRating(acceptedJob.id, 'tasker', rating, selectedBadge || null);
+      if (dbError) {
+        console.error("Failed to submit rating in DB:", dbError);
+        showToast(`Failed to submit rating: ${dbError.message || dbError}`, 'error');
+        setIsSubmitting(false);
+        return;
+      }
 
-    if (acceptedJob?.posterId) {
-      await api.sendNotification(
-        acceptedJob.posterId,
-        "New Rating Received!",
-        notificationText,
-        'my_profile',
-        selectedBadge ? 'badge_received' : 'rating_received',
-        'poster'
-      );
+      trackEvent(EVENTS.RATING_SUBMITTED, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { rating } });
+      
+      const badgeObj = selectedBadge ? posterBadges.find(b => b.id === selectedBadge) : null;
+      const notificationText = badgeObj 
+        ? `Your helper rated you ${rating} stars and awarded you the "${badgeObj.label}" badge!`
+        : `Your helper rated you ${rating} stars for the recent task.`;
+
+      if (acceptedJob?.posterId) {
+        await api.sendNotification(
+          acceptedJob.posterId,
+          "New Rating Received!",
+          notificationText,
+          'my_profile',
+          selectedBadge ? 'badge_received' : 'rating_received',
+          'poster'
+        );
+      }
+
+      if (selectedBadge) {
+        trackEvent(EVENTS.BADGE_SENT, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { badge_type: selectedBadge } });
+        showToast(`🏅 ${acceptedJob?.posterName || 'Hirer'} will receive your "${badgeObj?.label}" badge!`, 'success');
+      } else {
+        showToast('Rating submitted!', 'success');
+      }
+
+      setIsSubmitted(true);
+      setTimeout(() => {
+        setAcceptedJob(null);
+        pushScreen('tasker_home');
+      }, 1800);
+    } catch (err) {
+      console.error("Error submitting rating:", err);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (selectedBadge) {
-      trackEvent(EVENTS.BADGE_SENT, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { badge_type: selectedBadge } });
-      showToast(`🏅 ${acceptedJob?.posterName || 'Hirer'} will receive your "${badgeObj?.label}" badge!`, 'success');
-    } else {
-      showToast('Rating submitted!', 'success');
-    }
-
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setAcceptedJob(null);
-      pushScreen('tasker_home');
-    }, 1800);
   };
 
   const handleReportSubmit = async () => {

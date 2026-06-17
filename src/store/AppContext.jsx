@@ -339,10 +339,10 @@ export const AppProvider = ({ children }) => {
       const mappedJobs = data.map(j => {
         let expiresAt = null;
         let cleanDesc = j.description || '';
-        const match = cleanDesc.match(/\n\[Time: ([^\]]+)\]/);
+        const match = cleanDesc.match(/\s*\[Time: ([^\]]+)\]/);
         if (match) {
           expiresAt = match[1];
-          cleanDesc = cleanDesc.replace(/\n\[Time: [^\]]+\]/, '');
+          cleanDesc = cleanDesc.replace(/\s*\[Time: [^\]]+\]/, '');
         } else {
           expiresAt = new Date(j.created_at).toISOString();
         }
@@ -917,6 +917,42 @@ export const AppProvider = ({ children }) => {
   const [editJobData, setEditJobData] = useState(null);
   const [editAddressData, setEditAddressData] = useState(null);
   const [jobHistoryTab, setJobHistoryTab] = useState('active'); // 'active', 'unfulfilled', 'completed'
+
+  // Synchronize acceptedJob with the latest state from the jobs list
+  useEffect(() => {
+    if (acceptedJob) {
+      const latest = jobs.find(j => j.id === acceptedJob.id);
+      if (latest) {
+        if (
+          latest.status !== acceptedJob.status ||
+          latest.v2_status !== acceptedJob.v2_status ||
+          latest.taskerId !== acceptedJob.taskerId
+        ) {
+          setAcceptedJob(latest);
+        }
+      } else {
+        setAcceptedJob(null);
+      }
+    }
+  }, [jobs, acceptedJob]);
+
+  // Synchronize currentPostedJob with the latest state from the jobs list
+  useEffect(() => {
+    if (currentPostedJob) {
+      const latest = jobs.find(j => j.id === currentPostedJob.id);
+      if (latest) {
+        if (
+          latest.status !== currentPostedJob.status ||
+          latest.v2_status !== currentPostedJob.v2_status ||
+          latest.taskerId !== currentPostedJob.taskerId
+        ) {
+          setCurrentPostedJob(latest);
+        }
+      } else {
+        setCurrentPostedJob(null);
+      }
+    }
+  }, [jobs, currentPostedJob]);
 
   const deleteJob = async (jobId) => {
     setJobs(prev => prev.filter(j => j.id !== jobId));

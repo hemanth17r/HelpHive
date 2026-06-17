@@ -62,7 +62,16 @@ const RatingScreen = () => {
       let badgeGiven = false;
       const promises = taskersList.map(async (tasker) => {
         const star = ratings[tasker.id] || 5;
-        const badge = badges[tasker.id];
+        const badge = badges[tasker.id] || null;
+
+        // Persist rating in database
+        const { error: dbError } = await api.submitUserRating(currentPostedJob.id, 'poster', star, badge);
+        if (dbError) {
+          console.error("Failed to submit rating in DB:", dbError);
+          showToast(`Failed to submit rating for ${tasker.name}: ${dbError.message || dbError}`, 'error');
+          throw dbError;
+        }
+
         trackEvent(EVENTS.RATING_SUBMITTED, { userId: userProfile?.id, role, entityId: tasker.id, metadata: { rating: star } });
         if (badge) {
           badgeGiven = true;
@@ -98,6 +107,8 @@ const RatingScreen = () => {
       }
 
       pushScreen('poster_home');
+    } catch (err) {
+      console.error("Error submitting rating:", err);
     } finally {
       setIsSubmitting(false);
     }

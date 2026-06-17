@@ -203,6 +203,16 @@ export const api = {
     return { data, error };
   },
 
+  submitUserRating: async (jobId, giverRole, rating, badgeType) => {
+    const { data, error } = await supabase.rpc('submit_user_rating', {
+      p_job_id: jobId,
+      p_giver_role: giverRole,
+      p_rating: rating,
+      p_badge_type: badgeType || null
+    });
+    return { data, error };
+  },
+
   acceptJobOffer: async (jobId, taskerId) => {
     const { data, error } = await supabase.rpc('accept_job_offer', {
       p_job_id: jobId,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { Radio, Users, Eye, ArrowRight, IndianRupee, Trash2, MapPin } from 'lucide-react';
+import { Radio, Users, Eye, ArrowRight, IndianRupee, Trash2, MapPin, ShieldAlert } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
 import { SKILLS } from '../../config/constants';
@@ -9,6 +9,8 @@ const LiveStatusScreen = () => {
   const { currentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs, acceptPartialCrew } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const [viewers, setViewers] = useState(0);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   // Track the tasker_id that existed when this screen first mounted.
   // We only navigate to crew_confirmed if a NEW tasker_id appears after mount.
   const initialTaskerIdRef = useRef(null);
@@ -204,22 +206,7 @@ const LiveStatusScreen = () => {
         )}
         <Tooltip text="Cancel this job broadcast" position="top">
           <button
-            onClick={async () => {
-              if (window.confirm("Are you sure you want to cancel this job search?")) {
-                try {
-                  await api.updateJob(currentPostedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
-                  await api.supabase
-                    .from('job_offers')
-                    .update({ status: 'expired' })
-                    .eq('job_id', currentPostedJob.id)
-                    .eq('status', 'pending');
-                  showToast('Job broadcast cancelled.', 'info');
-                  pushScreen('poster_home', true);
-                } catch (err) {
-                  console.error("Failed to cancel broadcast:", err);
-                }
-              }
-            }}
+            onClick={() => setShowCancelModal(true)}
             className="w-full flex items-center justify-center space-x-2 bg-gray-100 hover:bg-red-50 hover:text-red-500 text-gray-500 font-bold py-3.5 px-6 rounded-2xl transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
@@ -227,6 +214,62 @@ const LiveStatusScreen = () => {
           </button>
         </Tooltip>
       </div>
+
+      {showCancelModal && (
+        <div 
+          onClick={() => setShowCancelModal(false)}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 modal-backdrop-open"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full sm:max-w-md sm:rounded-[32px] rounded-t-[32px] flex flex-col overflow-hidden shadow-2xl p-6 space-y-6 modal-content-open"
+          >
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="text-lg font-black text-dark">Cancel Broadcast?</h3>
+              <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
+                Are you sure you want to cancel this job search? This will expire all pending job offers.
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                disabled={isCancelling}
+                className="flex-1 py-3.5 border border-border text-gray-600 hover:bg-gray-50 rounded-2xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50"
+              >
+                No, Keep Searching
+              </button>
+              <button
+                disabled={isCancelling}
+                onClick={async () => {
+                  setIsCancelling(true);
+                  try {
+                    await api.updateJob(currentPostedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
+                    await api.supabase
+                      .from('job_offers')
+                      .update({ status: 'expired' })
+                      .eq('job_id', currentPostedJob.id)
+                      .eq('status', 'pending');
+                    showToast('Job broadcast cancelled.', 'info');
+                    setShowCancelModal(false);
+                    pushScreen('poster_home', true);
+                  } catch (err) {
+                    console.error("Failed to cancel broadcast:", err);
+                    showToast('Failed to cancel broadcast.', 'error');
+                  } finally {
+                    setIsCancelling(false);
+                  }
+                }}
+                className="flex-1 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50"
+              >
+                {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

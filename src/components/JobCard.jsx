@@ -29,6 +29,8 @@ const JobCard = ({ job, onDecline }) => {
   const skill = SKILLS.find(s => s.id === job.skillId);
   const Icon = skill ? skill.icon : SKILLS[SKILLS.length - 1].icon;
 
+  const [isAccepting, setIsAccepting] = useState(false);
+
   const handleAcceptJob = () => {
     requireProfile(() => {
       // 1. Check UPI ID first
@@ -40,8 +42,13 @@ const JobCard = ({ job, onDecline }) => {
       }
 
       // 2. Require Location before accepting
-      requireLocation('tasker', () => {
-        acceptJob(job.id);
+      requireLocation('tasker', async () => {
+        setIsAccepting(true);
+        try {
+          await acceptJob(job.id);
+        } finally {
+          setIsAccepting(false);
+        }
       });
     });
   };
@@ -139,7 +146,8 @@ const JobCard = ({ job, onDecline }) => {
         <Tooltip text="Decline and remove from feed" className="flex-1">
           <button
             onClick={() => onDecline(job.id)}
-            className="w-full flex items-center justify-center space-x-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer"
+            disabled={isAccepting}
+            className={`w-full flex items-center justify-center space-x-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer ${isAccepting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <X className="w-3.5 h-3.5" />
             <span>Decline</span>
@@ -149,11 +157,15 @@ const JobCard = ({ job, onDecline }) => {
         <Tooltip text="Accept job and get details" className="flex-1">
           <button
             onClick={handleAcceptJob}
-            disabled={timeLeft === 0}
-            className={`w-full flex items-center justify-center space-x-1.5 bg-primary hover:bg-primary/95 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-xs shadow-primary/30 transition-all cursor-pointer ${timeLeft === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={timeLeft === 0 || isAccepting}
+            className={`w-full flex items-center justify-center space-x-1.5 bg-primary hover:bg-primary/95 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-xs shadow-primary/30 transition-all cursor-pointer ${timeLeft === 0 || isAccepting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <Check className="w-3.5 h-3.5" />
-            <span>Accept{timeLeft !== null ? formatTimeLeft(timeLeft) : ''}</span>
+            {isAccepting ? (
+              <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            ) : (
+              <Check className="w-3.5 h-3.5" />
+            )}
+            <span>{isAccepting ? 'Accepting...' : `Accept${timeLeft !== null ? formatTimeLeft(timeLeft) : ''}`}</span>
           </button>
         </Tooltip>
       </div>

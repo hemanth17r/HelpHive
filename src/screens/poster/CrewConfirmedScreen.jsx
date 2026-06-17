@@ -1,5 +1,5 @@
-import React, { useState, useContext } from 'react';
-import { Sparkles, Star, ShieldCheck, KeyRound, ArrowRight, ArrowLeft, Phone, Check, MapPin, Compass } from 'lucide-react';
+import React, { useState, useContext, useEffect } from 'react';
+import { Sparkles, Star, ShieldCheck, KeyRound, ArrowRight, ArrowLeft, Phone, Check, MapPin, Compass, ShieldAlert } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
 import Tooltip from '../../components/Tooltip';
@@ -35,8 +35,24 @@ const CrewConfirmedScreen = () => {
     return localStorage.getItem(`payment_initiated_${currentPostedJob?.id}`) === 'true';
   });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+
+  // Real-time synchronization redirect loop
+  useEffect(() => {
+    if (!currentPostedJob) {
+      pushScreen('poster_home', true);
+      return;
+    }
+    if (currentPostedJob.status === 'open') {
+      showToast('Your helper has cancelled. Redirecting back to search...', 'info');
+      pushScreen('live_status', true);
+    } else if (currentPostedJob.status === 'cancelled') {
+      showToast('Task cancelled.', 'info');
+      pushScreen('poster_home', true);
+    }
+  }, [currentPostedJob, pushScreen, showToast]);
 
   const handlePayOnlineForTasker = (tasker) => {
     const taskerUpi = tasker?.upiId || 'helphive@upi';
@@ -122,43 +138,8 @@ const CrewConfirmedScreen = () => {
     window.open(whatsappUrl, '_blank');
   };
 
-  const handleCancelTask = async () => {
-    if (window.confirm("Are you sure you want to cancel this task? This action is recorded.")) {
-      setIsCancelling(true);
-      try {
-        api.logEvent('task_cancelled_by_poster', { userId, role: 'poster', entityId: currentPostedJob?.id });
-        
-        // Analytics: V2 Marketplace Metric
-        if (!userProfile?.tasksPosted) {
-          api.logEvent('first_job_failed', { 
-            userId, 
-            role: 'poster', 
-            entityId: currentPostedJob?.id,
-            failure_reason: 'HIRER_CANCELLED'
-          });
-        }
-
-        await api.updateJob(currentPostedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
-        
-        if (crewTaskers && crewTaskers.length > 0) {
-          crewTaskers.forEach(tasker => {
-            api.sendNotification(
-              tasker.id,
-              "Task Cancelled",
-              `The customer cancelled the task.`,
-              'tasker_home',
-              'job_cancelled',
-              'tasker'
-            );
-          });
-        }
-        
-        showToast('Task cancelled successfully', 'info');
-        pushScreen('poster_home', true);
-      } finally {
-        setIsCancelling(false);
-      }
-    }
+  const handleCancelTask = () => {
+    setShowCancelModal(true);
   };
 
   return (
@@ -406,6 +387,78 @@ const CrewConfirmedScreen = () => {
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 ) : null}
                 <span>{isCompleting ? 'Wait...' : 'Complete Task'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Cancel Modal */}
+      {showCancelModal && (
+        <div 
+          onClick={() => setShowCancelModal(false)}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 modal-backdrop-open"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full sm:max-w-md sm:rounded-[32px] rounded-t-[32px] flex flex-col overflow-hidden shadow-2xl p-6 space-y-6 modal-content-open"
+          >
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="text-lg font-black text-dark">Cancel Task?</h3>
+              <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
+                Are you sure you want to cancel this task? This action is recorded and may affect your completion rate.
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 py-3.5 border border-border text-gray-600 hover:bg-gray-50 rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
+              >
+                No, Keep Task
+              </button>
+              <button
+                onClick={async () => {
+                  setShowCancelModal(false);
+                  setIsCancelling(true);
+                  try {
+                    api.logEvent('task_cancelled_by_poster', { userId, role: 'poster', entityId: currentPostedJob?.id });
+                    
+                    if (!userProfile?.tasksPosted) {
+                      api.logEvent('first_job_failed', { 
+                        userId, 
+                        role: 'poster', 
+                        entityId: currentPostedJob?.id,
+                        failure_reason: 'HIRER_CANCELLED'
+                      });
+                    }
+
+                    await api.updateJob(currentPostedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
+                    
+                    if (crewTaskers && crewTaskers.length > 0) {
+                      crewTaskers.forEach(tasker => {
+                        api.sendNotification(
+                          tasker.id,
+                          "Task Cancelled",
+                          `The customer cancelled the task.`,
+                          'tasker_home',
+                          'job_cancelled',
+                          'tasker'
+                        );
+                      });
+                    }
+                    
+                    showToast('Task cancelled successfully', 'info');
+                    pushScreen('poster_home', true);
+                  } finally {
+                    setIsCancelling(false);
+                  }
+                }}
+                className="flex-1 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
+              >
+                Yes, Cancel
               </button>
             </div>
           </div>
