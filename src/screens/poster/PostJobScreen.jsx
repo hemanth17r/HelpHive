@@ -456,13 +456,6 @@ const PostJobScreen = () => {
                 <h2 className="text-xl font-black text-dark tracking-tight mb-1">
                   Describe what you need
                 </h2>
-                <div className="h-4 mt-1 overflow-hidden">
-                  <p 
-                    className="text-[10px] text-gray-400 font-bold animate-[slideUp_300ms_ease-in-out]"
-                  >
-                    💡 {activePlaceholder}
-                  </p>
-                </div>
               </div>
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
