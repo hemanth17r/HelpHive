@@ -84,6 +84,27 @@ export const AppProvider = ({ children }) => {
   const [routeParams, setRouteParams] = useState(null);
   const currentScreen = screenStack[screenStack.length - 1];
 
+  // Early viewport reset on OAuth redirect return.
+  // When returning from Google's login page, mobile browsers may render the
+  // page at an incorrect zoom level (appearing as "desktop view"). This
+  // effect fires once on mount to force a viewport re-evaluation as early as
+  // possible, before the auth callback processing completes.
+  useEffect(() => {
+    const isOAuthReturn =
+      window.location.hash.includes('access_token') ||
+      window.location.search.includes('code=');
+    if (isOAuthReturn) {
+      const vp = document.querySelector('meta[name="viewport"]');
+      if (vp) {
+        const original = vp.getAttribute('content');
+        vp.setAttribute('content', 'width=device-width, initial-scale=0.99');
+        requestAnimationFrame(() => {
+          vp.setAttribute('content', original);
+        });
+      }
+    }
+  }, []);
+
   // Location States
   const [locationPermission, setLocationPermission] = useState('prompt'); // 'prompt' | 'granted' | 'denied'
   const [userLocation, setUserLocation] = useState(() => {
@@ -573,6 +594,23 @@ export const AppProvider = ({ children }) => {
         
         if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
           window.history.replaceState({}, document.title, window.location.pathname);
+
+          // Force the browser to re-evaluate the viewport meta tag.
+          // After an OAuth redirect, some mobile browsers (especially Chrome on
+          // Android) cache the initial viewport calculation from the redirect URL
+          // and fail to apply the correct mobile scaling until a full page reload.
+          // Toggling the viewport content forces a layout recalculation without a
+          // reload, which fixes the "desktop view on mobile" issue.
+          requestAnimationFrame(() => {
+            const vp = document.querySelector('meta[name="viewport"]');
+            if (vp) {
+              const original = vp.getAttribute('content');
+              vp.setAttribute('content', 'width=device-width, initial-scale=0.99');
+              requestAnimationFrame(() => {
+                vp.setAttribute('content', original);
+              });
+            }
+          });
         }
       } else {
         console.error('[Auth] Could not find or create a profile for auth user:', authId);

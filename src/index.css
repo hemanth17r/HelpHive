@@ -102,3 +102,47 @@ body {
 .slide-out-left {
   animation: slideOutLeft 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Custom Leaflet Overrides for a cleaner, smaller, and more modern map look */
+.leaflet-bar,
+.leaflet-touch .leaflet-bar {
+  border: none !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a,
+.leaflet-touch .leaflet-bar a {
+  width: 26px !important;
+  height: 26px !important;
+  line-height: 26px !important;
+  font-size: 13px !important;
+  background-color: #ffffff !important;
+  color: var(--color-dark) !important;
+  border: none !important;
+  transition: all 150ms ease;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 700 !important;
+}
+
+.leaflet-bar a:hover,
+.leaflet-touch .leaflet-bar a:hover {
+  background-color: #fafafa !important;
+  color: var(--color-primary) !important;
+}
+
+.leaflet-control-zoom-in {
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+.leaflet-top.leaflet-right {
+  top: 8px !important;
+  right: 8px !important;
+}
+
+.leaflet-right .leaflet-control-zoom {
+  margin: 0 !important;
+}

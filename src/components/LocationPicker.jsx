@@ -117,19 +117,19 @@ const LocationPicker = ({ initialLat = 17.3850, initialLng = 78.4867, onLocation
     <div className="flex flex-col relative w-full h-full rounded-2xl overflow-hidden shadow-inner">
       
       {/* Floating Search Bar */}
-      <div className="absolute top-4 left-4 right-14 z-20" ref={dropdownRef}>
+      <div className="absolute top-2 left-2 right-12 z-20" ref={dropdownRef}>
         <div className="relative shadow-lg rounded-xl">
           <input 
             type="text" 
             value={searchQuery}
             onChange={handleSearchChange}
             onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
-            className="w-full bg-white border-none rounded-xl pl-11 pr-10 py-3.5 text-sm font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+            className="w-full bg-white border-none rounded-xl pl-9 pr-9 py-2 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary transition-all"
             placeholder="Search for your location..."
           />
-          <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           {isSearching && (
-            <Loader2 className="absolute right-4 top-3.5 w-5 h-5 text-primary animate-spin" />
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary animate-spin" />
           )}
         </div>
         
@@ -167,10 +167,10 @@ const LocationPicker = ({ initialLat = 17.3850, initialLng = 78.4867, onLocation
       {/* Floating GPS Button */}
       <button 
         onClick={handleUseCurrentLocation}
-        className="absolute bottom-6 right-4 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer border border-gray-100"
+        className="absolute bottom-2 right-2 z-20 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer border border-gray-100"
         aria-label="Use current location"
       >
-        <Navigation className="w-5 h-5" />
+        <Navigation className="w-4 h-4" />
       </button>
     </div>
   );
