@@ -26,6 +26,16 @@ import { getCurrentLocation } from '../utils/location';
 import MapView from './MapView';
 import LocationPicker from './LocationPicker';
 
+const formatPhoneNumber = (value) => {
+  const input = value.replace(/\D/g, ''); // Digits only
+  if (input.length > 3 && input.length <= 6) {
+    return `${input.slice(0, 3)}-${input.slice(3)}`;
+  } else if (input.length > 6) {
+    return `${input.slice(0, 3)}-${input.slice(3, 6)}-${input.slice(6, 10)}`;
+  }
+  return input;
+};
+
 const SetupWizardModal = () => {
   const { 
     role, 
@@ -201,15 +211,6 @@ const SetupWizardModal = () => {
   }
 
   // --- Helper Methods ---
-  const formatPhoneNumber = (value) => {
-    const input = value.replace(/\D/g, ''); // Digits only
-    if (input.length > 3 && input.length <= 6) {
-      return `${input.slice(0, 3)}-${input.slice(3)}`;
-    } else if (input.length > 6) {
-      return `${input.slice(0, 3)}-${input.slice(3, 6)}-${input.slice(6, 10)}`;
-    }
-    return input;
-  };
 
   const handlePhoneChange = (e) => {
     setPhone(formatPhoneNumber(e.target.value));

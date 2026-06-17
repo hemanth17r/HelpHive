@@ -18,23 +18,7 @@ class ErrorBoundary extends React.Component {
 
   handleRetry = () => {
     this.setState({ hasError: false, error: null, errorInfo: null });
-  };
-
-  handleReload = () => {
-    this.setState({ hasError: false });
     window.location.reload();
-  };
-
-  handleGoHome = () => {
-    // Clear potentially corrupt state and go to landing
-    try {
-      localStorage.removeItem('activeRole');
-      localStorage.removeItem('userId');
-    } catch (e) {
-      // Ignore error when removing items from localStorage
-    }
-    this.setState({ hasError: false });
-    window.location.href = window.location.origin + window.location.pathname;
   };
 
   render() {
@@ -56,21 +40,6 @@ class ErrorBoundary extends React.Component {
             >
               <RefreshCw className="w-4 h-4" />
               <span>Try Again</span>
-            </button>
-
-            <button 
-              onClick={this.handleGoHome}
-              className="flex items-center justify-center space-x-2 bg-gray-100 text-gray-600 px-6 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors cursor-pointer"
-            >
-              <Home className="w-4 h-4" />
-              <span>Go to Home</span>
-            </button>
-
-            <button 
-              onClick={this.handleReload}
-              className="text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors cursor-pointer mt-2"
-            >
-              Reload Application
             </button>
           </div>
 
