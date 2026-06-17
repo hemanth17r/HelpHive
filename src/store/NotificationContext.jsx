@@ -228,6 +228,13 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [pushSupported, userId]);
 
+  // Auto-subscribe to push notifications when user logs in/session restored, if permission is already granted
+  useEffect(() => {
+    if (userId && pushSupported && pushPermission === 'granted') {
+      subscribeToPush();
+    }
+  }, [userId, pushSupported, pushPermission, subscribeToPush]);
+
   return (
     <NotificationContext.Provider value={{
       notifications,

@@ -29,7 +29,7 @@ const TaskerJobDetailsScreen = () => {
   const { showToast } = useContext(ToastContext);
   
   const [otp, setOtp] = useState('');
-  const [isVerified, setIsVerified] = useState(false);
+  const [isVerified, setIsVerified] = useState(() => acceptedJob?.status === 'in_progress');
   const [errorMsg, setErrorMsg] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -40,6 +40,12 @@ const TaskerJobDetailsScreen = () => {
       trackEvent(EVENTS.TASK_VIEWED, { userId: userProfile.id, role, entityId: acceptedJob.id });
     }
   }, [acceptedJob, userProfile, role]);
+
+  React.useEffect(() => {
+    if (acceptedJob?.status === 'in_progress') {
+      setIsVerified(true);
+    }
+  }, [acceptedJob?.status]);
 
   if (!acceptedJob) return null;
 

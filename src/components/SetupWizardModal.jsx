@@ -58,7 +58,9 @@ const SetupWizardModal = () => {
   const [selectedSkills, setSelectedSkills] = useState([]);
   
   // Service Area Map state
-  const [serviceAreaLocation, setServiceAreaLocation] = useState({ lat: 12.9716, lng: 77.5946 });
+  const [serviceAreaLocation, setServiceAreaLocation] = useState(() => {
+    return realLocation || { lat: 12.9716, lng: 77.5946 };
+  });
   const [coverageRadius, setCoverageRadius] = useState(5000);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -73,16 +75,35 @@ const SetupWizardModal = () => {
 
   // --- Poster / Hirer State ---
   // Address Setup State
-  const [addressDetails, setAddressDetails] = useState({
-    lat: 12.9716,
-    lng: 77.5946,
-    completeAddress: '',
-    houseDetails: '',
-    landmark: ''
+  const [addressDetails, setAddressDetails] = useState(() => {
+    return {
+      lat: realLocation?.lat || 12.9716,
+      lng: realLocation?.lng || 77.5946,
+      completeAddress: '',
+      landmark: ''
+    };
   });
 
   const dropdownRef = useRef(null);
   const searchTimeoutRef = useRef(null);
+
+  // Sync map center and default address with realLocation when it becomes available
+  useEffect(() => {
+    if (realLocation) {
+      setServiceAreaLocation(prev => {
+        if (prev.lat === 12.9716 && prev.lng === 77.5946) {
+          return { lat: realLocation.lat, lng: realLocation.lng };
+        }
+        return prev;
+      });
+      setAddressDetails(prev => {
+        if (prev.lat === 12.9716 && prev.lng === 77.5946) {
+          return { ...prev, lat: realLocation.lat, lng: realLocation.lng };
+        }
+        return prev;
+      });
+    }
+  }, [realLocation]);
 
   // 1. Reactive Permission Checking
   const checkPermissions = useCallback(async () => {
@@ -97,7 +118,7 @@ const SetupWizardModal = () => {
     } else {
       setGeoState(realLocation ? 'granted' : 'prompt');
     }
-    setNotifState(Notification.permission);
+    setNotifState(typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default');
   }, [realLocation]);
 
   useEffect(() => {
@@ -150,7 +171,6 @@ const SetupWizardModal = () => {
         lat: defaultAddr.lat,
         lng: defaultAddr.lng,
         completeAddress: defaultAddr.completeAddress,
-        houseDetails: '',
         landmark: defaultAddr.landmark || ''
       });
     }
@@ -345,24 +365,11 @@ const SetupWizardModal = () => {
           setError('Please search and pin your address on the map.');
           return;
         }
-        // Save Address
-        setIsSubmitting(true);
-        try {
-          const formatted = `${addressDetails.houseDetails ? addressDetails.houseDetails.trim() + ', ' : ''}${addressDetails.completeAddress}`;
-          await addSavedAddress({
-            lat: addressDetails.lat,
-            lng: addressDetails.lng,
-            completeAddress: formatted,
-            landmark: addressDetails.landmark.trim() || null,
-            type: 'Home',
-            isDefault: true
-          });
-          setActiveStep(3);
-        } catch (e) {
-          setError('Failed to save address. Please try again.');
-        } finally {
-          setIsSubmitting(false);
+        if (!addressDetails.landmark.trim()) {
+          setError('Please enter the nearest landmark.');
+          return;
         }
+        setActiveStep(3);
       } else if (activeStep === 3) {
         handleDone();
       }
@@ -406,6 +413,24 @@ const SetupWizardModal = () => {
         setError(res.error || 'Failed to update profile.');
         setIsSubmitting(false);
         return;
+      }
+
+      if (role === 'poster') {
+        // Only save the address if it doesn't already exist in savedAddresses
+        const isAlreadySaved = savedAddresses.some(
+          addr => addr.completeAddress === addressDetails.completeAddress &&
+                  addr.landmark?.trim() === addressDetails.landmark.trim()
+        );
+        if (!isAlreadySaved) {
+          await addSavedAddress({
+            lat: addressDetails.lat,
+            lng: addressDetails.lng,
+            completeAddress: addressDetails.completeAddress,
+            landmark: addressDetails.landmark.trim(),
+            type: 'Home',
+            isDefault: savedAddresses.length === 0
+          });
+        }
       }
 
       // Complete wizard!
@@ -741,28 +766,16 @@ const SetupWizardModal = () => {
                     />
                   </div>
 
-                  {/* House details & landmarks */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400">House/Flat Number</label>
-                      <input
-                        type="text"
-                        value={addressDetails.houseDetails}
-                        onChange={(e) => setAddressDetails(prev => ({ ...prev, houseDetails: e.target.value }))}
-                        placeholder="e.g. Flat 301, Block C"
-                        className="bg-white border border-border focus:border-primary rounded-xl px-3 h-10 w-full text-xs font-semibold outline-none text-dark"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400">Landmark (Optional)</label>
-                      <input
-                        type="text"
-                        value={addressDetails.landmark}
-                        onChange={(e) => setAddressDetails(prev => ({ ...prev, landmark: e.target.value }))}
-                        placeholder="e.g. Near Community Center"
-                        className="bg-white border border-border focus:border-primary rounded-xl px-3 h-10 w-full text-xs font-semibold outline-none text-dark"
-                      />
-                    </div>
+                   {/* Landmark detail */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400">Nearest Landmark</label>
+                    <input
+                      type="text"
+                      value={addressDetails.landmark}
+                      onChange={(e) => setAddressDetails(prev => ({ ...prev, landmark: e.target.value }))}
+                      placeholder="e.g. Near Community Center, opposite park"
+                      className="bg-white border border-border focus:border-primary rounded-xl px-3 h-10 w-full text-xs font-semibold outline-none text-dark"
+                    />
                   </div>
                 </div>
               )}

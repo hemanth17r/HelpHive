@@ -29,9 +29,10 @@ const PWAInstallPrompt = () => {
       return; // Already installed, don't show prompt
     }
 
-    // Detect iOS devices
+    // Detect iOS/iPadOS devices (including desktop Safari on modern iPads)
     const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || 
+      (navigator.maxTouchPoints > 1 && /macintosh|mac os x/i.test(userAgent));
     
     if (isIOSDevice && shouldShow()) {
       setIsIOS(true);
@@ -70,20 +71,22 @@ const PWAInstallPrompt = () => {
       }
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('pwa-prompt-available', handleGlobalPromptAvailable);
-
-    window.addEventListener('appinstalled', () => {
+    const handleAppInstalled = () => {
       // Clear the deferredPrompt so it can be garbage collected
       setDeferredPrompt(null);
       window.deferredPrompt = null;
       setShowPrompt(false);
       console.log('PWA was installed');
-    });
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('pwa-prompt-available', handleGlobalPromptAvailable);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('pwa-prompt-available', handleGlobalPromptAvailable);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 

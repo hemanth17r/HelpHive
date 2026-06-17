@@ -4,6 +4,7 @@ import { MapPin, X } from 'lucide-react';
 const LocationPermissionModal = ({ isOpen, onClose, onAllow, role }) => {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -19,7 +20,7 @@ const LocationPermissionModal = ({ isOpen, onClose, onAllow, role }) => {
         return () => clearTimeout(timer);
       }
     }
-  }, [isOpen]);
+  }, [isOpen, shouldRender]);
 
   if (!shouldRender) return null;
 
@@ -29,13 +30,21 @@ const LocationPermissionModal = ({ isOpen, onClose, onAllow, role }) => {
     : 'To accurately calculate the distance for taskers and help you get faster responses, we need your current location.';
 
   const handleClose = () => {
+    if (isWorking) return;
     setIsAnimatingOut(true);
     onClose();
   };
 
-  const handleAllow = () => {
-    setIsAnimatingOut(true);
-    onAllow();
+  const handleAllow = async () => {
+    if (isWorking) return;
+    setIsWorking(true);
+    try {
+      await onAllow();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsWorking(false);
+    }
   };
 
   return (
@@ -45,7 +54,11 @@ const LocationPermissionModal = ({ isOpen, onClose, onAllow, role }) => {
           <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
             <MapPin className="w-5 h-5" />
           </div>
-          <button onClick={handleClose} className="text-gray-400 hover:text-dark p-2 rounded-full hover:bg-gray-50 transition-colors">
+          <button 
+            onClick={handleClose} 
+            disabled={isWorking}
+            className="text-gray-400 hover:text-dark p-2 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -58,14 +71,19 @@ const LocationPermissionModal = ({ isOpen, onClose, onAllow, role }) => {
           
           <button 
             onClick={handleAllow}
-            className="w-full bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer mb-3"
+            disabled={isWorking}
+            className="w-full bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer mb-3 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
           >
-            Allow Location
+            {isWorking ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : null}
+            <span>{isWorking ? 'Requesting...' : 'Allow Location'}</span>
           </button>
           
           <button 
             onClick={handleClose}
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3.5 rounded-2xl transition-all cursor-pointer"
+            disabled={isWorking}
+            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3.5 rounded-2xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Maybe Later
           </button>

@@ -144,8 +144,8 @@ Issue: `;
   const handleSaveAccount = async (e) => {
     if (e) e.preventDefault();
     const updates = {};
-    const finalName = editedName.trim() || 'New User'; // Fallback if they empty it completely
-    const finalPhone = editedPhone.trim() || 'Add Phone';
+    const finalName = editedName.trim();
+    const finalPhone = editedPhone.trim();
 
     if (finalName !== profile.name) {
       updates.name = finalName;
@@ -168,7 +168,7 @@ Issue: `;
 
   const phoneDigits = editedPhone.replace(/\D/g, '');
   const isPhoneValidLength = phoneDigits.length === 10;
-  const canSave = editedName.trim().length > 0 || isPhoneValidLength;
+  const canSave = editedName.trim().length > 0 && isPhoneValidLength;
 
   return (
     <div className="flex-1 flex flex-col bg-gray-50 h-full overflow-y-auto pb-20 relative">

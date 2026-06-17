@@ -36,8 +36,32 @@ export const AppProvider = ({ children }) => {
   // Location Action Interceptor
   const [locationActionCallback, setLocationActionCallback] = useState(null);
   const [locationActionRole, setLocationActionRole] = useState('poster');
-  const [userProfile, setUserProfileState] = useState(null); // { name, phone, skills, rating, tasksCompleted }
+  const [userProfile, setUserProfileState] = useState(() => {
+    const saved = localStorage.getItem('userProfile');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse cached userProfile", e);
+      }
+    }
+    return null;
+  }); // { name, phone, skills, rating, tasksCompleted }
   const [userId, setUserId] = useState(() => localStorage.getItem('userId'));
+  const [isProfileLoading, setIsProfileLoading] = useState(() => {
+    const hasUserId = !!localStorage.getItem('userId');
+    const hasCachedProfile = !!localStorage.getItem('userProfile');
+    return hasUserId && !hasCachedProfile;
+  });
+
+  // Sync user profile to local cache when it changes
+  useEffect(() => {
+    if (userProfile) {
+      localStorage.setItem('userProfile', JSON.stringify(userProfile));
+    } else {
+      localStorage.removeItem('userProfile');
+    }
+  }, [userProfile]);
   const [selectedBird, setSelectedBird] = useState('falcon'); // Bird avatar selection
   const [isAdmin, setIsAdmin] = useState(false); // Admin dashboard access
 
@@ -354,17 +378,24 @@ export const AppProvider = ({ children }) => {
 
   // Fetch profile if returning user
   useEffect(() => {
-    if (userId && !userProfile) {
+    if (userId) {
       const fetchProfile = async () => {
+        const hasCachedProfile = !!localStorage.getItem('userProfile');
+        if (!hasCachedProfile) {
+          setIsProfileLoading(true);
+        }
         // Validate that we have a valid active Supabase Auth session first
         const { data: sessionData } = await api.getSession();
         if (!sessionData?.session) {
           console.warn('[Auth] No active Supabase session found on startup. Logging out.');
           localStorage.removeItem('userId');
           localStorage.removeItem('activeRole');
+          localStorage.removeItem('userProfile');
           setUserId(null);
           setRole(null);
+          setUserProfileState(null);
           setScreenStack(['landing']);
+          setIsProfileLoading(false);
           return;
         }
 
@@ -374,7 +405,7 @@ export const AppProvider = ({ children }) => {
 
           const parsedLoc = data.location ? parseEWKBPoint(data.location) : null;
 
-          setUserProfileState({
+          const updatedProfile = {
             id: data.id,
             name: data.name,
             email: data.email,
@@ -394,7 +425,12 @@ export const AppProvider = ({ children }) => {
             serviceAreaName: data.service_area_name,
             serviceAreaLat: parsedLoc?.lat || null,
             serviceAreaLng: parsedLoc?.lng || null
-          });
+          };
+
+          setUserProfileState(updatedProfile);
+          // Sync with local cache
+          localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+
           if (data.bird) setSelectedBird(data.bird);
           setIsAdmin(data.is_admin === true);
           setIsOnlineState(true);
@@ -407,12 +443,17 @@ export const AppProvider = ({ children }) => {
           // Profile not found in DB (zombie state), clear local storage
           localStorage.removeItem('userId');
           localStorage.removeItem('activeRole');
+          localStorage.removeItem('userProfile');
           setUserId(null);
           setRole(null);
+          setUserProfileState(null);
           setScreenStack(['landing']);
         }
+        setIsProfileLoading(false);
       };
       fetchProfile();
+    } else {
+      setIsProfileLoading(false);
     }
   }, [userId]);
 
@@ -554,6 +595,7 @@ export const AppProvider = ({ children }) => {
           localStorage.removeItem('userId');
           localStorage.removeItem('activeRole');
           localStorage.removeItem('isOnline');
+          localStorage.removeItem('userProfile');
           setUserId(null);
           setRole(null);
           setUserProfileState(null);
@@ -964,6 +1006,26 @@ export const AppProvider = ({ children }) => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []); // Empty deps — uses refs for latest values
 
+  // Listen for navigation messages from the Service Worker (e.g. when clicking a push notification while the app is open)
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      const handleServiceWorkerMessage = (event) => {
+        if (event.data && event.data.type === 'NAVIGATE') {
+          // Extract target screen from relative URL or path
+          const targetUrl = event.data.url;
+          if (targetUrl) {
+            const targetScreen = targetUrl.replace(/^\/+/g, '').replace(/\/+$/g, '');
+            pushScreen(targetScreen);
+          }
+        }
+      };
+      navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+      return () => {
+        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+      };
+    }
+  }, [pushScreen]);
+
   // Change user location helper
   const changeLocation = async (area) => {
     setUserLocation(area);
@@ -1327,6 +1389,7 @@ export const AppProvider = ({ children }) => {
     setRole(null);
     setUserLocation(null);
     localStorage.removeItem('userLocation');
+    localStorage.removeItem('userProfile');
     setLocationPermission('prompt');
     setUserProfileState(null);
     setUserId(null);
@@ -1440,7 +1503,8 @@ export const AppProvider = ({ children }) => {
         
 
         isAdmin,
-        userId
+        userId,
+        isProfileLoading
       }}
     >
       {children}

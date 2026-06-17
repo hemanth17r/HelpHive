@@ -35,7 +35,10 @@ self.addEventListener('push', function (event) {
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   
-  const actionUrl = event.notification.data?.action_url || '/';
+  let actionUrl = event.notification.data?.action_url || '/';
+  if (actionUrl && !actionUrl.startsWith('/') && !actionUrl.startsWith('http')) {
+    actionUrl = '/' + actionUrl;
+  }
 
   // This looks to see if the current window is already open and
   // focuses if it is

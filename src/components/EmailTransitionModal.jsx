@@ -55,7 +55,9 @@ const EmailTransitionModal = ({ isOpen, onClose }) => {
   };
 
   const handleMagicLink = async () => {
-    if (!email.trim() || !email.includes('@')) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const trimmedEmail = email.trim();
+    if (!emailRegex.test(trimmedEmail)) {
       setError('Please enter a valid email address.');
       return;
     }
@@ -65,7 +67,7 @@ const EmailTransitionModal = ({ isOpen, onClose }) => {
 
     try {
       // Check if email already exists on another account
-      const { data: existingProfile } = await api.findProfileByEmail(email.trim());
+      const { data: existingProfile } = await api.findProfileByEmail(trimmedEmail);
       if (existingProfile && existingProfile.id !== userProfile?.id) {
         setError('This email is already registered to another account.');
         setLoadingAction(null);
@@ -74,7 +76,7 @@ const EmailTransitionModal = ({ isOpen, onClose }) => {
 
       // Save email to the user's profile first so that when they click the magic link,
       // onAuthStateChange can find the existing profile by email and link the auth_id
-      const res = await setUserProfile({ email: email.trim() });
+      const res = await setUserProfile({ email: trimmedEmail });
       if (res && res.success === false) {
         setError(res.error || 'Failed to prepare email link.');
         setLoadingAction(null);
@@ -82,7 +84,7 @@ const EmailTransitionModal = ({ isOpen, onClose }) => {
       }
 
       // Send the magic link
-      const { error: magicError } = await api.loginWithMagicLink(email.trim());
+      const { error: magicError } = await api.loginWithMagicLink(trimmedEmail);
       if (magicError) throw magicError;
       
       setView('magic_link_sent');
@@ -163,7 +165,7 @@ const EmailTransitionModal = ({ isOpen, onClose }) => {
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setError(''); }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && email.includes('@') && !isLoading) {
+                      if (e.key === 'Enter' && !isLoading) {
                         handleMagicLink();
                       }
                     }}

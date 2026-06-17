@@ -5,6 +5,7 @@ import { ToastContext } from '../../store/ToastContext';
 import Tooltip from '../../components/Tooltip';
 import BirdAvatar from '../../components/BirdAvatars';
 import { trackEvent, EVENTS } from '../../utils/eventTracker';
+import { api } from '../../services/api';
 
 const TaskerRatingScreen = () => {
   const { acceptedJob, setAcceptedJob, pushScreen, popScreen, userProfile, role } = useContext(AppContext);

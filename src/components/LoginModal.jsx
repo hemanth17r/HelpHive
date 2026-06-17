@@ -52,7 +52,9 @@ const LoginModal = ({ isOpen, onClose }) => {
 
   const handleMagicLink = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    const trimmedEmail = email.trim();
+    if (!emailRegex.test(trimmedEmail)) {
+      setError('Please enter a valid email address.');
       showToast('Enter a valid email address.', 'error');
       return;
     }
@@ -61,7 +63,7 @@ const LoginModal = ({ isOpen, onClose }) => {
     setError('');
 
     try {
-      const { error } = await api.loginWithMagicLink(email);
+      const { error } = await api.loginWithMagicLink(trimmedEmail);
       if (error) throw error;
       setView('magic_link_sent');
     } catch (e) {
@@ -143,7 +145,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setError(''); }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && email.length > 5 && !isLoading) {
+                      if (e.key === 'Enter' && !isLoading) {
                         handleMagicLink();
                       }
                     }}

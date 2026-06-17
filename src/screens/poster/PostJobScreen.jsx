@@ -1,5 +1,5 @@
 import React, { useState, useContext, useRef } from 'react';
-import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar, MapPin } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar, MapPin, Home, Briefcase } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
@@ -95,6 +95,7 @@ const PostJobScreen = () => {
   const [area, setArea] = useState('LPU');
   const [completeAddress, setCompleteAddress] = useState('');
   const [landmark, setLandmark] = useState('');
+  const [addressType, setAddressType] = useState('Home');
   const [lat, setLat] = useState(17.3850);
   const [lng, setLng] = useState(78.4867);
   const [contactName, setContactName] = useState(userProfile?.posterName || userProfile?.name || '');
@@ -286,6 +287,10 @@ const PostJobScreen = () => {
       showToast('Please wait for the location to resolve.', 'error');
       return;
     }
+    if (!landmark.trim()) {
+      showToast('Please enter the nearest landmark.', 'error');
+      return;
+    }
 
     setIsSavingAddress(true);
 
@@ -294,9 +299,9 @@ const PostJobScreen = () => {
       const finalContactPhone = userProfile?.phone && userProfile.phone !== 'Add Phone' ? userProfile.phone : '';
 
       const newAddress = {
-        type: 'Job Location',
+        type: addressType,
         completeAddress,
-        landmark,
+        landmark: landmark.trim(),
         contactName: finalContactName,
         contactPhone: finalContactPhone,
         isDefault: savedAddresses.length === 0,
@@ -760,8 +765,8 @@ const PostJobScreen = () => {
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-col h-[60vh] max-h-[500px]">
-                  <div className="flex-1 min-h-0 relative">
+                <div className="flex flex-col space-y-4">
+                  <div className="h-[35vh] min-h-[200px] relative rounded-2xl overflow-hidden border border-border">
                     <LocationPicker 
                       initialLat={lat}
                       initialLng={lng}
@@ -771,6 +776,45 @@ const PostJobScreen = () => {
                         setLng(loc.lng);
                       }}
                     />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400">Nearest Landmark</label>
+                    <input
+                      type="text"
+                      value={landmark}
+                      onChange={(e) => setLandmark(e.target.value)}
+                      placeholder="e.g. Near Community Center, opposite park"
+                      className="bg-white border border-border focus:border-primary rounded-xl px-3 h-10 w-full text-xs font-semibold outline-none text-dark"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Save Location As</label>
+                    <div className="flex space-x-2 w-full">
+                      <button 
+                        type="button"
+                        onClick={() => setAddressType('Home')}
+                        className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Home' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+                      >
+                        <Home className="w-3.5 h-3.5 mr-1" />
+                        <span className="text-[10px]">Home</span>
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setAddressType('Office')}
+                        className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Office' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+                      >
+                        <Briefcase className="w-3.5 h-3.5 mr-1" />
+                        <span className="text-[10px]">Office</span>
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setAddressType('Other')}
+                        className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Other' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+                      >
+                        <MapPin className="w-3.5 h-3.5 mr-1" />
+                        <span className="text-[10px]">Other</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

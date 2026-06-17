@@ -75,7 +75,8 @@ const AppContent = () => {
     cancelLocationAction,
     setLocationModalOpen,
     realLocation,
-    setRealLocation
+    setRealLocation,
+    isProfileLoading
   } = useContext(AppContext);
 
   const { 
@@ -86,6 +87,15 @@ const AppContent = () => {
   } = useContext(NotificationContext);
 
   const { completionPercentage } = useProfileCompletion();
+
+  if (isProfileLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-dvh bg-white w-full">
+        <div className="w-10 h-10 border-4 border-gray-200 border-t-primary rounded-full animate-spin mb-4"></div>
+        <p className="text-sm font-bold text-gray-500">Loading your profile...</p>
+      </div>
+    );
+  }
 
   // Status dot for Tasker avatar
   const renderStatusDot = () => (
