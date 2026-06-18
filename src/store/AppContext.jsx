@@ -62,7 +62,18 @@ export const AppProvider = ({ children }) => {
       localStorage.removeItem('userProfile');
     }
   }, [userProfile]);
-  const [selectedBird, setSelectedBird] = useState('falcon'); // Bird avatar selection
+  const [selectedBird, setSelectedBird] = useState(() => {
+    const saved = localStorage.getItem('userProfile');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed?.bird) return parsed.bird;
+      } catch (e) {
+        // ignore
+      }
+    }
+    return 'falcon';
+  }); // Bird avatar selection
   const [isAdmin, setIsAdmin] = useState(false); // Admin dashboard access
 
   // Initialise from localStorage so a user's offline preference survives page refreshes.
