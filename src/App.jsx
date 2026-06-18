@@ -88,14 +88,7 @@ const AppContent = () => {
 
   const { completionPercentage } = useProfileCompletion();
 
-  if (isProfileLoading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-dvh bg-white w-full">
-        <div className="w-10 h-10 border-4 border-gray-200 border-t-primary rounded-full animate-spin mb-4"></div>
-        <p className="text-sm font-bold text-gray-500">Loading your profile...</p>
-      </div>
-    );
-  }
+
 
   // Status dot for Tasker avatar
   const renderStatusDot = () => (
@@ -211,6 +204,15 @@ const AppContent = () => {
 
   const isMainScreen = currentScreen === 'landing' || (currentScreen === 'tasker_home' && activeTab === 'home') || currentScreen === 'poster_home';
   const showBottomNav = currentScreen === 'tasker_home' || currentScreen === 'poster_home' || (currentScreen === 'my_profile' && role === 'poster');
+
+  if (isProfileLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-dvh bg-white w-full">
+        <div className="w-10 h-10 border-4 border-gray-200 border-t-primary rounded-full animate-spin mb-4"></div>
+        <p className="text-sm font-bold text-gray-500">Loading your profile...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh bg-gray-100 flex items-center justify-center p-0 select-none font-sans overflow-hidden">

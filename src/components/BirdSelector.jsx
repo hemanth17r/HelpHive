@@ -23,8 +23,6 @@ const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
     }
   }, [isOpen, shouldRender]);
 
-  if (!shouldRender) return null;
-
   const selectTimeoutRef = React.useRef(null);
 
   const handleSelect = (birdId) => {
@@ -50,6 +48,8 @@ const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
       onClose();
     }
   };
+
+  if (!shouldRender) return null;
 
   return (
     <div

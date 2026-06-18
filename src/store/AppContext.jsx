@@ -488,236 +488,8 @@ export const AppProvider = ({ children }) => {
     }
   }, [userId]);
 
-  // Listen to Supabase Auth State Changes for Magic Link / OAuth
-  const authProcessingRef = useRef(false);
 
-  const handleSignIn = async (session) => {
-    if (!session?.user) return;
-    if (authProcessingRef.current) return;
-    authProcessingRef.current = true;
 
-    try {
-      const email = session.user.email;
-      const authId = session.user.id;
-
-      let profile = null;
-
-      // 1. Try to find by auth_id
-      const { data: profileByAuth, error: authErr } = await api.findProfileByAuthId(authId);
-      if (authErr && authErr.code !== 'PGRST116') {
-        console.error('[Auth] Error finding profile by auth_id:', authErr);
-      }
-
-      if (profileByAuth) {
-        profile = profileByAuth;
-        
-        // Update name from Google if it is still 'New User'
-        if (profile.name === 'New User' && session.user.user_metadata?.full_name) {
-          const googleName = session.user.user_metadata.full_name;
-          await api.updateProfile(profile.id, { name: googleName });
-          profile.name = googleName;
-        }
-      } else if (email) {
-        // 2. Try to find by email
-        const { data: profileByEmail, error: emailErr } = await api.findProfileByEmail(email);
-        if (emailErr && emailErr.code !== 'PGRST116') {
-          console.error('[Auth] Error finding profile by email:', emailErr);
-        }
-
-        if (profileByEmail) {
-          // Link auth_id to existing email-based profile
-          await api.updateProfile(profileByEmail.id, { auth_id: authId });
-          profile = profileByEmail;
-        } else {
-          // 3. New user — create profile
-          const activeRole = localStorage.getItem('activeRole') || 'tasker';
-          const { data: newProfile, error: createErr } = await api.createProfile({
-            name: session.user.user_metadata?.full_name || 'New User',
-            email: email,
-            auth_id: authId,
-            role: activeRole,
-            rating: 5.0,
-            tasks_completed: 0,
-            bird: selectedBird || 'falcon'
-          });
-
-          if (createErr) {
-            console.error('[Auth] Error creating profile:', createErr);
-            // If insert failed due to unique constraint (duplicate), try finding again
-            const { data: retryProfile } = await api.findProfileByAuthId(authId);
-            profile = retryProfile;
-          } else {
-            profile = newProfile;
-          }
-
-          if (profile) {
-            api.notifyAdmin('New User Registration', `A new user (${email}) just signed up!`);
-            trackEvent(EVENTS.SIGNUP, { userId: profile.id, role: activeRole });
-          }
-        }
-      }
-
-      if (profile) {
-        const isAlreadyLoggedIn = localStorage.getItem('userId') === profile.id;
-        setUserId(profile.id);
-        localStorage.setItem('userId', profile.id);
-        const finalRole = localStorage.getItem('activeRole') || profile.role || 'tasker';
-        setRole(finalRole);
-        localStorage.setItem('activeRole', finalRole);
-
-        if (profile.role !== finalRole) {
-          api.updateProfile(profile.id, { role: finalRole }).then();
-        }
-
-        const verifiedPhones = profile.verified_phones || [];
-        const parsedLoc = profile.location ? parseEWKBPoint(profile.location) : null;
-
-        setUserProfileState({
-          id: profile.id,
-          name: profile.name,
-          email: profile.email,
-          phone: profile.phone,
-          posterName: profile.posterName || profile.name,
-          posterPhone: profile.posterPhone || profile.phone,
-          taskerName: profile.taskerName || profile.name,
-          taskerPhone: profile.taskerPhone || profile.phone,
-          verifiedPhones: verifiedPhones,
-          skills: profile.skills || [],
-          rating: profile.rating,
-          tasksCompleted: profile.tasks_completed,
-          bird: profile.bird,
-          upiId: profile.upi_id || '',
-          coverageRadius: profile.coverage_radius,
-          coverageLevel: profile.coverage_level,
-          serviceAreaName: profile.service_area_name,
-          serviceAreaLat: parsedLoc?.lat || null,
-          serviceAreaLng: parsedLoc?.lng || null
-        });
-
-        if (profile.bird) setSelectedBird(profile.bird);
-        setIsAdmin(profile.is_admin === true);
-        // Respect is_online from DB on OAuth/magic-link sign-in.
-        // For new profiles the field won't be set yet, so default to true.
-        const signInIsOnline = profile.is_online !== null && profile.is_online !== undefined ? profile.is_online : true;
-        setIsOnlineState(signInIsOnline);
-        localStorage.setItem('isOnline', signInIsOnline ? 'true' : 'false');
-
-        pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
-        if (!isAlreadyLoggedIn) {
-          showToast('Welcome back!', 'success');
-        }
-        
-        if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
-          window.history.replaceState({}, document.title, window.location.pathname);
-
-          // Force the browser to re-evaluate the viewport meta tag.
-          // After an OAuth redirect, some mobile browsers (especially Chrome on
-          // Android) cache the initial viewport calculation from the redirect URL
-          // and fail to apply the correct mobile scaling until a full page reload.
-          // Toggling the viewport content forces a layout recalculation without a
-          // reload, which fixes the "desktop view on mobile" issue.
-          requestAnimationFrame(() => {
-            const vp = document.querySelector('meta[name="viewport"]');
-            if (vp) {
-              const original = vp.getAttribute('content');
-              vp.setAttribute('content', 'width=device-width, initial-scale=0.99');
-              requestAnimationFrame(() => {
-                vp.setAttribute('content', original);
-              });
-            }
-          });
-        }
-      } else {
-        console.error('[Auth] Could not find or create a profile for auth user:', authId);
-        showToast('Login failed: Could not load user profile.', 'error');
-        resetApp();
-      }
-    } catch (err) {
-      console.error('[Auth] Unexpected error in handleSignIn:', err);
-      showToast('Login failed due to unexpected error.', 'error');
-      resetApp();
-    } finally {
-      authProcessingRef.current = false;
-    }
-  };
-
-  useEffect(() => {
-    const { data: { subscription } } = api.supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
-        if (localStorage.getItem('userId')) {
-          localStorage.removeItem('userId');
-          localStorage.removeItem('activeRole');
-          localStorage.removeItem('isOnline');
-          localStorage.removeItem('userProfile');
-          setUserId(null);
-          setRole(null);
-          setUserProfileState(null);
-          setScreenStack(['landing']);
-          setActiveTab('home');
-        }
-        return;
-      }
-
-      // Only handle sign-in events, ignore token refreshes etc.
-      if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return;
-      if (!session?.user) return;
-
-      handleSignIn(session);
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, []);
-
-  // Guard stuck auth_loading screens and proactively handle invalid magic links
-  useEffect(() => {
-    if (currentScreen === 'auth_loading') {
-      let isMounted = true;
-      let timer;
-
-      const checkAuthStatus = async () => {
-        try {
-          // getSession awaits the URL code exchange if detectSessionInUrl is true
-          const { data, error } = await api.getSession();
-          if (isMounted) {
-            if (error || !data?.session) {
-              console.warn('[Auth] Code exchange failed or no session found. Resetting stack.', error);
-              showToast('Login link is invalid or has expired. Please request a new one.', 'error');
-              resetApp();
-            } else {
-              // Session exists! Code exchange succeeded.
-              clearTimeout(timer);
-              // Proactively log the user in using the retrieved session
-              handleSignIn(data.session);
-            }
-          }
-        } catch (e) {
-          if (isMounted) {
-            console.error('[Auth] Error checking session:', e);
-            showToast('Login failed due to network error.', 'error');
-            resetApp();
-          }
-        }
-      };
-
-      // Fallback timeout in case the network completely drops
-      timer = setTimeout(() => {
-        if (isMounted && currentScreen === 'auth_loading') {
-          console.warn('[Auth] Auth loading timed out. Resetting stack.');
-          showToast('Login timed out. Please check your connection.', 'error');
-          resetApp();
-        }
-      }, 10000);
-
-      checkAuthStatus();
-
-      return () => {
-        isMounted = false;
-        clearTimeout(timer);
-      };
-    }
-  }, [currentScreen]);
 
 
 
@@ -1549,6 +1321,237 @@ export const AppProvider = ({ children }) => {
     setRealLocation(null);
     if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
   };
+
+  // Listen to Supabase Auth State Changes for Magic Link / OAuth
+  const authProcessingRef = useRef(false);
+
+  const handleSignIn = async (session) => {
+    if (!session?.user) return;
+    if (authProcessingRef.current) return;
+    authProcessingRef.current = true;
+
+    try {
+      const email = session.user.email;
+      const authId = session.user.id;
+
+      let profile = null;
+
+      // 1. Try to find by auth_id
+      const { data: profileByAuth, error: authErr } = await api.findProfileByAuthId(authId);
+      if (authErr && authErr.code !== 'PGRST116') {
+        console.error('[Auth] Error finding profile by auth_id:', authErr);
+      }
+
+      if (profileByAuth) {
+        profile = profileByAuth;
+        
+        // Update name from Google if it is still 'New User'
+        if (profile.name === 'New User' && session.user.user_metadata?.full_name) {
+          const googleName = session.user.user_metadata.full_name;
+          await api.updateProfile(profile.id, { name: googleName });
+          profile.name = googleName;
+        }
+      } else if (email) {
+        // 2. Try to find by email
+        const { data: profileByEmail, error: emailErr } = await api.findProfileByEmail(email);
+        if (emailErr && emailErr.code !== 'PGRST116') {
+          console.error('[Auth] Error finding profile by email:', emailErr);
+        }
+
+        if (profileByEmail) {
+          // Link auth_id to existing email-based profile
+          await api.updateProfile(profileByEmail.id, { auth_id: authId });
+          profile = profileByEmail;
+        } else {
+          // 3. New user — create profile
+          const activeRole = localStorage.getItem('activeRole') || 'tasker';
+          const { data: newProfile, error: createErr } = await api.createProfile({
+            name: session.user.user_metadata?.full_name || 'New User',
+            email: email,
+            auth_id: authId,
+            role: activeRole,
+            rating: 5.0,
+            tasks_completed: 0,
+            bird: selectedBird || 'falcon'
+          });
+
+          if (createErr) {
+            console.error('[Auth] Error creating profile:', createErr);
+            // If insert failed due to unique constraint (duplicate), try finding again
+            const { data: retryProfile } = await api.findProfileByAuthId(authId);
+            profile = retryProfile;
+          } else {
+            profile = newProfile;
+          }
+
+          if (profile) {
+            api.notifyAdmin('New User Registration', `A new user (${email}) just signed up!`);
+            trackEvent(EVENTS.SIGNUP, { userId: profile.id, role: activeRole });
+          }
+        }
+      }
+
+      if (profile) {
+        const isAlreadyLoggedIn = localStorage.getItem('userId') === profile.id;
+        setUserId(profile.id);
+        localStorage.setItem('userId', profile.id);
+        const finalRole = localStorage.getItem('activeRole') || profile.role || 'tasker';
+        setRole(finalRole);
+        localStorage.setItem('activeRole', finalRole);
+
+        if (profile.role !== finalRole) {
+          api.updateProfile(profile.id, { role: finalRole }).then();
+        }
+
+        const verifiedPhones = profile.verified_phones || [];
+        const parsedLoc = profile.location ? parseEWKBPoint(profile.location) : null;
+
+        setUserProfileState({
+          id: profile.id,
+          name: profile.name,
+          email: profile.email,
+          phone: profile.phone,
+          posterName: profile.posterName || profile.name,
+          posterPhone: profile.posterPhone || profile.phone,
+          taskerName: profile.taskerName || profile.name,
+          taskerPhone: profile.taskerPhone || profile.phone,
+          verifiedPhones: verifiedPhones,
+          skills: profile.skills || [],
+          rating: profile.rating,
+          tasksCompleted: profile.tasks_completed,
+          bird: profile.bird,
+          upiId: profile.upi_id || '',
+          coverageRadius: profile.coverage_radius,
+          coverageLevel: profile.coverage_level,
+          serviceAreaName: profile.service_area_name,
+          serviceAreaLat: parsedLoc?.lat || null,
+          serviceAreaLng: parsedLoc?.lng || null
+        });
+
+        if (profile.bird) setSelectedBird(profile.bird);
+        setIsAdmin(profile.is_admin === true);
+        // Respect is_online from DB on OAuth/magic-link sign-in.
+        // For new profiles the field won't be set yet, so default to true.
+        const signInIsOnline = profile.is_online !== null && profile.is_online !== undefined ? profile.is_online : true;
+        setIsOnlineState(signInIsOnline);
+        localStorage.setItem('isOnline', signInIsOnline ? 'true' : 'false');
+
+        pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
+        if (!isAlreadyLoggedIn) {
+          showToast('Welcome back!', 'success');
+        }
+        
+        if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+
+          // Force the browser to re-evaluate the viewport meta tag.
+          // After an OAuth redirect, some mobile browsers (especially Chrome on
+          // Android) cache the initial viewport calculation from the redirect URL
+          // and fail to apply the correct mobile scaling until a full page reload.
+          // Toggling the viewport content forces a layout recalculation without a
+          // reload, which fixes the "desktop view on mobile" issue.
+          requestAnimationFrame(() => {
+            const vp = document.querySelector('meta[name="viewport"]');
+            if (vp) {
+              const original = vp.getAttribute('content');
+              vp.setAttribute('content', 'width=device-width, initial-scale=0.99');
+              requestAnimationFrame(() => {
+                vp.setAttribute('content', original);
+              });
+            }
+          });
+        }
+      } else {
+        console.error('[Auth] Could not find or create a profile for auth user:', authId);
+        showToast('Login failed: Could not load user profile.', 'error');
+        resetApp();
+      }
+    } catch (err) {
+      console.error('[Auth] Unexpected error in handleSignIn:', err);
+      showToast('Login failed due to unexpected error.', 'error');
+      resetApp();
+    } finally {
+      authProcessingRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    const { data: { subscription } } = api.supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        if (localStorage.getItem('userId')) {
+          localStorage.removeItem('userId');
+          localStorage.removeItem('activeRole');
+          localStorage.removeItem('isOnline');
+          localStorage.removeItem('userProfile');
+          setUserId(null);
+          setRole(null);
+          setUserProfileState(null);
+          setScreenStack(['landing']);
+          setActiveTab('home');
+        }
+        return;
+      }
+
+      // Only handle sign-in events, ignore token refreshes etc.
+      if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return;
+      if (!session?.user) return;
+
+      handleSignIn(session);
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
+
+  // Guard stuck auth_loading screens and proactively handle invalid magic links
+  useEffect(() => {
+    if (currentScreen === 'auth_loading') {
+      let isMounted = true;
+      let timer;
+
+      const checkAuthStatus = async () => {
+        try {
+          // getSession awaits the URL code exchange if detectSessionInUrl is true
+          const { data, error } = await api.getSession();
+          if (isMounted) {
+            if (error || !data?.session) {
+              console.warn('[Auth] Code exchange failed or no session found. Resetting stack.', error);
+              showToast('Login link is invalid or has expired. Please request a new one.', 'error');
+              resetApp();
+            } else {
+              // Session exists! Code exchange succeeded.
+              clearTimeout(timer);
+              // Proactively log the user in using the retrieved session
+              handleSignIn(data.session);
+            }
+          }
+        } catch (e) {
+          if (isMounted) {
+            console.error('[Auth] Error checking session:', e);
+            showToast('Login failed due to network error.', 'error');
+            resetApp();
+          }
+        }
+      };
+
+      // Fallback timeout in case the network completely drops
+      timer = setTimeout(() => {
+        if (isMounted && currentScreen === 'auth_loading') {
+          console.warn('[Auth] Auth loading timed out. Resetting stack.');
+          showToast('Login timed out. Please check your connection.', 'error');
+          resetApp();
+        }
+      }, 10000);
+
+      checkAuthStatus();
+
+      return () => {
+        isMounted = false;
+        clearTimeout(timer);
+      };
+    }
+  }, [currentScreen]);
 
   return (
     <AppContext.Provider
