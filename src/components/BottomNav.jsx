@@ -6,13 +6,22 @@ const BottomNav = () => {
   const { activeTab, setActiveTab, switchRole, role, pushScreen, currentScreen } = useContext(AppContext);
   const [isRotating, setIsRotating] = useState(false);
 
+  const timeoutRef = React.useRef(null);
+
   const handleSwitchMode = () => {
     setIsRotating(true);
-    setTimeout(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
       setIsRotating(false);
       switchRole(role === 'tasker' ? 'poster' : 'tasker');
     }, 400);
   };
+
+  React.useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   const handleHomeClick = () => {
     if (role === 'tasker') setActiveTab('home');

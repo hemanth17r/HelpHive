@@ -1,22 +1,17 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Clock, CheckCircle, TrendingUp, Briefcase, CalendarDays, Users, Hash, ChevronDown, ChevronUp, Inbox, Check, X } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Briefcase, CalendarDays, Check, X } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
-import { SKILLS } from '../../config/constants';
 
 const TaskerActivityScreen = () => {
-  const { popScreen, jobs, userProfile, setUserProfile, pushScreen, setCurrentPostedJob, setAcceptedJob, taskerActivityScrollTarget, setTaskerActivityScrollTarget } = useContext(AppContext);
+  const { popScreen, jobs, userProfile, setUserProfile, taskerActivityScrollTarget, setTaskerActivityScrollTarget } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
 
-  const [showAllActive, setShowAllActive] = useState(false);
-  const [showAllCompleted, setShowAllCompleted] = useState(false);
   const [isEditingUpi, setIsEditingUpi] = useState(false);
   const [editedUpiId, setEditedUpiId] = useState('');
   const [pulseUpi, setPulseUpi] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const activeRef = useRef(null);
-  const completedRef = useRef(null);
   const upiRef = useRef(null);
 
   const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
@@ -54,12 +49,6 @@ const TaskerActivityScreen = () => {
       // Bug 3.2 fix: Store timeout IDs in refs so they can be cleaned up on
       // unmount, preventing state-update-on-unmounted-component warnings.
       scrollTimerRef.current = setTimeout(() => {
-        if (taskerActivityScrollTarget === 'active' && activeRef.current) {
-          activeRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        if (taskerActivityScrollTarget === 'completed' && completedRef.current) {
-          completedRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
         if (taskerActivityScrollTarget === 'upi' && upiRef.current) {
           upiRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
           setPulseUpi(true);
@@ -74,19 +63,13 @@ const TaskerActivityScreen = () => {
     };
   }, [taskerActivityScrollTarget, setTaskerActivityScrollTarget]);
 
-  const PREVIEW_COUNT = 2;
-
   // Filter jobs for this tasker
   const taskerJobs = jobs.filter(j =>
     j.taskerId === userProfile?.id ||
     j.taskerName === userProfile?.name
   );
 
-  const activeJobs = taskerJobs.filter(j => j.status === 'accepted' || j.status === 'in_progress');
-  const completedJobs = taskerJobs.filter(j => j.status === 'completed');
-
-  const displayActive = activeJobs;
-  const displayCompleted = completedJobs;
+  const displayCompleted = taskerJobs.filter(j => j.status === 'completed');
 
   // Earnings calculations
   const totalEarned = displayCompleted.reduce((sum, j) => sum + (j.amount || 0), 0);

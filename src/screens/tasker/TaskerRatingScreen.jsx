@@ -21,6 +21,22 @@ const TaskerRatingScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
+  const redirectTimerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!acceptedJob) {
+      pushScreen('tasker_home', true);
+    }
+  }, [acceptedJob, pushScreen]);
+
+  React.useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
+
   const posterBadges = [
     { id: 'paid_promptly', label: 'Paid Promptly', icon: Award, color: 'green' },
     { id: 'clear_instructions', label: 'Clear Instructions', icon: Check, color: 'blue' },
@@ -84,9 +100,9 @@ const TaskerRatingScreen = () => {
       }
 
       setIsSubmitted(true);
-      setTimeout(() => {
+      redirectTimerRef.current = setTimeout(() => {
         setAcceptedJob(null);
-        pushScreen('tasker_home');
+        pushScreen('tasker_home', true);
       }, 1800);
     } catch (err) {
       console.error("Error submitting rating:", err);

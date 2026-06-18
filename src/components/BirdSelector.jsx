@@ -25,16 +25,25 @@ const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
 
   if (!shouldRender) return null;
 
+  const selectTimeoutRef = React.useRef(null);
+
   const handleSelect = (birdId) => {
     setAnimatingBird(birdId);
     onSelectBird(birdId);
 
     // Close after 300ms
-    setTimeout(() => {
+    if (selectTimeoutRef.current) clearTimeout(selectTimeoutRef.current);
+    selectTimeoutRef.current = setTimeout(() => {
       setAnimatingBird(null);
       onClose();
     }, 300);
   };
+
+  useEffect(() => {
+    return () => {
+      if (selectTimeoutRef.current) clearTimeout(selectTimeoutRef.current);
+    };
+  }, []);
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {

@@ -189,10 +189,18 @@ const JobReceiptScreen = () => {
             </h3>
             <div className="flex flex-col py-1 space-y-2">
               <div className="flex items-center space-x-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star key={star} className="w-5 h-5 fill-primary text-primary" />
-                ))}
-                <span className="text-xs font-black text-dark ml-2">5.0</span>
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const ratingVal = currentPostedJob.myRatingToReceiver || 5;
+                  return (
+                    <Star 
+                      key={star} 
+                      className={`w-5 h-5 ${star <= ratingVal ? 'fill-primary text-primary' : 'text-gray-200'}`} 
+                    />
+                  );
+                })}
+                <span className="text-xs font-black text-dark ml-2">
+                  {currentPostedJob.myRatingToReceiver ? currentPostedJob.myRatingToReceiver.toFixed(1) : '5.0'}
+                </span>
               </div>
               <p className="text-xs font-semibold text-gray-500">
                 You rated the {role === 'poster' ? 'tasker' : 'hirer'} for this job.

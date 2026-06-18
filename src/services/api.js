@@ -41,14 +41,20 @@ export const api = {
     const userId = localStorage.getItem('userId');
     const role = localStorage.getItem('activeRole');
     
-    let ratedJobIds = [];
+    let ratedJobsMap = {};
     if (userId) {
-      const { data: feedbacks } = await supabase
-        .from('feedbacks')
-        .select('job_id')
-        .eq('giver_id', userId);
-      if (feedbacks) {
-        ratedJobIds = feedbacks.map(f => f.job_id);
+      const sessionRes = await supabase.auth.getSession();
+      const authUserId = sessionRes.data?.session?.user?.id;
+      if (authUserId) {
+        const { data: feedbacks } = await supabase
+          .from('feedbacks')
+          .select('job_id, rating')
+          .eq('giver_id', authUserId);
+        if (feedbacks) {
+          feedbacks.forEach(f => {
+            ratedJobsMap[f.job_id] = f.rating;
+          });
+        }
       }
     }
 
@@ -138,7 +144,8 @@ export const api = {
             offerExpiresAt: offer ? offer.expires_at : null,
             address: addressObj,
             taskerCurrentLocation: j.tasker_current_location ? parseEWKBPoint(j.tasker_current_location) : null,
-            hasBeenRated: ratedJobIds.includes(j.id)
+            hasBeenRated: !!ratedJobsMap[j.id],
+            myRatingToReceiver: ratedJobsMap[j.id] || null
           };
         });
         return { data: mappedJobs, error };
@@ -198,7 +205,8 @@ export const api = {
           taskerUpi: tasker.upi_id,
           address: addressObj,
           taskerCurrentLocation: j.tasker_current_location ? parseEWKBPoint(j.tasker_current_location) : null,
-          hasBeenRated: ratedJobIds.includes(j.id)
+          hasBeenRated: !!ratedJobsMap[j.id],
+          myRatingToReceiver: ratedJobsMap[j.id] || null
         };
       });
       return { data: mappedJobs, error };
@@ -306,17 +314,19 @@ export const api = {
   fetchJobCrew: async (jobId) => {
     const { data, error } = await supabase
       .from('job_offers')
-      .select('tasker_id, profiles(id, name, bird, phone, upi_id)')
+      .select('tasker_id, profiles(id, name, bird, phone, upi_id, rating, tasks_completed)')
       .eq('job_id', jobId)
       .eq('status', 'accepted');
       
     if (data) {
       return { data: data.map(d => ({
-        id: d.profiles.id,
-        name: d.profiles.name,
-        bird: d.profiles.bird,
-        phone: d.profiles.phone,
-        upiId: d.profiles.upi_id
+        id: d.profiles?.id,
+        name: d.profiles?.name,
+        bird: d.profiles?.bird,
+        phone: d.profiles?.phone,
+        upiId: d.profiles?.upi_id,
+        rating: d.profiles?.rating,
+        tasksCompleted: d.profiles?.tasks_completed
       })), error };
     }
     return { data: [], error };
@@ -524,7 +534,6 @@ export const api = {
       .from('profiles')
       .select('*')
       .eq('phone', phone)
-      .is('email', null)
       .order('created_at', { ascending: false });
 
     if (error) return { data: null, error };

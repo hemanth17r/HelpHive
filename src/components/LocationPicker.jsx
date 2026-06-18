@@ -24,6 +24,9 @@ const LocationPicker = ({ initialLat = 17.3850, initialLng = 78.4867, onLocation
 
   useEffect(() => {
     handleReverseGeocode(initialLat, initialLng);
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
   }, []);
 
   useEffect(() => {

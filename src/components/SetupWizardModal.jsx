@@ -186,7 +186,7 @@ const SetupWizardModal = () => {
     }
   }, [role, savedAddresses]);
 
-  // Click outside for search dropdown
+  // Click outside for search dropdown and cleanup search timeout
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -194,8 +194,52 @@ const SetupWizardModal = () => {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
   }, []);
+
+  const hasInitializedStepRef = useRef(false);
+
+  useEffect(() => {
+    if (userProfile && !hasInitializedStepRef.current) {
+      hasInitializedStepRef.current = true;
+      
+      if (role === 'tasker') {
+        const hasSkills = userProfile.skills && userProfile.skills.length > 0;
+        const hasServiceArea = userProfile.serviceAreaLat && userProfile.serviceAreaLng && userProfile.serviceAreaName;
+        
+        const cleanName = userProfile.name === 'New User' || userProfile.name === 'Guest User' ? '' : userProfile.name || '';
+        const cleanPhone = userProfile.phone === 'Add Phone' ? '' : userProfile.phone || '';
+        const hasProfileAndUpi = cleanName.trim() && cleanPhone.trim() && userProfile.upiId;
+
+        if (!hasSkills) {
+          setActiveStep(1);
+        } else if (!hasServiceArea) {
+          setActiveStep(2);
+        } else if (!hasProfileAndUpi) {
+          setActiveStep(3);
+        } else {
+          setActiveStep(4);
+        }
+      } else if (role === 'poster') {
+        const cleanName = userProfile.name === 'New User' || userProfile.name === 'Guest User' ? '' : userProfile.name || '';
+        const cleanPhone = userProfile.phone === 'Add Phone' ? '' : userProfile.phone || '';
+        const hasProfile = cleanName.trim() && cleanPhone.trim();
+        
+        const hasAddress = savedAddresses.length > 0;
+
+        if (!hasProfile) {
+          setActiveStep(1);
+        } else if (!hasAddress) {
+          setActiveStep(2);
+        } else {
+          setActiveStep(3);
+        }
+      }
+    }
+  }, [userProfile, role, savedAddresses]);
 
   // Check if wizard completed flag is set
   const isCompleted = localStorage.getItem(`helphive_wizard_completed_${role}_${userId}`) === 'true';

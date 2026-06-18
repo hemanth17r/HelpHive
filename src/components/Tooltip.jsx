@@ -20,12 +20,17 @@ const Tooltip = ({ text, children, position = 'bottom' }) => {
     }, 500); // 500ms long press
   };
 
+  const hideTimerRef = useRef(null);
+
   const handleTouchEnd = () => {
     if (pressTimer.current) {
       clearTimeout(pressTimer.current);
     }
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
     // Keep it visible for 1.5 seconds on mobile so they can read it, then hide
-    setTimeout(() => {
+    hideTimerRef.current = setTimeout(() => {
       setVisible(false);
     }, 1500);
   };
@@ -33,6 +38,7 @@ const Tooltip = ({ text, children, position = 'bottom' }) => {
   useEffect(() => {
     return () => {
       if (pressTimer.current) clearTimeout(pressTimer.current);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     };
   }, []);
 

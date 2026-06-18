@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Star, Send, Check, Flag, Award, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';

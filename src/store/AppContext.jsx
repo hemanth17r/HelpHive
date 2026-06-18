@@ -79,6 +79,11 @@ export const AppProvider = ({ children }) => {
     const activeRole = localStorage.getItem('activeRole');
     const storedUserId = localStorage.getItem('userId');
     if (activeRole && storedUserId) {
+      const path = window.location.pathname.replace(/^\/+/g, '').replace(/\/+$/g, '');
+      const validScreens = ['notifications', 'tasker_activity', 'my_profile', 'about_us', 'need_help', 'job_history', 'address_book'];
+      if (validScreens.includes(path)) {
+        return [activeRole === 'tasker' ? 'tasker_home' : 'poster_home', path];
+      }
       return [activeRole === 'tasker' ? 'tasker_home' : 'poster_home'];
     }
     return ['landing'];
@@ -942,7 +947,11 @@ export const AppProvider = ({ children }) => {
         if (
           latest.status !== acceptedJob.status ||
           latest.v2_status !== acceptedJob.v2_status ||
-          latest.taskerId !== acceptedJob.taskerId
+          latest.taskerId !== acceptedJob.taskerId ||
+          latest.taskerCurrentLocation?.lat !== acceptedJob.taskerCurrentLocation?.lat ||
+          latest.taskerCurrentLocation?.lng !== acceptedJob.taskerCurrentLocation?.lng ||
+          latest.lat !== acceptedJob.lat ||
+          latest.lng !== acceptedJob.lng
         ) {
           setAcceptedJob(latest);
         }
@@ -960,7 +969,11 @@ export const AppProvider = ({ children }) => {
         if (
           latest.status !== currentPostedJob.status ||
           latest.v2_status !== currentPostedJob.v2_status ||
-          latest.taskerId !== currentPostedJob.taskerId
+          latest.taskerId !== currentPostedJob.taskerId ||
+          latest.taskerCurrentLocation?.lat !== currentPostedJob.taskerCurrentLocation?.lat ||
+          latest.taskerCurrentLocation?.lng !== currentPostedJob.taskerCurrentLocation?.lng ||
+          latest.lat !== currentPostedJob.lat ||
+          latest.lng !== currentPostedJob.lng
         ) {
           setCurrentPostedJob(latest);
         }
@@ -993,6 +1006,7 @@ export const AppProvider = ({ children }) => {
   const [trackingTaskerPos, setTrackingTaskerPos] = useState(null); // { lat, lng }
   const [animationTick, setAnimationTick] = useState(0);
   const trackingIntervalRef = useRef(null);
+  const activeJobIdRef = useRef(null);
 
   // Email notifications for coming soon
   const [leadNotifications, setLeadNotifications] = useState([]);
@@ -1005,6 +1019,9 @@ export const AppProvider = ({ children }) => {
   useEffect(() => { screenStackRef.current = screenStack; }, [screenStack]);
 
   const pushScreen = useCallback((screen, replaceStack = false, params = null) => {
+    const currentActiveScreen = screenStackRef.current[screenStackRef.current.length - 1];
+    if (screen === currentActiveScreen) return;
+
     setRouteParams(params);
     if (screen === 'landing' || screen === 'tasker_home' || screen === 'poster_home') {
       // Reset stack to base screen
@@ -1014,7 +1031,7 @@ export const AppProvider = ({ children }) => {
     } else if (replaceStack) {
       const base = role === 'tasker' ? 'tasker_home' : 'poster_home';
       setScreenStack([base, screen]);
-      window.history.pushState({ screen }, '', window.location.pathname);
+      window.history.replaceState({ screen }, '', window.location.pathname);
     } else {
       setScreenStack(prev => [...prev, screen]);
       window.history.pushState({ screen }, '', window.location.pathname);
@@ -1154,9 +1171,9 @@ export const AppProvider = ({ children }) => {
   const getJobsInRadius = () => {
     const openJobs = (jobs || []).filter(j => j?.status === 'open' && !j?.isAcceptedByMe);
     
-    // Decouple tasker distance calculation: use tasker's serviceAreaLat/Lng if active role is tasker
+    // Decouple tasker distance calculation: use tasker's serviceAreaLat/Lng if active role is tasker, falling back to realLocation
     const referenceCenter = (role === 'tasker')
-      ? (userProfile?.serviceAreaLat && userProfile?.serviceAreaLng ? { lat: userProfile.serviceAreaLat, lng: userProfile.serviceAreaLng } : null)
+      ? (userProfile?.serviceAreaLat && userProfile?.serviceAreaLng ? { lat: userProfile.serviceAreaLat, lng: userProfile.serviceAreaLng } : realLocation)
       : realLocation;
     
     let enrichedJobs = openJobs.map(job => {
@@ -1172,13 +1189,19 @@ export const AppProvider = ({ children }) => {
       };
     });
 
+    // If active role is tasker, filter jobs by tasker's coverageRadius
+    if (role === 'tasker' && userProfile?.coverageRadius) {
+      const radiusKm = userProfile.coverageRadius / 1000;
+      enrichedJobs = enrichedJobs.filter(j => j.distanceVal <= radiusKm);
+    }
+
     if (referenceCenter) {
       enrichedJobs.sort((a, b) => (a?.distanceVal || 0) - (b?.distanceVal || 0));
     }
 
     return {
       jobsList: enrichedJobs,
-      radius: 5,
+      radius: (role === 'tasker' && userProfile?.coverageRadius) ? userProfile.coverageRadius / 1000 : 5,
       message: 'Showing results in your area'
     };
   };
@@ -1225,6 +1248,11 @@ export const AppProvider = ({ children }) => {
     setTrackingTaskerPos({ lat: startLat, lng: startLng });
     setAnimationTick(0);
 
+    // Save initial coordinates to database instantly to prevent poster/tasker mismatch
+    api.updateJob(jobId, {
+      tasker_current_location: `POINT(${startLng} ${startLat})`
+    }).catch(err => console.error("Failed to upload initial tracking position", err));
+
     pushScreen('tasker_accepted_job', true);
   };
 
@@ -1266,27 +1294,47 @@ export const AppProvider = ({ children }) => {
 
   // Tasker completes a job
   const completeJob = async (jobId) => {
+    const originalJobs = [...jobs];
+    const originalAcceptedJob = acceptedJob ? { ...acceptedJob } : null;
+
     setJobs(prevJobs => 
       prevJobs.map(j => j.id === jobId ? { ...j, status: 'completed' } : j)
     );
-    const job = jobs.find(j => j.id === jobId);
-    await api.updateJob(jobId, { status: 'completed' });
-    trackEvent(EVENTS.TASK_COMPLETION, { userId, role, entityId: jobId });
-
-    // Send Notification to Hirer
-    if (job && job.posterId) {
-      api.sendNotification(
-        job.posterId,
-        "Job Completed!",
-        "Your tasker has marked the job as complete. Please review and pay.",
-        'rating_screen',
-        'job_completed',
-        'poster'
-      );
+    if (acceptedJob && acceptedJob.id === jobId) {
+      setAcceptedJob(prev => ({ ...prev, status: 'completed' }));
     }
 
-    if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
-    pushScreen('tasker_rating', true);
+    try {
+      const { error } = await api.updateJob(jobId, { status: 'completed' });
+      if (error) throw error;
+
+      const job = originalJobs.find(j => j.id === jobId);
+      trackEvent(EVENTS.TASK_COMPLETION, { userId, role, entityId: jobId });
+
+      // Send Notification to Hirer
+      if (job && job.posterId) {
+        api.sendNotification(
+          job.posterId,
+          "Job Completed!",
+          "Your tasker has marked the job as complete. Please review and pay.",
+          'rating_screen',
+          'job_completed',
+          'poster'
+        );
+      }
+
+      if (trackingIntervalRef.current) {
+        clearInterval(trackingIntervalRef.current);
+        trackingIntervalRef.current = null;
+      }
+      pushScreen('tasker_rating', true);
+    } catch (err) {
+      console.error("Failed to complete job", err);
+      if (showToast) showToast('Failed to complete job. Please try again.', 'error');
+      // Rollback optimistic state
+      setJobs(originalJobs);
+      if (originalAcceptedJob) setAcceptedJob(originalAcceptedJob);
+    }
   };
 
   // Poster posts a job
@@ -1398,11 +1446,21 @@ export const AppProvider = ({ children }) => {
   // Map Pin static position and live tracking
   useEffect(() => {
     const targetJob = acceptedJob || currentPostedJob;
+    const targetJobId = targetJob?.id || null;
     const isJobActive = (currentScreen === 'tasker_accepted_job' && acceptedJob) || 
                         (currentScreen === 'crew_confirmed' && crewTaskers.length > 0 && currentPostedJob);
 
-    if (isJobActive && targetJob) {
+    if (isJobActive && targetJobId) {
+      // If we are already running the interval for this exact jobId, do not recreate it!
+      if (activeJobIdRef.current === targetJobId && trackingIntervalRef.current) {
+        if (role !== 'tasker') {
+          setTrackingTaskerPos(currentPostedJob?.taskerCurrentLocation || { lat: targetJob.lat, lng: targetJob.lng });
+        }
+        return;
+      }
+
       if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
+      activeJobIdRef.current = targetJobId;
       
       // If tasker role, fetch real location every 5 seconds to update map and DB
       if (role === 'tasker') {
@@ -1412,7 +1470,7 @@ export const AppProvider = ({ children }) => {
             const loc = await getCurrentLocation();
             setTrackingTaskerPos(loc);
             // Save to database
-            await api.updateJob(targetJob.id, {
+            await api.updateJob(targetJobId, {
               tasker_current_location: `POINT(${loc.lng} ${loc.lat})`
             });
           } catch(err) {
@@ -1428,15 +1486,18 @@ export const AppProvider = ({ children }) => {
         clearInterval(trackingIntervalRef.current);
         trackingIntervalRef.current = null;
       }
+      activeJobIdRef.current = null;
     }
+  }, [currentScreen, acceptedJob?.id, currentPostedJob?.id, crewTaskers?.length, role, currentPostedJob?.taskerCurrentLocation]);
 
+  // Clean up live tracking interval on AppProvider unmount
+  useEffect(() => {
     return () => {
       if (trackingIntervalRef.current) {
         clearInterval(trackingIntervalRef.current);
-        trackingIntervalRef.current = null;
       }
     };
-  }, [currentScreen, acceptedJob, currentPostedJob, crewTaskers, role]);
+  }, []);
 
   // Track the taskerId that was already on the job when we entered live_status.
   // This prevents stale DB data (e.g. a previous session's accepted tasker) from

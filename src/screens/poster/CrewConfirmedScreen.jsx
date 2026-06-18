@@ -137,8 +137,6 @@ const CrewConfirmedScreen = () => {
       localStorage.removeItem(`payment_initiated_${jobId}`);
 
       setShowConfirmModal(false);
-      // Navigate to feedback rating screen
-      pushScreen('rating_screen', true);
     } finally {
       setIsCompleting(false);
     }

@@ -11,7 +11,7 @@ const JobCard = ({ job, onDecline }) => {
   const { showToast } = useContext(ToastContext);
 
   const hasReferenceLocation = role === 'tasker'
-    ? (userProfile?.serviceAreaLat !== null && userProfile?.serviceAreaLng !== null && userProfile?.serviceAreaLat !== undefined && userProfile?.serviceAreaLng !== undefined)
+    ? ((userProfile?.serviceAreaLat !== null && userProfile?.serviceAreaLng !== null && userProfile?.serviceAreaLat !== undefined && userProfile?.serviceAreaLng !== undefined) || (realLocation !== null && realLocation !== undefined))
     : (realLocation !== null && realLocation !== undefined);
 
   const handleRequestLocation = async (e) => {

@@ -3,17 +3,30 @@ import { ArrowLeft, Home, Briefcase, MapPin } from 'lucide-react';
 import LocationPicker from '../../components/LocationPicker';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
+import { getCurrentLocation } from '../../utils/location';
 
 const AddEditAddressScreen = () => {
-  const { popScreen, addSavedAddress, updateSavedAddress, editAddressData, setEditAddressData, userProfile } = useContext(AppContext);
+  const { popScreen, addSavedAddress, updateSavedAddress, editAddressData, setEditAddressData, userProfile, realLocation } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
 
   const isEdit = !!editAddressData;
 
   const [addressType, setAddressType] = useState(isEdit ? editAddressData.type : 'Home'); 
   const [completeAddress, setCompleteAddress] = useState(isEdit ? editAddressData.completeAddress : '');
-  const [lat, setLat] = useState(isEdit ? editAddressData.lat : 17.3850);
-  const [lng, setLng] = useState(isEdit ? editAddressData.lng : 78.4867);
+  const [landmark, setLandmark] = useState(isEdit ? (editAddressData.landmark || '') : '');
+  const [lat, setLat] = useState(isEdit ? editAddressData.lat : (realLocation?.lat || 17.3850));
+  const [lng, setLng] = useState(isEdit ? editAddressData.lng : (realLocation?.lng || 78.4867));
+
+  useEffect(() => {
+    if (!isEdit && !realLocation) {
+      getCurrentLocation()
+        .then(loc => {
+          setLat(loc.lat);
+          setLng(loc.lng);
+        })
+        .catch(err => console.error("Error getting user location:", err));
+    }
+  }, [isEdit, realLocation]);
 
   const handleLocationChange = (loc) => {
     setCompleteAddress(loc.completeAddress);
@@ -27,6 +40,11 @@ const AddEditAddressScreen = () => {
       return;
     }
 
+    if (!landmark.trim()) {
+      showToast('Please enter a landmark.', 'error');
+      return;
+    }
+
     // Default contact details from profile, even if they aren't fully filled.
     // The main flow ensures profile completion happens elsewhere if needed.
     const contactName = userProfile?.name && userProfile.name !== 'New User' ? userProfile.name : 'Poster';
@@ -35,6 +53,7 @@ const AddEditAddressScreen = () => {
     const newAddress = {
       type: addressType,
       completeAddress,
+      landmark: landmark.trim(),
       contactName,
       contactPhone,
       lat,
@@ -80,6 +99,18 @@ const AddEditAddressScreen = () => {
       {/* Bottom Panel */}
       <div className="bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.08)] z-30 pt-4 px-5 pb-5 shrink-0 relative flex flex-col space-y-4">
         
+        {/* Landmark Input */}
+        <div>
+          <label className="text-[10px] font-black text-gray-400 tracking-widest uppercase mb-1.5 block">Nearest Landmark</label>
+          <input
+            type="text"
+            value={landmark}
+            onChange={(e) => setLandmark(e.target.value)}
+            placeholder="e.g. Near Metro Station, Beside Mall"
+            className="w-full px-4 py-3 border border-border rounded-xl text-sm font-semibold text-dark placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+          />
+        </div>
+
         {/* Address Type Selector */}
         <div>
           <h3 className="text-[10px] font-black text-gray-400 tracking-widest uppercase mb-2 text-center">Save Location As</h3>

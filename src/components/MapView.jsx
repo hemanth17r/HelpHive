@@ -96,7 +96,7 @@ const MapView = ({
     }
 
     // Handle container resize issues for modals (e.g. animation delays)
-    setTimeout(() => {
+    const resizeTimer = setTimeout(() => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
       }
@@ -104,6 +104,7 @@ const MapView = ({
 
     // Clean up Leaflet on unmount to prevent container errors
     return () => {
+      clearTimeout(resizeTimer);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
