@@ -525,6 +525,7 @@ export const AppProvider = ({ children }) => {
 
     // Save previous state for rollback on failure
     const previousProfile = userProfile ? { ...userProfile } : null;
+    const previousBird = selectedBird;
 
     // Parse coordinates if locationStr is explicitly passed
     const parsedLoc = profileData.locationStr ? parseEWKBPoint(profileData.locationStr) : null;
@@ -535,6 +536,9 @@ export const AppProvider = ({ children }) => {
 
     // Optimistic update so UI reflects immediately
     setUserProfileState(prev => prev ? { ...prev, ...profileData, ...roleSpecificUpdates, ...locUpdates } : { id: currentUserId || null, ...profileData, ...roleSpecificUpdates, ...locUpdates });
+    if (profileData.bird !== undefined) {
+      setSelectedBird(profileData.bird);
+    }
 
     if (currentUserId) {
       const updatesPayload = {
@@ -563,6 +567,7 @@ export const AppProvider = ({ children }) => {
         if (previousProfile) {
           setUserProfileState(previousProfile);
         }
+        setSelectedBird(previousBird);
         return { success: false, error: 'Failed to save. Please try again.' };
       }
 
@@ -576,6 +581,9 @@ export const AppProvider = ({ children }) => {
           serviceAreaLat: dbLoc ? dbLoc.lat : prev?.serviceAreaLat,
           serviceAreaLng: dbLoc ? dbLoc.lng : prev?.serviceAreaLng
         }));
+        if (data.bird) {
+          setSelectedBird(data.bird);
+        }
       }
       return { success: true };
     }

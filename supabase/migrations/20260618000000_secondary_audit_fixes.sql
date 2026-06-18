@@ -22,8 +22,8 @@ USING (
   OR (
     auth_id IS NULL
     AND (
-      email = (SELECT email FROM auth.users WHERE id = auth.uid())
-      OR phone = (SELECT phone FROM auth.users WHERE id = auth.uid())
+      email = auth.email()
+      OR phone = (auth.jwt() ->> 'phone')
     )
   )
 )
@@ -32,8 +32,8 @@ WITH CHECK (
   OR (
     auth_id IS NULL
     AND (
-      email = (SELECT email FROM auth.users WHERE id = auth.uid())
-      OR phone = (SELECT phone FROM auth.users WHERE id = auth.uid())
+      email = auth.email()
+      OR phone = (auth.jwt() ->> 'phone')
     )
   )
 );
