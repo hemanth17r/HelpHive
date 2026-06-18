@@ -1,10 +1,10 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Clock, CheckCircle, AlertCircle, Users, MoreVertical, MapPin } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, Users, MoreVertical, MapPin } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { SKILLS } from '../config/constants';
 
 const JobHistoryScreen = () => {
-  const { popScreen, jobHistoryTab, jobs, userProfile, role, setEditJobData, pushScreen, setCurrentPostedJob, setAcceptedJob, expireJob, deleteJob } = useContext(AppContext);
+  const { popScreen, jobHistoryTab, jobs, userProfile, role, pushScreen, setCurrentPostedJob, setAcceptedJob, deleteJob } = useContext(AppContext);
 
   // Separate jobs based on role
   const userJobs = jobs.filter(j => {
@@ -15,19 +15,13 @@ const JobHistoryScreen = () => {
   });
 
   const activeJobs = userJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft' && j.status !== 'cancelled');
-  const unfulfilledJobs = userJobs.filter(j => j.status === 'expired' || j.status === 'cancelled');
   const completedJobs = userJobs.filter(j => j.status === 'completed');
-  const draftJobs = userJobs.filter(j => j.status === 'draft');
 
   const displayActive = activeJobs;
-  const displayUnfulfilled = unfulfilledJobs;
   const displayCompleted = completedJobs;
-  const displayDrafts = draftJobs;
 
   const activeRef = useRef(null);
-  const unfulfilledRef = useRef(null);
   const completedRef = useRef(null);
-  const draftRef = useRef(null);
 
   const [activeDropdownId, setActiveDropdownId] = useState(null);
 
@@ -42,9 +36,7 @@ const JobHistoryScreen = () => {
     // unmounts before the 100ms delay expires (prevents stale state update).
     const scrollTimer = setTimeout(() => {
       if (jobHistoryTab === 'active' && activeRef.current) activeRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      if (jobHistoryTab === 'unfulfilled' && unfulfilledRef.current) unfulfilledRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (jobHistoryTab === 'completed' && completedRef.current) completedRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      if (jobHistoryTab === 'draft' && draftRef.current) draftRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
     return () => clearTimeout(scrollTimer);
   }, [jobHistoryTab]);
@@ -61,18 +53,10 @@ const JobHistoryScreen = () => {
       borderColor = 'border-blue-100';
       iconBg = 'bg-blue-50 text-blue-500';
       statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-blue-500 bg-blue-50 border-blue-200">Active</span>;
-    } else if (type === 'unfulfilled') {
-      borderColor = 'border-red-100';
-      iconBg = 'bg-red-50 text-red-500';
-      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-red-500 bg-red-50 border-red-200">{job.status === 'cancelled' ? 'Cancelled' : 'Expired'}</span>;
     } else if (type === 'completed') {
       borderColor = 'border-green-100';
       iconBg = 'bg-green-50 text-green-500';
       statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-green-500 bg-green-50 border-green-200">Completed</span>;
-    } else if (type === 'draft') {
-      borderColor = 'border-orange-100';
-      iconBg = 'bg-orange-50 text-orange-500';
-      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-orange-500 bg-orange-50 border-orange-200">Draft</span>;
     }
 
     return (
@@ -82,9 +66,6 @@ const JobHistoryScreen = () => {
           if (type === 'completed') {
             setCurrentPostedJob(job);
             pushScreen('job_receipt');
-          } else if (type === 'draft' && role === 'poster') {
-            setEditJobData(job);
-            pushScreen('post_job');
           } else if (type === 'active') {
             if (role === 'tasker') {
               setAcceptedJob(job);
@@ -99,12 +80,10 @@ const JobHistoryScreen = () => {
             }
           }
         }}
-        className={`bg-white border ${borderColor} rounded-2xl p-4 shadow-sm relative overflow-hidden ${(type === 'completed' || type === 'draft' || type === 'active') ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+        className={`bg-white border ${borderColor} rounded-2xl p-4 shadow-sm relative overflow-hidden ${(type === 'completed' || type === 'active') ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
       >
-        {type === 'unfulfilled' && <div className="absolute top-0 left-0 w-1 h-full bg-red-400"></div>}
         {type === 'completed' && <div className="absolute top-0 left-0 w-1 h-full bg-green-400"></div>}
         {type === 'active' && <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>}
-        {type === 'draft' && <div className="absolute top-0 left-0 w-1 h-full bg-orange-400"></div>}
         
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center space-x-2">
@@ -133,18 +112,6 @@ const JobHistoryScreen = () => {
               
               {activeDropdownId === job.id && (
                 <div className="absolute right-0 mt-1 w-40 bg-white rounded-xl shadow-lg border border-border py-1 z-20 overflow-hidden">
-                  {type === 'active' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        expireJob(job.id);
-                        setActiveDropdownId(null);
-                      }}
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"
-                    >
-                      Move to unfulfilled
-                    </button>
-                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -182,21 +149,6 @@ const JobHistoryScreen = () => {
           </div>
           <span className="text-dark font-black text-xs">₹{job.amount}</span>
         </div>
-
-        {type === 'unfulfilled' && role === 'poster' && (
-          <div className="flex space-x-2 mt-3 pt-3 border-t border-gray-100">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditJobData(job);
-                pushScreen('post_job');
-              }}
-              className="w-full py-2 text-xs font-bold text-white bg-dark rounded-xl hover:bg-black transition-colors cursor-pointer"
-            >
-              Edit & Repost
-            </button>
-          </div>
-        )}
       </div>
     );
   };
@@ -216,25 +168,6 @@ const JobHistoryScreen = () => {
 
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-10 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full pb-20">
         
-        {/* Drafts Section */}
-        {role === 'poster' && (
-          <div ref={draftRef} className="space-y-4 pt-4 scroll-m-4" id="draft-section">
-            <div className="flex items-center space-x-2 px-1">
-              <AlertCircle className="w-4 h-4 text-orange-500" />
-              <span className="text-sm font-black uppercase tracking-widest text-dark">
-                Drafts
-              </span>
-            </div>
-            <div className="space-y-3">
-              {displayDrafts.length > 0 ? (
-                displayDrafts.map(job => renderJobCard(job, 'draft'))
-              ) : (
-                <p className="text-xs font-bold text-gray-400 px-2">No drafts.</p>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Active Section */}
         <div ref={activeRef} className="space-y-4 pt-4 scroll-m-4" id="active-section">
           <div className="flex items-center space-x-2 px-1">
@@ -251,25 +184,6 @@ const JobHistoryScreen = () => {
             )}
           </div>
         </div>
-
-        {/* Unfulfilled Section */}
-        {role === 'poster' && (
-          <div ref={unfulfilledRef} className="space-y-4 pt-4 scroll-m-4" id="unfulfilled-section">
-            <div className="flex items-center space-x-2 px-1">
-              <AlertCircle className="w-4 h-4 text-red-500" />
-              <span className="text-sm font-black uppercase tracking-widest text-dark">
-                Unfulfilled & Expired
-              </span>
-            </div>
-            <div className="space-y-3">
-              {displayUnfulfilled.length > 0 ? (
-                displayUnfulfilled.map(job => renderJobCard(job, 'unfulfilled'))
-              ) : (
-                <p className="text-xs font-bold text-gray-400 px-2">No expired tasks.</p>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Completed Section */}
         <div ref={completedRef} className="space-y-4 pt-4 scroll-m-4" id="completed-section">

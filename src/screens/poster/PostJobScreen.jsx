@@ -8,7 +8,7 @@ import { ToastContext } from '../../store/ToastContext';
 import { evaluateMarketplaceMaturity } from '../../utils/marketplaceMaturity';
 import { api } from '../../services/api';
 const PostJobScreen = () => {
-  const { userLocation, postJob, popScreen, editJobData, setEditJobData, saveDraftJob, savedAddresses, addSavedAddress, userProfile, setUserProfile, realLocation } = useContext(AppContext);
+  const { userLocation, postJob, popScreen, editJobData, setEditJobData, savedAddresses, addSavedAddress, userProfile, setUserProfile, realLocation } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const [selectedSkillId, setSelectedSkillId] = useState(editJobData?.skillId || '');
   const [description, setDescription] = useState(editJobData?.description || '');
@@ -187,35 +187,15 @@ const PostJobScreen = () => {
     setContactPhone(formatted);
   };
 
-  // Draft Saving Logic
-  const formStateRef = useRef({ selectedSkillId, description, peopleNeeded, amount, day, time });
-  React.useEffect(() => {
-    formStateRef.current = { selectedSkillId, description, peopleNeeded, amount, day, time };
-  }, [selectedSkillId, description, peopleNeeded, amount, day, time]);
-
-  const isPostedRef = useRef(false);
-
   React.useEffect(() => {
     return () => {
       // Bug 3.1 fix: Clear debounce timeouts on unmount to prevent
       // setState calls on an unmounted component.
       if (hourScrollTimeoutRef.current) clearTimeout(hourScrollTimeoutRef.current);
       if (minuteScrollTimeoutRef.current) clearTimeout(minuteScrollTimeoutRef.current);
-      // Clean up edit mode if unmounted without posting
-      if (!isPostedRef.current && (formStateRef.current.selectedSkillId || formStateRef.current.description || formStateRef.current.amount)) {
-        saveDraftJob({
-          id: editJobData?.id,
-          skillId: formStateRef.current.selectedSkillId,
-          description: formStateRef.current.description,
-          peopleNeeded: formStateRef.current.peopleNeeded,
-          amount: parseFloat(formStateRef.current.amount) || 0,
-          day: formStateRef.current.day,
-          time: formStateRef.current.time,
-        });
-      }
       if (editJobData) setEditJobData(null);
     };
-  }, [editJobData, setEditJobData, saveDraftJob]);
+  }, [editJobData, setEditJobData]);
 
   React.useEffect(() => {
     if (showTimePicker) {
@@ -298,9 +278,7 @@ const PostJobScreen = () => {
       address: address
     });
     setIsLoading(false);
-    if (result && result.success) {
-      isPostedRef.current = true;
-    } else {
+    if (!result || !result.success) {
       showToast(result?.error || 'Failed to post job. Please try again.', 'error');
     }
   };

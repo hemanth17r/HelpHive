@@ -54,8 +54,6 @@ Issue: `;
   const posterJobs = jobs?.filter(j => j?.posterId === userId || j?.posterId === userProfile?.id) || [];
   const activePosterJobs = posterJobs.filter(j => ['open', 'in_progress', 'active'].includes(j?.status)).length;
   const completedPosterJobsCount = posterJobs.filter(j => j?.status === 'completed').length;
-  const draftPosterJobs = posterJobs.filter(j => j?.status === 'draft').length;
-  const unfulfilledPosterJobs = posterJobs.filter(j => ['unfulfilled', 'expired'].includes(j?.status)).length;
 
   // Tasker Stats
   const taskerJobs = jobs?.filter(j => j?.taskerId === userId || j?.taskerId === userProfile?.id || j?.taskerName === userProfile?.name) || [];
@@ -356,20 +354,6 @@ Issue: `;
             >
               <span className="text-xl font-black text-dark">{completedPosterJobsCount}</span>
               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Completed</span>
-            </div>
-            <div 
-              onClick={() => { setJobHistoryTab('draft'); pushScreen('job_history'); }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-orange-200 transition-colors"
-            >
-              <span className="text-xl font-black text-dark">{draftPosterJobs}</span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Drafts</span>
-            </div>
-            <div 
-              onClick={() => { setJobHistoryTab('unfulfilled'); pushScreen('job_history'); }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-red-200 transition-colors"
-            >
-              <span className="text-xl font-black text-dark">{unfulfilledPosterJobs}</span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Unfulfilled & Expired</span>
             </div>
           </div>
 

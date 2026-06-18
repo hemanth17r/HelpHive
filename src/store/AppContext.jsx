@@ -373,7 +373,7 @@ export const AppProvider = ({ children }) => {
       // after 5 days from their selected time (expiresAt).
       const now = new Date();
       const updatedJobs = mappedJobs.map(j => {
-        if (j.status !== 'completed' && j.status !== 'expired' && j.status !== 'draft') {
+        if (j.status !== 'completed' && j.status !== 'expired') {
           const selectedDate = new Date(j.expiresAt);
           if (!isNaN(selectedDate.getTime())) {
             const diffTime = now - selectedDate;
@@ -388,11 +388,7 @@ export const AppProvider = ({ children }) => {
         return j;
       });
 
-      // Retrieve and prepend local drafts belonging to this user
-      const localDrafts = JSON.parse(localStorage.getItem('job_drafts') || '[]');
-      const currentUserId = userId || localStorage.getItem('userId');
-      const userDrafts = localDrafts.filter(d => d.posterId === currentUserId);
-      setJobs([...userDrafts, ...updatedJobs]);
+      setJobs(updatedJobs);
     }
   }, [userId]);
 
@@ -985,10 +981,7 @@ export const AppProvider = ({ children }) => {
 
   const deleteJob = async (jobId) => {
     setJobs(prev => prev.filter(j => j.id !== jobId));
-    if (String(jobId).startsWith('draft_')) {
-      const localDrafts = JSON.parse(localStorage.getItem('job_drafts') || '[]');
-      localStorage.setItem('job_drafts', JSON.stringify(localDrafts.filter(d => d.id !== jobId)));
-    } else if (userId) {
+    if (userId) {
       await api.deleteJob(jobId);
     }
   };
@@ -1421,27 +1414,7 @@ export const AppProvider = ({ children }) => {
     return { success: false, error: error?.message || 'Failed to post job' };
   };
 
-  const saveDraftJob = (draftData) => {
-    const draftId = draftData.id || ('draft_' + Date.now());
-    const draft = {
-      ...draftData,
-      id: draftId,
-      posterId: userId || null,
-      posterName: userProfile?.posterName || userProfile?.name || 'Unknown Hirer',
-      timePosted: new Date().toISOString(),
-      status: 'draft'
-    };
-    
-    // Save to localStorage
-    const localDrafts = JSON.parse(localStorage.getItem('job_drafts') || '[]');
-    const updatedDrafts = [draft, ...localDrafts.filter(d => d.id !== draftId)];
-    localStorage.setItem('job_drafts', JSON.stringify(updatedDrafts));
 
-    setJobs(prev => {
-      const withoutDrafts = prev.filter(j => j.id !== draftId && j.status !== 'draft');
-      return [draft, ...withoutDrafts];
-    });
-  };
 
   // Map Pin static position and live tracking
   useEffect(() => {
@@ -1628,7 +1601,6 @@ export const AppProvider = ({ children }) => {
         setTaskerActivityScrollTarget,
         deleteJob,
         expireJob,
-        saveDraftJob,
         crewTaskers,
         setCrewTaskers,
         liveStatus,
