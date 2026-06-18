@@ -41,7 +41,18 @@ export const api = {
     const userId = localStorage.getItem('userId');
     const role = localStorage.getItem('activeRole');
     
-    let query = supabase.from('jobs').select('*');
+    let ratedJobIds = [];
+    if (userId) {
+      const { data: feedbacks } = await supabase
+        .from('feedbacks')
+        .select('job_id')
+        .eq('giver_id', userId);
+      if (feedbacks) {
+        ratedJobIds = feedbacks.map(f => f.job_id);
+      }
+    }
+
+    let query = supabase.from('jobs').select('*, primary_address:user_addresses!jobs_primary_address_id_fkey(*)');
     
     // Poster only sees their own jobs
     if (role === 'poster') {
@@ -91,6 +102,21 @@ export const api = {
           const tasker = profileMap[j.tasker_id] || {};
           const offer = offers ? offers.find(o => o.job_id === j.id) : null;
           
+          let addressObj = null;
+          if (j.primary_address) {
+            const addrCoords = parseEWKBPoint(j.primary_address.coordinates) || { lng: 0, lat: 0 };
+            addressObj = {
+              id: j.primary_address.id,
+              type: j.primary_address.label || 'Other',
+              completeAddress: j.primary_address.formatted_address,
+              landmark: j.primary_address.landmark,
+              lat: addrCoords.lat,
+              lng: addrCoords.lng,
+              contactName: poster.name || 'Customer',
+              contactPhone: poster.phone || ''
+            };
+          }
+
           return {
             ...j,
             posterId: j.poster_id,
@@ -109,7 +135,10 @@ export const api = {
             taskerUpi: tasker.upi_id,
             isAcceptedByMe: acceptedJobIds.includes(j.id) || j.tasker_id === userId,
             isPendingOffer: offerJobIds.includes(j.id) && !acceptedJobIds.includes(j.id),
-            offerExpiresAt: offer ? offer.expires_at : null
+            offerExpiresAt: offer ? offer.expires_at : null,
+            address: addressObj,
+            taskerCurrentLocation: j.tasker_current_location ? parseEWKBPoint(j.tasker_current_location) : null,
+            hasBeenRated: ratedJobIds.includes(j.id)
           };
         });
         return { data: mappedJobs, error };
@@ -136,6 +165,21 @@ export const api = {
         const poster = profileMap[j.poster_id] || {};
         const tasker = profileMap[j.tasker_id] || {};
         
+        let addressObj = null;
+        if (j.primary_address) {
+          const addrCoords = parseEWKBPoint(j.primary_address.coordinates) || { lng: 0, lat: 0 };
+          addressObj = {
+            id: j.primary_address.id,
+            type: j.primary_address.label || 'Other',
+            completeAddress: j.primary_address.formatted_address,
+            landmark: j.primary_address.landmark,
+            lat: addrCoords.lat,
+            lng: addrCoords.lng,
+            contactName: poster.name || 'Customer',
+            contactPhone: poster.phone || ''
+          };
+        }
+
         return {
           ...j,
           posterId: j.poster_id,
@@ -151,7 +195,10 @@ export const api = {
           taskerName: tasker.name,
           taskerBird: tasker.bird,
           taskerPhone: tasker.phone,
-          taskerUpi: tasker.upi_id
+          taskerUpi: tasker.upi_id,
+          address: addressObj,
+          taskerCurrentLocation: j.tasker_current_location ? parseEWKBPoint(j.tasker_current_location) : null,
+          hasBeenRated: ratedJobIds.includes(j.id)
         };
       });
       return { data: mappedJobs, error };
@@ -167,6 +214,7 @@ export const api = {
       people_needed: jobData.peopleNeeded,
       amount: jobData.amount,
       location: jobData.locationStr, // formatted POINT(...)
+      primary_location: jobData.locationStr, // formatted POINT(...)
       primary_address_id: jobData.primaryAddressId || null,
       otp: jobData.otp,
       v2_status: 'searching',
@@ -203,12 +251,23 @@ export const api = {
     return { data, error };
   },
 
-  submitUserRating: async (jobId, giverRole, rating, badgeType) => {
+  submitUserRating: async (jobId, giverRole, receiverProfileId, rating, badgeType) => {
     const { data, error } = await supabase.rpc('submit_user_rating', {
       p_job_id: jobId,
       p_giver_role: giverRole,
+      p_receiver_profile_id: receiverProfileId,
       p_rating: rating,
       p_badge_type: badgeType || null
+    });
+    return { data, error };
+  },
+
+  submitUserReport: async (reportedProfileId, jobId, category, details) => {
+    const { data, error } = await supabase.rpc('submit_user_report', {
+      p_reported_profile_id: reportedProfileId,
+      p_job_id: jobId,
+      p_category: category,
+      p_details: details
     });
     return { data, error };
   },

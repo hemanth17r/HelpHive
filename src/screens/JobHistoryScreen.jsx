@@ -9,13 +9,13 @@ const JobHistoryScreen = () => {
   // Separate jobs based on role
   const userJobs = jobs.filter(j => {
     if (role === 'tasker') {
-      return j.taskerId === userProfile?.id || j.taskerName === userProfile?.name;
+      return j.isAcceptedByMe || j.taskerId === userProfile?.id || j.taskerName === userProfile?.name;
     }
     return j.posterName === userProfile?.name || j.posterName === 'You' || j.posterId === userProfile?.id;
   });
 
-  const activeJobs = userJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft');
-  const unfulfilledJobs = userJobs.filter(j => j.status === 'expired');
+  const activeJobs = userJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft' && j.status !== 'cancelled');
+  const unfulfilledJobs = userJobs.filter(j => j.status === 'expired' || j.status === 'cancelled');
   const completedJobs = userJobs.filter(j => j.status === 'completed');
   const draftJobs = userJobs.filter(j => j.status === 'draft');
 
@@ -38,13 +38,15 @@ const JobHistoryScreen = () => {
   }, []);
 
   useEffect(() => {
-    // Small timeout to ensure rendering is complete before scrolling
-    setTimeout(() => {
+    // Bug 3.3 fix: store the timeout ID so it can be cleared if the component
+    // unmounts before the 100ms delay expires (prevents stale state update).
+    const scrollTimer = setTimeout(() => {
       if (jobHistoryTab === 'active' && activeRef.current) activeRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (jobHistoryTab === 'unfulfilled' && unfulfilledRef.current) unfulfilledRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (jobHistoryTab === 'completed' && completedRef.current) completedRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (jobHistoryTab === 'draft' && draftRef.current) draftRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
+    return () => clearTimeout(scrollTimer);
   }, [jobHistoryTab]);
 
   const renderJobCard = (job, type) => {
@@ -62,7 +64,7 @@ const JobHistoryScreen = () => {
     } else if (type === 'unfulfilled') {
       borderColor = 'border-red-100';
       iconBg = 'bg-red-50 text-red-500';
-      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-red-500 bg-red-50 border-red-200">Expired</span>;
+      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-red-500 bg-red-50 border-red-200">{job.status === 'cancelled' ? 'Cancelled' : 'Expired'}</span>;
     } else if (type === 'completed') {
       borderColor = 'border-green-100';
       iconBg = 'bg-green-50 text-green-500';
@@ -89,7 +91,11 @@ const JobHistoryScreen = () => {
               pushScreen('tasker_accepted_job', true);
             } else {
               setCurrentPostedJob(job);
-              pushScreen('crew_confirmed', true);
+              if (job.status === 'open' || job.v2_status === 'searching') {
+                pushScreen('live_status', true);
+              } else {
+                pushScreen('crew_confirmed', true);
+              }
             }
           }
         }}

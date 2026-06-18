@@ -65,7 +65,9 @@ export const AppProvider = ({ children }) => {
   const [selectedBird, setSelectedBird] = useState('falcon'); // Bird avatar selection
   const [isAdmin, setIsAdmin] = useState(false); // Admin dashboard access
 
-  const [isOnline, setIsOnlineState] = useState(true);
+  // Initialise from localStorage so a user's offline preference survives page refreshes.
+  // Falls back to true only when no stored value exists (first login).
+  const [isOnline, setIsOnlineState] = useState(() => localStorage.getItem('isOnline') !== 'false');
   
   // Navigation stack state
   const [screenStack, setScreenStack] = useState(() => {
@@ -381,9 +383,13 @@ export const AppProvider = ({ children }) => {
         return j;
       });
 
-      setJobs(updatedJobs);
+      // Retrieve and prepend local drafts belonging to this user
+      const localDrafts = JSON.parse(localStorage.getItem('job_drafts') || '[]');
+      const currentUserId = userId || localStorage.getItem('userId');
+      const userDrafts = localDrafts.filter(d => d.posterId === currentUserId);
+      setJobs([...userDrafts, ...updatedJobs]);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchJobs();
@@ -422,7 +428,7 @@ export const AppProvider = ({ children }) => {
 
         const { data } = await api.fetchProfile(userId);
         if (data) {
-          const verifiedPhones = data.verifiedPhones || [];
+          const verifiedPhones = data.verified_phones || [];
 
           const parsedLoc = data.location ? parseEWKBPoint(data.location) : null;
 
@@ -454,8 +460,11 @@ export const AppProvider = ({ children }) => {
 
           if (data.bird) setSelectedBird(data.bird);
           setIsAdmin(data.is_admin === true);
-          setIsOnlineState(true);
-          localStorage.setItem('isOnline', 'true');
+          // Respect the is_online value from DB. Only default to true for brand-new accounts
+          // where the column has never been set (i.e. is_online is null/undefined).
+          const dbIsOnline = data.is_online !== null && data.is_online !== undefined ? data.is_online : true;
+          setIsOnlineState(dbIsOnline);
+          localStorage.setItem('isOnline', dbIsOnline ? 'true' : 'false');
           const activeRole = localStorage.getItem('activeRole') || data.role;
           setRole(activeRole);
           localStorage.setItem('activeRole', activeRole);
@@ -559,7 +568,7 @@ export const AppProvider = ({ children }) => {
           api.updateProfile(profile.id, { role: finalRole }).then();
         }
 
-        const verifiedPhones = profile.verifiedPhones || [];
+        const verifiedPhones = profile.verified_phones || [];
         const parsedLoc = profile.location ? parseEWKBPoint(profile.location) : null;
 
         setUserProfileState({
@@ -586,6 +595,11 @@ export const AppProvider = ({ children }) => {
 
         if (profile.bird) setSelectedBird(profile.bird);
         setIsAdmin(profile.is_admin === true);
+        // Respect is_online from DB on OAuth/magic-link sign-in.
+        // For new profiles the field won't be set yet, so default to true.
+        const signInIsOnline = profile.is_online !== null && profile.is_online !== undefined ? profile.is_online : true;
+        setIsOnlineState(signInIsOnline);
+        localStorage.setItem('isOnline', signInIsOnline ? 'true' : 'false');
 
         pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
         if (!isAlreadyLoggedIn) {
@@ -749,7 +763,8 @@ export const AppProvider = ({ children }) => {
         coverage_radius: profileData.coverageRadius !== undefined ? profileData.coverageRadius : userProfile?.coverageRadius,
         category_coverage: profileData.categoryCoverage !== undefined ? profileData.categoryCoverage : userProfile?.categoryCoverage,
         coverage_level: profileData.coverageLevel !== undefined ? profileData.coverageLevel : userProfile?.coverageLevel,
-        service_area_name: profileData.serviceAreaName !== undefined ? profileData.serviceAreaName : userProfile?.serviceAreaName
+        service_area_name: profileData.serviceAreaName !== undefined ? profileData.serviceAreaName : userProfile?.serviceAreaName,
+        verified_phones: roleSpecificUpdates.verifiedPhones !== undefined ? roleSpecificUpdates.verifiedPhones : (profileData.verifiedPhones || userProfile?.verifiedPhones || [])
       };
 
       if (profileData.locationStr !== undefined) {
@@ -773,6 +788,7 @@ export const AppProvider = ({ children }) => {
           ...prev,
           ...profileData,
           ...roleSpecificUpdates,
+          verifiedPhones: data.verified_phones || prev?.verifiedPhones || [],
           serviceAreaLat: dbLoc ? dbLoc.lat : prev?.serviceAreaLat,
           serviceAreaLng: dbLoc ? dbLoc.lng : prev?.serviceAreaLng
         }));
@@ -901,11 +917,11 @@ export const AppProvider = ({ children }) => {
   const [otpEntered, setOtpEntered] = useState('');
 
   const setIsOnline = async (online) => {
-    setIsOnlineState(true);
-    localStorage.setItem('isOnline', 'true');
+    setIsOnlineState(online);
+    localStorage.setItem('isOnline', online ? 'true' : 'false');
     const currentUserId = userId || localStorage.getItem('userId');
     if (currentUserId) {
-      await api.updateProfile(currentUserId, { is_online: true });
+      await api.updateProfile(currentUserId, { is_online: online });
     }
   };
   
@@ -956,17 +972,20 @@ export const AppProvider = ({ children }) => {
 
   const deleteJob = async (jobId) => {
     setJobs(prev => prev.filter(j => j.id !== jobId));
-    if (userId) {
+    if (String(jobId).startsWith('draft_')) {
+      const localDrafts = JSON.parse(localStorage.getItem('job_drafts') || '[]');
+      localStorage.setItem('job_drafts', JSON.stringify(localDrafts.filter(d => d.id !== jobId)));
+    } else if (userId) {
       await api.deleteJob(jobId);
     }
   };
 
   const expireJob = async (jobId) => {
     setJobs(prevJobs => 
-      prevJobs.map(j => j.id === jobId ? { ...j, status: 'expired' } : j)
+      prevJobs.map(j => j.id === jobId ? { ...j, status: 'cancelled', v2_status: 'expired' } : j)
     );
     if (userId) {
-      await api.updateJob(jobId, { status: 'expired' });
+      await api.updateJob(jobId, { status: 'cancelled', v2_status: 'expired' });
     }
   };
   
@@ -985,7 +1004,7 @@ export const AppProvider = ({ children }) => {
   const activeTabRef = useRef('home');
   useEffect(() => { screenStackRef.current = screenStack; }, [screenStack]);
 
-  function pushScreen(screen, replaceStack = false, params = null) {
+  const pushScreen = useCallback((screen, replaceStack = false, params = null) => {
     setRouteParams(params);
     if (screen === 'landing' || screen === 'tasker_home' || screen === 'poster_home') {
       // Reset stack to base screen
@@ -1000,16 +1019,16 @@ export const AppProvider = ({ children }) => {
       setScreenStack(prev => [...prev, screen]);
       window.history.pushState({ screen }, '', window.location.pathname);
     }
-  }
+  }, [role]);
 
-  function popScreen() {
+  const popScreen = useCallback(() => {
     setRouteParams(null);
     const firstScreens = ['landing', 'tasker_home', 'poster_home'];
     if (firstScreens.includes(currentScreen) || screenStack.length <= 1) {
       return; // Block accidental exits from home screens
     }
     window.history.back(); // Triggers popstate → handled below
-  }
+  }, [currentScreen, screenStack.length]);
 
   const switchRole = async (newRole) => {
     if (!userId) {
@@ -1274,7 +1293,7 @@ export const AppProvider = ({ children }) => {
   const postJob = async (newJobData) => {
     if (newJobData.amount === undefined || newJobData.amount === null || isNaN(newJobData.amount) || newJobData.amount < 0) {
       console.error('Failed to post job: Payout amount must be greater than or equal to ₹0');
-      return;
+      return { success: false, error: 'Payout amount must be greater than or equal to ₹0' };
     }
 
     let locationStr = null;
@@ -1348,23 +1367,31 @@ export const AppProvider = ({ children }) => {
 
       pushScreen('live_status', true);
       showToast('Job posted successfully!', 'success');
-    } else {
-      console.error('Failed to post job:', error);
-      showToast('Failed to post job. Please try again.', 'error');
+      return { success: true, data: dbJob };
     }
+
+    return { success: false, error: error?.message || 'Failed to post job' };
   };
 
   const saveDraftJob = (draftData) => {
+    const draftId = draftData.id || ('draft_' + Date.now());
+    const draft = {
+      ...draftData,
+      id: draftId,
+      posterId: userId || null,
+      posterName: userProfile?.posterName || userProfile?.name || 'Unknown Hirer',
+      timePosted: new Date().toISOString(),
+      status: 'draft'
+    };
+    
+    // Save to localStorage
+    const localDrafts = JSON.parse(localStorage.getItem('job_drafts') || '[]');
+    const updatedDrafts = [draft, ...localDrafts.filter(d => d.id !== draftId)];
+    localStorage.setItem('job_drafts', JSON.stringify(updatedDrafts));
+
     setJobs(prev => {
-      const withoutDrafts = prev.filter(j => j.id !== draftData.id && j.status !== 'draft');
-      return [{
-        ...draftData,
-        id: draftData.id || ('draft_' + Date.now()),
-        posterId: userId || null,
-        posterName: userProfile?.posterName || userProfile?.name || 'Unknown Hirer',
-        timePosted: new Date().toISOString(),
-        status: 'draft'
-      }, ...withoutDrafts];
+      const withoutDrafts = prev.filter(j => j.id !== draftId && j.status !== 'draft');
+      return [draft, ...withoutDrafts];
     });
   };
 
@@ -1377,23 +1404,24 @@ export const AppProvider = ({ children }) => {
     if (isJobActive && targetJob) {
       if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
       
-      // If tasker role, fetch real location every 5 seconds to update map
+      // If tasker role, fetch real location every 5 seconds to update map and DB
       if (role === 'tasker') {
         // Start interval
         trackingIntervalRef.current = setInterval(async () => {
           try {
             const loc = await getCurrentLocation();
             setTrackingTaskerPos(loc);
+            // Save to database
+            await api.updateJob(targetJob.id, {
+              tasker_current_location: `POINT(${loc.lng} ${loc.lat})`
+            });
           } catch(err) {
             console.error("Live tracking location failed", err);
           }
         }, 5000);
       } else {
-        // For poster view without real-time backend updates in this demo,
-        // we just show the destination pin.
-        setTimeout(() => {
-          setTrackingTaskerPos({ lat: targetJob.lat, lng: targetJob.lng });
-        }, 0);
+        // For poster view, use the live tasker location from currentPostedJob
+        setTrackingTaskerPos(currentPostedJob?.taskerCurrentLocation || { lat: targetJob.lat, lng: targetJob.lng });
       }
     } else {
       if (trackingIntervalRef.current) {

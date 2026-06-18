@@ -27,6 +27,16 @@ const TaskerRatingScreen = () => {
     { id: 'easy_to_work', label: 'Easy to Work With', icon: Star, color: 'orange' }
   ];
 
+  const getBadgeStyle = (color, isSelected) => {
+    if (!isSelected) return 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100';
+    switch (color) {
+      case 'green': return 'bg-green-50 border-green-300 text-green-700 shadow-xs';
+      case 'blue': return 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs';
+      case 'orange': return 'bg-orange-50 border-orange-300 text-orange-700 shadow-xs';
+      default: return 'bg-gray-50 border-gray-300 text-gray-700 shadow-xs';
+    }
+  };
+
   const reportReasons = [
     'Unsafe Environment',
     'Rude or Unprofessional',
@@ -39,8 +49,8 @@ const TaskerRatingScreen = () => {
     setIsSubmitting(true);
     
     try {
-      // Persist rating in database
-      const { error: dbError } = await api.submitUserRating(acceptedJob.id, 'tasker', rating, selectedBadge || null);
+      // Persist rating in database with correct arguments
+      const { error: dbError } = await api.submitUserRating(acceptedJob.id, 'tasker', acceptedJob.posterId, rating, selectedBadge || null);
       if (dbError) {
         console.error("Failed to submit rating in DB:", dbError);
         showToast(`Failed to submit rating: ${dbError.message || dbError}`, 'error');
@@ -92,10 +102,24 @@ const TaskerRatingScreen = () => {
     }
     setIsSubmittingReport(true);
     try {
-      await new Promise(res => setTimeout(res, 400));
-      showToast('Report submitted for moderation', 'success');
-      trackEvent(EVENTS.REPORT_SUBMITTED, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { reason: reportReason } });
-      setIsReporting(false);
+      const { error } = await api.submitUserReport(
+        acceptedJob?.posterId,
+        acceptedJob?.id,
+        reportReason,
+        reportDetails
+      );
+      if (error) {
+        showToast(`Failed to submit report: ${error.message || error}`, 'error');
+      } else {
+        showToast('Report submitted for moderation', 'success');
+        trackEvent(EVENTS.REPORT_SUBMITTED, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { reason: reportReason } });
+        setIsReporting(false);
+        setReportReason('');
+        setReportDetails('');
+      }
+    } catch (err) {
+      console.error("Failed to submit report:", err);
+      showToast('Failed to submit report.', 'error');
     } finally {
       setIsSubmittingReport(false);
     }
@@ -233,11 +257,7 @@ const TaskerRatingScreen = () => {
                   <button
                     key={badge.id}
                     onClick={() => setSelectedBadge(isSelected ? '' : badge.id)}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
-                      isSelected
-                        ? `bg-${badge.color}-50 border-${badge.color}-300 text-${badge.color}-700 shadow-xs`
-                        : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
-                    }`}
+                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${getBadgeStyle(badge.color, isSelected)}`}
                   >
                     <Icon className="w-3.5 h-3.5" />
                     <span>{badge.label}</span>

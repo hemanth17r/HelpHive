@@ -12,9 +12,20 @@ const RatingScreen = () => {
   const { showToast } = useContext(ToastContext);
   
   // Track ratings and badges per tasker
+  // Track ratings and badges per tasker
   const [ratings, setRatings] = useState({});
   const [badges, setBadges] = useState({});
+  const [localCrew, setLocalCrew] = useState([]);
 
+  useEffect(() => {
+    if (crewTaskers && crewTaskers.length > 0) {
+      setLocalCrew(crewTaskers);
+    } else if (currentPostedJob?.id) {
+      api.fetchJobCrew(currentPostedJob.id).then(({ data }) => {
+        if (data) setLocalCrew(data);
+      });
+    }
+  }, [crewTaskers, currentPostedJob]);
 
   const [reportingTaskerId, setReportingTaskerId] = useState(null);
   const [reportReason, setReportReason] = useState('');
@@ -23,13 +34,23 @@ const RatingScreen = () => {
   const [isReporting, setIsReporting] = useState(false);
 
   // The actual crew taskers
-  const taskersList = crewTaskers;
+  const taskersList = localCrew;
 
   const taskerBadges = [
     { id: 'reliable', label: 'Reliable Helper', icon: Check, color: 'green' },
     { id: 'on_time', label: 'On Time', icon: Award, color: 'blue' },
     { id: 'professional', label: 'Professional', icon: Star, color: 'purple' }
   ];
+
+  const getBadgeStyle = (color, isSelected) => {
+    if (!isSelected) return 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50';
+    switch (color) {
+      case 'green': return 'bg-green-50 border-green-300 text-green-700 shadow-xs';
+      case 'blue': return 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs';
+      case 'purple': return 'bg-purple-50 border-purple-300 text-purple-700 shadow-xs';
+      default: return 'bg-gray-50 border-gray-300 text-gray-700 shadow-xs';
+    }
+  };
 
   const reportReasons = [
     'Did not show up',
@@ -64,8 +85,8 @@ const RatingScreen = () => {
         const star = ratings[tasker.id] || 5;
         const badge = badges[tasker.id] || null;
 
-        // Persist rating in database
-        const { error: dbError } = await api.submitUserRating(currentPostedJob.id, 'poster', star, badge);
+        // Persist rating in database with correct arguments
+        const { error: dbError } = await api.submitUserRating(currentPostedJob.id, 'poster', tasker.id, star, badge);
         if (dbError) {
           console.error("Failed to submit rating in DB:", dbError);
           showToast(`Failed to submit rating for ${tasker.name}: ${dbError.message || dbError}`, 'error');
@@ -121,15 +142,24 @@ const RatingScreen = () => {
     }
     setIsReporting(true);
     try {
-      showToast('Report submitted for moderation', 'success');
-      trackEvent(EVENTS.REPORT_SUBMITTED, { userId: userProfile?.id, role, entityId: reportingTaskerId, metadata: { reason: reportReason } });
-      
-      // Artificial small delay for UX if trackEvent is synchronous
-      await new Promise(res => setTimeout(res, 400));
-      
-      setReportingTaskerId(null);
-      setReportReason('');
-      setReportDetails('');
+      const { error } = await api.submitUserReport(
+        reportingTaskerId,
+        currentPostedJob?.id,
+        reportReason,
+        reportDetails
+      );
+      if (error) {
+        showToast(`Failed to submit report: ${error.message || error}`, 'error');
+      } else {
+        showToast('Report submitted for moderation', 'success');
+        trackEvent(EVENTS.REPORT_SUBMITTED, { userId: userProfile?.id, role, entityId: reportingTaskerId, metadata: { reason: reportReason } });
+        setReportingTaskerId(null);
+        setReportReason('');
+        setReportDetails('');
+      }
+    } catch (err) {
+      console.error("Failed to submit report:", err);
+      showToast('Failed to submit report.', 'error');
     } finally {
       setIsReporting(false);
     }
@@ -262,11 +292,7 @@ const RatingScreen = () => {
                         <button
                           key={badge.id}
                           onClick={() => handleBadgeChange(tasker.id, badge.id)}
-                          className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
-                            isSelected
-                              ? `bg-${badge.color}-50 border-${badge.color}-300 text-${badge.color}-700 shadow-xs`
-                              : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-                          }`}
+                          className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${getBadgeStyle(badge.color, isSelected)}`}
                         >
                           <Icon className="w-3.5 h-3.5" />
                           <span>{badge.label}</span>

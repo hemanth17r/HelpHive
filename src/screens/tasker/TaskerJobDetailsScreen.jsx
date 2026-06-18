@@ -203,9 +203,11 @@ const TaskerJobDetailsScreen = () => {
                 Landmark: {acceptedJob.address.landmark}
               </p>
             )}
-            <p className="text-xs font-semibold text-gray-500">
-              {acceptedJob.address.area}, {acceptedJob.address.city}
-            </p>
+            {(acceptedJob.address.area || acceptedJob.address.city) && (
+              <p className="text-xs font-semibold text-gray-500">
+                {[acceptedJob.address.area, acceptedJob.address.city].filter(Boolean).join(', ')}
+              </p>
+            )}
             <div className="mt-3 pt-3 border-t border-gray-200 flex items-center space-x-2 text-xs font-bold text-dark">
                <Phone className="w-3.5 h-3.5 text-gray-400" />
                <span>Contact: {acceptedJob.address.contactPhone}</span>

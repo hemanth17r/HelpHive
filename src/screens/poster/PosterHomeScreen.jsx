@@ -40,12 +40,10 @@ const PosterHomeScreen = () => {
 
   // Filter jobs for the current user
   const posterJobs = jobs.filter(j => j.posterName === userProfile?.name || j.posterName === 'You' || j.posterId === userProfile?.id);
-  const activeJobs = posterJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft');
-  const unfulfilledJobs = posterJobs.filter(j => j.status === 'expired');
+  const activeJobs = posterJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft' && j.status !== 'cancelled');
   const draftJobs = posterJobs.filter(j => j.status === 'draft');
 
   const displayActiveJobs = activeJobs;
-  const displayUnfulfilledJobs = unfulfilledJobs;
   const displayDraftJobs = draftJobs;
 
   const [activeDropdownId, setActiveDropdownId] = useState(null);
@@ -59,16 +57,23 @@ const PosterHomeScreen = () => {
   const [exampleIndex, setExampleIndex] = useState(0);
   const [fadeState, setFadeState] = useState('fade-in');
 
+  const fadeTimeoutRef = React.useRef(null);
+
   useEffect(() => {
     if (displayActiveJobs.length === 0) {
       const interval = setInterval(() => {
         setFadeState('fade-out');
-        setTimeout(() => {
+        fadeTimeoutRef.current = setTimeout(() => {
           setExampleIndex(prev => (prev + 1) % EXAMPLE_TASKS.length);
           setFadeState('fade-in');
         }, 300);
       }, 2000);
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        // Bug 3.4 fix: also clear the nested timeout so it cannot fire
+        // after the component has unmounted and trigger a state update warning.
+        if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+      };
     }
   }, [displayActiveJobs.length]);
 
@@ -82,6 +87,8 @@ const PosterHomeScreen = () => {
   const getJobStatusLabel = (status, needed) => {
     switch(status) {
       case 'open': return { text: 'Searching for Helpers...', color: 'text-orange-500 bg-orange-50 border-orange-200' };
+      case 'searching': return { text: 'Searching for Helpers...', color: 'text-orange-500 bg-orange-50 border-orange-200' };
+      case 'in_progress': return { text: 'In Progress', color: 'text-blue-500 bg-blue-50 border-blue-200' };
       case 'accepted': return { text: 'Taskers Responding', color: 'text-blue-500 bg-blue-50 border-blue-200' };
       case 'crew_set': return { text: 'Crew Confirmed', color: 'text-green-500 bg-green-50 border-green-200' };
       case 'completed': return { text: 'Completed', color: 'text-gray-500 bg-gray-50 border-gray-200' };
@@ -93,6 +100,8 @@ const PosterHomeScreen = () => {
     setCurrentPostedJob(job);
     if (job.status === 'completed') {
       pushScreen('job_receipt');
+    } else if (job.status === 'open' || job.v2_status === 'searching') {
+      pushScreen('live_status', true);
     } else {
       pushScreen('crew_confirmed', true);
     }

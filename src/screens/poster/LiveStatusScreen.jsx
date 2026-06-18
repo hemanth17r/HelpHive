@@ -6,7 +6,7 @@ import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import { api } from '../../services/api';
 const LiveStatusScreen = () => {
-  const { currentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs, acceptPartialCrew } = useContext(AppContext);
+  const { currentPostedJob, setCurrentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs, acceptPartialCrew } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const [viewers, setViewers] = useState(0);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -247,6 +247,10 @@ const LiveStatusScreen = () => {
                   setIsCancelling(true);
                   try {
                     await api.updateJob(currentPostedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
+                    setJobs(prevJobs =>
+                      prevJobs.map(j => j.id === currentPostedJob.id ? { ...j, status: 'cancelled', v2_status: 'cancelled' } : j)
+                    );
+                    setCurrentPostedJob(null);
                     await api.supabase
                       .from('job_offers')
                       .update({ status: 'expired' })

@@ -87,17 +87,30 @@ const PostJobScreen = () => {
   const activePlaceholder = activeExamples[exampleIndex];
 
   // Address Popup States
+  // Address Popup States
   const [selectedJobLocation, setSelectedJobLocation] = useState(editJobData?.address || null);
   const [showAddressPopup, setShowAddressPopup] = useState(() => !editJobData?.address);
   const [isAddingNewAddress, setIsAddingNewAddress] = useState(() => savedAddresses.length === 0);
+  const isAddressInitializedRef = useRef(false);
+
+  React.useEffect(() => {
+    if (savedAddresses && savedAddresses.length > 0 && !isAddressInitializedRef.current) {
+      setIsAddingNewAddress(false);
+      isAddressInitializedRef.current = true;
+    }
+  }, [savedAddresses]);
+
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [city, setCity] = useState('Jalandhar');
   const [area, setArea] = useState('LPU');
   const [completeAddress, setCompleteAddress] = useState('');
   const [landmark, setLandmark] = useState('');
   const [addressType, setAddressType] = useState('Home');
-  const [lat, setLat] = useState(17.3850);
-  const [lng, setLng] = useState(78.4867);
+  // Bug 2.6 fix: Initialize map center from user's real location instead of hardcoded Hyderabad.
+  const [lat, setLat] = useState(realLocation?.lat || userLocation?.lat || 17.3850);
+  const [lng, setLng] = useState(realLocation?.lng || userLocation?.lng || 78.4867);
+  // Bug 2.7 fix: Use posterName/posterPhone role-specific fields as the address contact details.
+  // These are separate from the generic name/phone and are set per-role in the tasker profile.
   const [contactName, setContactName] = useState(userProfile?.posterName || userProfile?.name || '');
   const [contactPhone, setContactPhone] = useState(userProfile?.posterPhone || userProfile?.phone || '');
 
@@ -108,7 +121,10 @@ const PostJobScreen = () => {
       setContactName(pName);
       setContactPhone(pPhone);
     }
-  }, [userProfile]);
+    // Also keep map center in sync if real GPS comes in after mount
+    setLat(prev => prev === 17.3850 ? (realLocation?.lat || userLocation?.lat || 17.3850) : prev);
+    setLng(prev => prev === 78.4867 ? (realLocation?.lng || userLocation?.lng || 78.4867) : prev);
+  }, [userProfile, realLocation, userLocation]);
 
   const [maturityInfo, setMaturityInfo] = useState(null);
   const [isCheckingMaturity, setIsCheckingMaturity] = useState(false);
@@ -181,6 +197,10 @@ const PostJobScreen = () => {
 
   React.useEffect(() => {
     return () => {
+      // Bug 3.1 fix: Clear debounce timeouts on unmount to prevent
+      // setState calls on an unmounted component.
+      if (hourScrollTimeoutRef.current) clearTimeout(hourScrollTimeoutRef.current);
+      if (minuteScrollTimeoutRef.current) clearTimeout(minuteScrollTimeoutRef.current);
       // Clean up edit mode if unmounted without posting
       if (!isPostedRef.current && (formStateRef.current.selectedSkillId || formStateRef.current.description || formStateRef.current.amount)) {
         saveDraftJob({
@@ -245,6 +265,7 @@ const PostJobScreen = () => {
   };
 
   const handlePost = () => {
+    if (isLoading) return;
     if (!selectedSkillId) return;
     const parsedAmount = parseFloat(amount);
     if (amount === '' || isNaN(parsedAmount) || parsedAmount < 0) return;
@@ -256,30 +277,32 @@ const PostJobScreen = () => {
     submitJob(selectedJobLocation);
   };
 
-  const submitJob = (address) => {
+  const submitJob = async (address) => {
     const parsedAmount = parseFloat(amount);
     const coords = { 
       lat: address.lat || realLocation?.lat || 12.9352, 
       lng: address.lng || realLocation?.lng || 77.6245 
     };
     setIsLoading(true);
-    isPostedRef.current = true;
-    setTimeout(() => {
-      setIsLoading(false);
-      postJob({
-        id: editJobData?.id,
-        skillId: selectedSkillId,
-        description: description,
-        peopleNeeded: peopleNeeded,
-        amount: parsedAmount,
-        day: day,
-        time: time,
-        posterName: userProfile?.posterName || userProfile?.name || 'You',
-        lat: coords.lat,
-        lng: coords.lng,
-        address: address
-      });
-    }, 1000); // Simulate network delay
+    const result = await postJob({
+      id: editJobData?.id,
+      skillId: selectedSkillId,
+      description: description,
+      peopleNeeded: peopleNeeded,
+      amount: parsedAmount,
+      day: day,
+      time: time,
+      posterName: userProfile?.posterName || userProfile?.name || 'You',
+      lat: coords.lat,
+      lng: coords.lng,
+      address: address
+    });
+    setIsLoading(false);
+    if (result && result.success) {
+      isPostedRef.current = true;
+    } else {
+      showToast(result?.error || 'Failed to post job. Please try again.', 'error');
+    }
   };
 
   const handleSaveAddressAndPost = async () => {
@@ -295,8 +318,8 @@ const PostJobScreen = () => {
     setIsSavingAddress(true);
 
     try {
-      const finalContactName = userProfile?.name && userProfile.name !== 'New User' ? userProfile.name : 'Poster';
-      const finalContactPhone = userProfile?.phone && userProfile.phone !== 'Add Phone' ? userProfile.phone : '';
+      const finalContactName = userProfile?.posterName || (userProfile?.name && userProfile.name !== 'New User' ? userProfile.name : 'Poster');
+      const finalContactPhone = userProfile?.posterPhone || (userProfile?.phone && userProfile.phone !== 'Add Phone' ? userProfile.phone : '');
 
       const newAddress = {
         type: addressType,
@@ -793,11 +816,11 @@ const PostJobScreen = () => {
                       </button>
                       <button 
                         type="button"
-                        onClick={() => setAddressType('Office')}
-                        className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Office' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+                        onClick={() => setAddressType('Work')}
+                        className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Work' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
                       >
                         <Briefcase className="w-3.5 h-3.5 mr-1" />
-                        <span className="text-[10px]">Office</span>
+                        <span className="text-[10px]">Work</span>
                       </button>
                       <button 
                         type="button"

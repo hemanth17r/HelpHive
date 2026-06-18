@@ -29,6 +29,8 @@ const CrewConfirmedScreen = () => {
   } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   
+  const [localCrewTaskers, setLocalCrewTaskers] = useState(crewTaskers || []);
+  const [isLoadingCrew, setIsLoadingCrew] = useState(false);
   const [otpVisible, setOtpVisible] = useState(false);
   const [paymentOption, setPaymentOption] = useState('online'); // 'online' or 'offline'
   const [paymentInitiated, setPaymentInitiated] = useState(() => {
@@ -38,6 +40,38 @@ const CrewConfirmedScreen = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [paymentsTracker, setPaymentsTracker] = useState({});
+
+  // Bug 2.4 fix: If crewTaskers context state was reset on page-refresh,
+  // fetch the crew directly from the API so the list is never left blank.
+  useEffect(() => {
+    if (!currentPostedJob?.id) return;
+    if (crewTaskers && crewTaskers.length > 0) {
+      setLocalCrewTaskers(crewTaskers);
+      return;
+    }
+    const loadCrew = async () => {
+      setIsLoadingCrew(true);
+      try {
+        const { data } = await api.fetchJobCrew(currentPostedJob.id);
+        if (data && data.length > 0) {
+          setLocalCrewTaskers(data);
+        }
+      } catch (err) {
+        console.error('[CrewConfirmedScreen] Failed to load crew:', err);
+      } finally {
+        setIsLoadingCrew(false);
+      }
+    };
+    loadCrew();
+  }, [currentPostedJob?.id, crewTaskers]);
+
+  // Keep localCrewTaskers in sync if context is updated (e.g. real-time update)
+  useEffect(() => {
+    if (crewTaskers && crewTaskers.length > 0) {
+      setLocalCrewTaskers(crewTaskers);
+    }
+  }, [crewTaskers]);
 
   // Real-time synchronization redirect loop
   useEffect(() => {
@@ -45,7 +79,10 @@ const CrewConfirmedScreen = () => {
       pushScreen('poster_home', true);
       return;
     }
-    if (currentPostedJob.status === 'open') {
+    // Bug 2.5 fix: redirect to rating screen when job is marked completed
+    if (currentPostedJob.status === 'completed') {
+      pushScreen('rating_screen', true);
+    } else if (currentPostedJob.status === 'open') {
       showToast('Your helper has cancelled. Redirecting back to search...', 'info');
       pushScreen('live_status', true);
     } else if (currentPostedJob.status === 'cancelled') {
@@ -65,9 +102,8 @@ const CrewConfirmedScreen = () => {
     // Save to localStorage
     if (currentPostedJob?.id) {
       localStorage.setItem(`payment_initiated_${currentPostedJob.id}_${tasker.id}`, 'true');
+      setPaymentsTracker(prev => ({ ...prev, [tasker.id]: true }));
     }
-    // Toggle state to trigger re-evaluation of localStorage
-    setPaymentOption(prev => prev);
 
     // Open link
     window.location.assign(upiLink);
@@ -95,7 +131,7 @@ const CrewConfirmedScreen = () => {
       }
 
       // Clean up local storage
-      crewTaskers.forEach(tasker => {
+      localCrewTaskers.forEach(tasker => {
         localStorage.removeItem(`payment_initiated_${jobId}_${tasker.id}`);
       });
       localStorage.removeItem(`payment_initiated_${jobId}`);
@@ -112,14 +148,14 @@ const CrewConfirmedScreen = () => {
     const skill = SKILLS.find(s => s.id === currentPostedJob?.skillId);
     const taskTitle = skill?.label || 'General Task';
     
-    const message = `Hi HelpHive Support,\n\nI need help with a task.\n\nTask ID: ${currentPostedJob?.id || 'N/A'}\nTask Title: ${taskTitle}\nAmount: ₹${currentPostedJob?.amount || 0}\nStatus: ${currentPostedJob?.status || 'N/A'}\n\nHirer ID: ${currentPostedJob?.posterId || userId || 'N/A'}\nTasker ID: ${crewTaskers[0]?.id || 'N/A'}\n\nIssue: `;
+    const message = `Hi HelpHive Support,\n\nI need help with a task.\n\nTask ID: ${currentPostedJob?.id || 'N/A'}\nTask Title: ${taskTitle}\nAmount: ₹${currentPostedJob?.amount || 0}\nStatus: ${currentPostedJob?.status || 'N/A'}\n\nHirer ID: ${currentPostedJob?.posterId || userId || 'N/A'}\nTasker ID: ${localCrewTaskers[0]?.id || 'N/A'}\n\nIssue: `;
 
     const whatsappUrl = `https://wa.me/919347442426?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
-  const handleWhatsAppHelper = () => {
-    const tasker = crewTaskers[0];
+  const handleWhatsAppHelper = (tasker) => {
+    if (!tasker) return;
     const taskTitle = currentPostedJob?.description || 'Task';
     const message = `Hi ${tasker?.name || 'Helper'},\n\nI'm contacting you regarding our HelpHive task.\n\nTask ID: ${currentPostedJob?.id || 'N/A'}\nTask: ${taskTitle}\n\nMessage: `;
     const taskerPhone = tasker?.phone;
@@ -177,13 +213,19 @@ const CrewConfirmedScreen = () => {
           <MapView 
             jobLocation={{ lat: currentPostedJob?.lat || 31.2560, lng: currentPostedJob?.lng || 75.7051 }}
             taskerLocation={trackingTaskerPos}
-            taskerBirdName={crewTaskers[0]?.bird || 'falcon'}
+            taskerBirdName={localCrewTaskers[0]?.bird || 'falcon'}
             height="180px"
           />
         </div>
 
         {/* Crew List Card */}
-        {crewTaskers.map((tasker) => (
+        {isLoadingCrew && localCrewTaskers.length === 0 && (
+          <div className="flex items-center justify-center py-6 bg-gray-50 border border-border rounded-2xl">
+            <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin mr-2" />
+            <span className="text-xs font-semibold text-gray-400">Loading helpers...</span>
+          </div>
+        )}
+        {localCrewTaskers.map((tasker) => (
           <div key={tasker.id} className="flex items-center justify-between bg-gray-50 border border-border p-4 rounded-2xl">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 rounded-full border border-primary/20 overflow-hidden bg-orange-50 flex items-center justify-center shrink-0">
@@ -210,7 +252,7 @@ const CrewConfirmedScreen = () => {
             </div>
 
             <Tooltip text="WhatsApp Helper">
-              <button onClick={handleWhatsAppHelper} className="p-3 rounded-full bg-white border border-border text-green-600 hover:bg-green-50 hover:border-green-200 cursor-pointer transition-colors">
+              <button onClick={() => handleWhatsAppHelper(tasker)} className="p-3 rounded-full bg-white border border-border text-green-600 hover:bg-green-50 hover:border-green-200 cursor-pointer transition-colors">
                 <WhatsAppIcon className="w-4 h-4" />
               </button>
             </Tooltip>
@@ -256,46 +298,112 @@ const CrewConfirmedScreen = () => {
         {/* Payment Options */}
         <div className="bg-gray-50 border border-border rounded-2xl p-5 space-y-4">
           <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-            Payment & Completion
+            Payment Method
           </label>
           
-          {crewTaskers.map((tasker) => {
-            const hasInitiated = localStorage.getItem(`payment_initiated_${currentPostedJob?.id}_${tasker.id}`) === 'true';
-            return (
-              <div key={tasker.id} className="bg-white border border-border p-4 rounded-xl mb-3 flex flex-col space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500 font-bold">Helper</span>
-                  <span className="text-sm font-black text-dark">{tasker.name}</span>
+          <div className="space-y-2.5">
+            {/* Pay Online Card */}
+            <button
+              onClick={() => setPaymentOption('online')}
+              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                paymentOption === 'online'
+                  ? 'border-green-600 bg-green-50/30'
+                  : 'border-border bg-white hover:bg-gray-50/50'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center shrink-0 ${
+                  paymentOption === 'online' ? 'border-green-600' : 'border-gray-300'
+                }`}>
+                  {paymentOption === 'online' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500 font-bold">UPI ID</span>
-                  <span className="text-xs font-bold text-gray-600">{tasker.upiId || 'Not provided'}</span>
+                <div>
+                  <span className="text-xs font-black text-dark block">Pay Online</span>
+                  <span className="text-[9px] font-bold text-gray-400 mt-0.5 block">Pay instantly using PhonePe, GPay, Paytm, etc.</span>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                  <span className="text-sm font-bold text-dark">Amount</span>
-                  <span className="text-lg font-black text-primary">₹{currentPostedJob?.amount || 0}</span>
-                </div>
-                
-                {currentPostedJob?.amount > 0 && (
-                  <div className="pt-2">
-                    {hasInitiated ? (
-                      <span className="text-xs text-green-600 font-extrabold flex items-center justify-center space-x-1 py-2">
-                        <Check className="w-4.5 h-4.5" />
-                        <span>Payment Initiated</span>
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handlePayOnlineForTasker(tasker)}
-                        className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-2 rounded-xl active:scale-[0.99] transition-all cursor-pointer text-center text-xs"
-                      >
-                        Pay {tasker.name.split(' ')[0]} Online
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
-            );
-          })}
+            </button>
+
+            {/* Pay Offline Card */}
+            <button
+              onClick={() => setPaymentOption('offline')}
+              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                paymentOption === 'offline'
+                  ? 'border-green-600 bg-green-50/30'
+                  : 'border-border bg-white hover:bg-gray-50/50'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center shrink-0 ${
+                  paymentOption === 'offline' ? 'border-green-600' : 'border-gray-300'
+                }`}>
+                  {paymentOption === 'offline' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
+                </div>
+                <div>
+                  <span className="text-xs font-black text-dark block">Pay Offline</span>
+                  <span className="text-[9px] font-bold text-gray-400 mt-0.5 block">Pay cash directly or through other offline methods.</span>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400 pt-2">
+            Payment & Completion
+          </label>
+
+          {paymentOption === 'online' ? (
+            localCrewTaskers.map((tasker) => {
+              const hasInitiated = paymentsTracker[tasker.id] || localStorage.getItem(`payment_initiated_${currentPostedJob?.id}_${tasker.id}`) === 'true';
+              return (
+                <div key={tasker.id} className="bg-white border border-border p-4 rounded-xl mb-3 flex flex-col space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500 font-bold">Helper</span>
+                    <span className="text-sm font-black text-dark">{tasker.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500 font-bold">UPI ID</span>
+                    <span className="text-xs font-bold text-gray-600">{tasker.upiId || 'Not provided'}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                    <span className="text-sm font-bold text-dark">Amount</span>
+                    <span className="text-lg font-black text-primary">₹{currentPostedJob?.amount || 0}</span>
+                  </div>
+                  
+                  {currentPostedJob?.amount > 0 && (
+                    <div className="pt-2">
+                      {hasInitiated ? (
+                        <span className="text-xs text-green-600 font-extrabold flex items-center justify-center space-x-1 py-2">
+                          <Check className="w-4.5 h-4.5" />
+                          <span>Payment Initiated</span>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handlePayOnlineForTasker(tasker)}
+                          className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-2 rounded-xl active:scale-[0.99] transition-all cursor-pointer text-center text-xs"
+                        >
+                          Pay {tasker.name.split(' ')[0]} Online
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <div className="bg-white border border-border p-4 rounded-xl mb-3 flex flex-col space-y-2.5">
+              <p className="text-xs font-bold text-gray-500 leading-relaxed">
+                Please pay the helper(s) directly via Cash, personal UPI, or any other offline method once the task is completed.
+              </p>
+              <div className="border-t border-dashed border-border pt-2.5 mt-1">
+                {localCrewTaskers.map(t => (
+                  <div key={t.id} className="flex justify-between items-center text-xs font-bold text-gray-500 mt-1">
+                    <span>{t.name}</span>
+                    <span className="text-dark">₹{currentPostedJob?.amount || 0}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Primary Action Button */}
           <div className="pt-2">
@@ -436,9 +544,13 @@ const CrewConfirmedScreen = () => {
                     }
 
                     await api.updateJob(currentPostedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
+                    setJobs(prevJobs =>
+                      prevJobs.map(j => j.id === currentPostedJob.id ? { ...j, status: 'cancelled', v2_status: 'cancelled' } : j)
+                    );
+                    setCurrentPostedJob(null);
                     
-                    if (crewTaskers && crewTaskers.length > 0) {
-                      crewTaskers.forEach(tasker => {
+                    if (localCrewTaskers && localCrewTaskers.length > 0) {
+                      localCrewTaskers.forEach(tasker => {
                         api.sendNotification(
                           tasker.id,
                           "Task Cancelled",

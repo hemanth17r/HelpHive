@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { Inbox, Users, RefreshCw } from 'lucide-react';
+import { Inbox, Users, RefreshCw, WifiOff, AlertCircle } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import JobCard from '../../components/JobCard';
 import Tooltip from '../../components/Tooltip';
@@ -121,7 +121,24 @@ const TaskerHomeScreen = () => {
             </button>
           </div>
 
-          {/* Active Status Badge removed */}
+          {/* Active Status Badge */}
+          <div className="flex items-center space-x-2">
+            <span className={`text-[10px] font-black uppercase tracking-wide transition-colors ${isOnline ? 'text-green-600' : 'text-gray-400'}`}>
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
+            <button
+              onClick={() => setIsOnline(!isOnline)}
+              className={`w-9 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors duration-300 ${
+                isOnline ? 'bg-green-500' : 'bg-gray-300'
+              }`}
+            >
+              <div
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${
+                  isOnline ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -190,7 +207,22 @@ const TaskerHomeScreen = () => {
           </div>
         )}
 
-        {visibleJobs.length === 0 ? (
+        {/* ----------------------------------------------------------------
+             OFFLINE BLOCKER – shown only when tasker is set to Offline.
+             Active tasks remain visible above this block so they can still
+             tap through to manage an accepted job.
+        ---------------------------------------------------------------- */}
+        {!isOnline ? (
+          <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 bg-white rounded-3xl p-6 border border-border">
+            <div className="p-4 bg-gray-100 rounded-full text-gray-400">
+              <WifiOff className="w-10 h-10" />
+            </div>
+            <h3 className="text-base font-black text-dark">You are Offline</h3>
+            <p className="text-xs font-semibold text-gray-400 max-w-[220px]">
+              New tasks are hidden while you're offline. Toggle the switch above to go online and start receiving jobs.
+            </p>
+          </div>
+        ) : visibleJobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 bg-white rounded-3xl p-6 border border-border">
             <div className="p-4 bg-orange-50 rounded-full text-primary">
               <Inbox className="w-10 h-10" />
@@ -203,19 +235,46 @@ const TaskerHomeScreen = () => {
         ) : (
           <div className="space-y-6 pb-20">
 
+            {/* Skill-mismatch info banner: shown when the tasker has skills configured
+                but none of the visible nearby jobs match them. Displays the banner
+                and then shows ALL nearby tasks as a graceful fallback so the screen
+                is never left blank. */}
+            {userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0 && matchingSkillsJobs.length === 0 && (
+              <div className="flex items-start space-x-3 bg-blue-50 border border-blue-100 rounded-2xl p-4">
+                <AlertCircle className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-black text-blue-700">No tasks match your selected skills right now</p>
+                  <p className="text-[11px] font-semibold text-blue-500 mt-0.5">Showing all nearby open tasks instead.</p>
+                </div>
+              </div>
+            )}
 
             {/* Section 1: Matching Skills or All Open Tasks */}
-            {(((userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? matchingSkillsJobs : visibleJobs).length > 0) && (
+            {((
+              userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0 && matchingSkillsJobs.length > 0
+                ? matchingSkillsJobs
+                : visibleJobs
+            ).length > 0) && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-                    {(userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? 'Jobs Matching Your Skills' : 'Open Tasks Nearby'}
+                    {userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0 && matchingSkillsJobs.length > 0
+                      ? 'Jobs Matching Your Skills'
+                      : 'Open Tasks Nearby'}
                   </span>
                   <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                    {((userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? matchingSkillsJobs : visibleJobs).length} Live
+                    {(
+                      userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0 && matchingSkillsJobs.length > 0
+                        ? matchingSkillsJobs
+                        : visibleJobs
+                    ).length} Live
                   </span>
                 </div>
-                {((userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0) ? matchingSkillsJobs : visibleJobs).map((job, idx) => (
+                {(
+                  userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0 && matchingSkillsJobs.length > 0
+                    ? matchingSkillsJobs
+                    : visibleJobs
+                ).map((job, idx) => (
                   <JobCard
                     key={job?.id || idx}
                     job={{ ...job, distance: `${job?.distanceVal || 0} km` }}

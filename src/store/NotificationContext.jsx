@@ -50,7 +50,7 @@ function urlB64ToUint8Array(base64String) {
 export const NotificationProvider = ({ children }) => {
   const { userId, role } = useContext(AppContext);
   const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const unreadCount = notifications.filter(n => !n.is_read).length;
   const [pushSupported, setPushSupported] = useState(false);
   const [pushPermission, setPushPermission] = useState(() => getNotificationPermission());
 
@@ -69,7 +69,6 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     if (!userId) {
       setNotifications([]);
-      setUnreadCount(0);
       return;
     }
 
@@ -86,7 +85,6 @@ export const NotificationProvider = ({ children }) => {
           
         if (data) {
           setNotifications(data);
-          setUnreadCount(data.filter(n => !n.is_read).length);
         }
       } catch (err) {
         console.error('Failed to fetch notifications:', err);
@@ -107,7 +105,6 @@ export const NotificationProvider = ({ children }) => {
             // Client-side role matching check
             if (payload.new.role === role) {
               setNotifications(prev => [payload.new, ...prev]);
-              setUnreadCount(prev => prev + 1);
             }
           }
         )
@@ -117,9 +114,6 @@ export const NotificationProvider = ({ children }) => {
           (payload) => {
             if (payload.new.role === role) {
               setNotifications(prev => prev.map(n => n.id === payload.new.id ? payload.new : n));
-              setUnreadCount(prev => {
-                 return payload.new.is_read ? Math.max(0, prev - 1) : prev;
-              });
             }
           }
         )
@@ -138,7 +132,6 @@ export const NotificationProvider = ({ children }) => {
   const markAsRead = useCallback(async (notificationId) => {
     // Optimistic update
     setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n));
-    setUnreadCount(prev => Math.max(0, prev - 1));
     
     try {
       await api.supabase
@@ -152,7 +145,6 @@ export const NotificationProvider = ({ children }) => {
 
   const markAllAsRead = useCallback(async () => {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    setUnreadCount(0);
     
     if (userId) {
       try {

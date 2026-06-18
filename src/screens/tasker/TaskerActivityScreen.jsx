@@ -46,9 +46,14 @@ const TaskerActivityScreen = () => {
   };
 
   // Scroll to targeted section if directed from MyProfileScreen
+  const scrollTimerRef = useRef(null);
+  const pulseTimerRef = useRef(null);
+
   useEffect(() => {
     if (taskerActivityScrollTarget) {
-      setTimeout(() => {
+      // Bug 3.2 fix: Store timeout IDs in refs so they can be cleaned up on
+      // unmount, preventing state-update-on-unmounted-component warnings.
+      scrollTimerRef.current = setTimeout(() => {
         if (taskerActivityScrollTarget === 'active' && activeRef.current) {
           activeRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -58,11 +63,15 @@ const TaskerActivityScreen = () => {
         if (taskerActivityScrollTarget === 'upi' && upiRef.current) {
           upiRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
           setPulseUpi(true);
-          setTimeout(() => setPulseUpi(false), 2000);
+          pulseTimerRef.current = setTimeout(() => setPulseUpi(false), 2000);
         }
         setTaskerActivityScrollTarget(null);
       }, 100);
     }
+    return () => {
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+      if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+    };
   }, [taskerActivityScrollTarget, setTaskerActivityScrollTarget]);
 
   const PREVIEW_COUNT = 2;

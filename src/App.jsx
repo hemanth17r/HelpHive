@@ -210,7 +210,7 @@ const AppContent = () => {
   };
 
   const isMainScreen = currentScreen === 'landing' || (currentScreen === 'tasker_home' && activeTab === 'home') || currentScreen === 'poster_home';
-  const showBottomNav = currentScreen === 'tasker_home' || currentScreen === 'poster_home';
+  const showBottomNav = currentScreen === 'tasker_home' || currentScreen === 'poster_home' || (currentScreen === 'my_profile' && role === 'poster');
 
   return (
     <div className="min-h-dvh bg-gray-100 flex items-center justify-center p-0 select-none font-sans overflow-hidden">

@@ -8,9 +8,7 @@
 -- 3. profiles table RLS is enabled with a permissive policy
 -- =============================================================================
 
--- ─── 1. Ensure columns exist on profiles ────────────────────────────────────
-
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS skills JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS skills TEXT[] DEFAULT '{}'::text[];
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS upi_id TEXT;
 
 -- ─── 2. Enable RLS on profiles with anon-safe policy ────────────────────────

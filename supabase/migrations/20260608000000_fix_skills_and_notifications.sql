@@ -1,5 +1,4 @@
--- Fix 1: Add missing skills column to profiles table
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS skills JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS skills TEXT[] DEFAULT '{}'::text[];
 
 -- Fix 2: HelpHive uses custom authentication (phone OTP + local storage).
 -- Since it does not use Supabase Auth sessions, auth.uid() and auth.role() = 'authenticated' will fail.
