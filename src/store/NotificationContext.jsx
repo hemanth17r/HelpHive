@@ -48,7 +48,7 @@ function urlB64ToUint8Array(base64String) {
 }
 
 export const NotificationProvider = ({ children }) => {
-  const { userId, role } = useContext(AppContext);
+  const { userId, role, fetchJobs } = useContext(AppContext);
   const [notifications, setNotifications] = useState([]);
   const unreadCount = notifications.filter(n => !n.is_read).length;
   const [pushSupported, setPushSupported] = useState(false);
@@ -105,6 +105,10 @@ export const NotificationProvider = ({ children }) => {
             // Client-side role matching check
             if (payload.new.role === role) {
               setNotifications(prev => [payload.new, ...prev]);
+              if (fetchJobs) {
+                console.log('[Notification] New notification received, triggering jobs refetch...');
+                fetchJobs();
+              }
             }
           }
         )
@@ -114,6 +118,10 @@ export const NotificationProvider = ({ children }) => {
           (payload) => {
             if (payload.new.role === role) {
               setNotifications(prev => prev.map(n => n.id === payload.new.id ? payload.new : n));
+              if (fetchJobs) {
+                console.log('[Notification] Notification updated, triggering jobs refetch...');
+                fetchJobs();
+              }
             }
           }
         )
@@ -127,7 +135,7 @@ export const NotificationProvider = ({ children }) => {
         try { api.supabase.removeChannel(sub); } catch (e) { /* ignore */ }
       }
     };
-  }, [userId, role]);
+  }, [userId, role, fetchJobs]);
 
   const markAsRead = useCallback(async (notificationId) => {
     // Optimistic update

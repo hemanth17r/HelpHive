@@ -90,12 +90,10 @@ const AppContent = () => {
 
 
 
-  // Status dot for Tasker avatar
+  // Status dot for Tasker avatar (always online/green)
   const renderStatusDot = () => (
     (role === 'tasker') ? (
-      <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-        !isOnline ? 'bg-gray-400' : 'bg-emerald-500'
-      }`} />
+      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white bg-emerald-500" />
     ) : null
   );
 

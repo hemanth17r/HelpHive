@@ -118,12 +118,12 @@ const CrewConfirmedScreen = () => {
       
       // Optimistic UI updates
       setJobs(prevJobs => 
-        prevJobs.map(j => j.id === jobId ? { ...j, status: 'completed' } : j)
+        prevJobs.map(j => j.id === jobId ? { ...j, status: 'completed', v2_status: 'completed' } : j)
       );
-      setCurrentPostedJob(prev => prev ? { ...prev, status: 'completed' } : null);
+      setCurrentPostedJob(prev => prev ? { ...prev, status: 'completed', v2_status: 'completed' } : null);
 
       // Database update
-      await api.updateJob(jobId, { status: 'completed' });
+      await api.updateJob(jobId, { status: 'completed', v2_status: 'completed' });
 
       // Analytics: V2 Marketplace Metric
       if (!userProfile?.tasksPosted) {

@@ -76,9 +76,8 @@ export const AppProvider = ({ children }) => {
   }); // Bird avatar selection
   const [isAdmin, setIsAdmin] = useState(false); // Admin dashboard access
 
-  // Initialise from localStorage so a user's offline preference survives page refreshes.
-  // Falls back to true only when no stored value exists (first login).
-  const [isOnline, setIsOnlineState] = useState(() => localStorage.getItem('isOnline') !== 'false');
+  // Always online
+  const [isOnline, setIsOnlineState] = useState(true);
   
   // Navigation stack state
   const [screenStack, setScreenStack] = useState(() => {
@@ -391,8 +390,8 @@ export const AppProvider = ({ children }) => {
             const diffDays = diffTime / (1000 * 60 * 60 * 24);
             if (diffDays > 5) {
               // Update in backend asynchronously
-              api.updateJob(j.id, { status: 'expired' }).then();
-              return { ...j, status: 'expired' };
+              api.updateJob(j.id, { status: 'expired', v2_status: 'expired' }).then();
+              return { ...j, status: 'expired', v2_status: 'expired' };
             }
           }
         }
@@ -472,11 +471,12 @@ export const AppProvider = ({ children }) => {
 
           if (data.bird) setSelectedBird(data.bird);
           setIsAdmin(data.is_admin === true);
-          // Respect the is_online value from DB. Only default to true for brand-new accounts
-          // where the column has never been set (i.e. is_online is null/undefined).
-          const dbIsOnline = data.is_online !== null && data.is_online !== undefined ? data.is_online : true;
-          setIsOnlineState(dbIsOnline);
-          localStorage.setItem('isOnline', dbIsOnline ? 'true' : 'false');
+          // Always force online status in the database and frontend
+          setIsOnlineState(true);
+          localStorage.setItem('isOnline', 'true');
+          if (data.is_online !== true) {
+            api.updateProfile(data.id, { is_online: true }).catch(console.error);
+          }
           const activeRole = localStorage.getItem('activeRole') || data.role;
           setRole(activeRole);
           localStorage.setItem('activeRole', activeRole);
@@ -709,11 +709,12 @@ export const AppProvider = ({ children }) => {
   const [otpEntered, setOtpEntered] = useState('');
 
   const setIsOnline = async (online) => {
-    setIsOnlineState(online);
-    localStorage.setItem('isOnline', online ? 'true' : 'false');
+    // Force always online status
+    setIsOnlineState(true);
+    localStorage.setItem('isOnline', 'true');
     const currentUserId = userId || localStorage.getItem('userId');
     if (currentUserId) {
-      await api.updateProfile(currentUserId, { is_online: online });
+      await api.updateProfile(currentUserId, { is_online: true });
     }
   };
   
@@ -910,6 +911,7 @@ export const AppProvider = ({ children }) => {
           if (targetUrl) {
             const targetScreen = targetUrl.replace(/^\/+/g, '').replace(/\/+$/g, '');
             pushScreen(targetScreen);
+            fetchJobs(); // Force feed refresh when notification triggers navigation
           }
         }
       };
@@ -918,7 +920,21 @@ export const AppProvider = ({ children }) => {
         navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
       };
     }
-  }, [pushScreen]);
+  }, [pushScreen, fetchJobs]);
+
+  // Refresh jobs when app becomes visible (e.g. returning to app after clicking a notification or resuming)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Visibility] App became visible, refreshing jobs...');
+        fetchJobs();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchJobs]);
 
   // Change user location helper
   const changeLocation = async (area) => {
@@ -1082,14 +1098,14 @@ export const AppProvider = ({ children }) => {
     const originalAcceptedJob = acceptedJob ? { ...acceptedJob } : null;
 
     setJobs(prevJobs => 
-      prevJobs.map(j => j.id === jobId ? { ...j, status: 'completed' } : j)
+      prevJobs.map(j => j.id === jobId ? { ...j, status: 'completed', v2_status: 'completed' } : j)
     );
     if (acceptedJob && acceptedJob.id === jobId) {
-      setAcceptedJob(prev => ({ ...prev, status: 'completed' }));
+      setAcceptedJob(prev => ({ ...prev, status: 'completed', v2_status: 'completed' }));
     }
 
     try {
-      const { error } = await api.updateJob(jobId, { status: 'completed' });
+      const { error } = await api.updateJob(jobId, { status: 'completed', v2_status: 'completed' });
       if (error) throw error;
 
       const job = originalJobs.find(j => j.id === jobId);
@@ -1449,11 +1465,12 @@ export const AppProvider = ({ children }) => {
 
         if (profile.bird) setSelectedBird(profile.bird);
         setIsAdmin(profile.is_admin === true);
-        // Respect is_online from DB on OAuth/magic-link sign-in.
-        // For new profiles the field won't be set yet, so default to true.
-        const signInIsOnline = profile.is_online !== null && profile.is_online !== undefined ? profile.is_online : true;
-        setIsOnlineState(signInIsOnline);
-        localStorage.setItem('isOnline', signInIsOnline ? 'true' : 'false');
+        // Force always online status on OAuth/magic-link sign-in
+        setIsOnlineState(true);
+        localStorage.setItem('isOnline', 'true');
+        if (profile.is_online !== true) {
+          api.updateProfile(profile.id, { is_online: true }).catch(console.error);
+        }
 
         pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
         if (!isAlreadyLoggedIn) {

@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { Inbox, Users, RefreshCw, WifiOff, AlertCircle } from 'lucide-react';
+import { Inbox, Users, AlertCircle } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import JobCard from '../../components/JobCard';
 import Tooltip from '../../components/Tooltip';
@@ -14,8 +14,6 @@ const TaskerHomeScreen = () => {
     userProfile, 
     getJobsInRadius, 
     selectedBird,
-    isOnline,
-    setIsOnline,
     jobs,
     setAcceptedJob,
     pushScreen,
@@ -27,23 +25,9 @@ const TaskerHomeScreen = () => {
     declineJob
   } = useContext(AppContext);
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
   useEffect(() => {
     fetchJobs();
   }, [fetchJobs]);
-
-  const handleRefreshFeed = async () => {
-    setIsRefreshing(true);
-    try {
-      const loc = await getCurrentLocation();
-      setRealLocation(loc);
-      await fetchJobs();
-    } catch (err) {
-      console.error("Failed to refresh location or jobs", err);
-    }
-    setIsRefreshing(false);
-  };
 
   const [declinedJobIds, setDeclinedJobIds] = useState([]);
 
@@ -69,7 +53,7 @@ const TaskerHomeScreen = () => {
   );
 
   useEffect(() => {
-    if (!isOnline || !userProfile?.id) return;
+    if (!userProfile?.id) return;
     
     // Log views for visible jobs
     const jobsToLog = visibleJobs.filter(job => job?.status === 'open');
@@ -94,14 +78,14 @@ const TaskerHomeScreen = () => {
     if (updated) {
       sessionStorage.setItem('viewedJobs', JSON.stringify(viewedJobs));
     }
-  }, [visibleJobs, isOnline, userProfile?.id]);
+  }, [visibleJobs, userProfile?.id]);
 
   return (
     <div className="flex-1 flex flex-col bg-light-gray h-full select-none">
       
       {/* Top sticky block */}
       <div className="sticky top-0 z-40 bg-white shadow-xs lg:hidden">
-        {/* Header bar with Online toggle & Radius */}
+        {/* Header bar */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center space-x-3">
             <span 
@@ -113,31 +97,6 @@ const TaskerHomeScreen = () => {
             <div className="text-[9px] font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20 shrink-0 max-w-[120px] truncate" title={userProfile?.serviceAreaName || 'No service area selected'}>
               {userProfile?.serviceAreaName ? userProfile.serviceAreaName.split(',')[0].trim() : 'No service area selected'}
             </div>
-            <button 
-              onClick={handleRefreshFeed} 
-              className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
-            </button>
-          </div>
-
-          {/* Active Status Badge */}
-          <div className="flex items-center space-x-2">
-            <span className={`text-[10px] font-black uppercase tracking-wide transition-colors ${isOnline ? 'text-green-600' : 'text-gray-400'}`}>
-              {isOnline ? 'Online' : 'Offline'}
-            </span>
-            <button
-              onClick={() => setIsOnline(!isOnline)}
-              className={`w-9 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors duration-300 ${
-                isOnline ? 'bg-green-500' : 'bg-gray-300'
-              }`}
-            >
-              <div
-                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${
-                  isOnline ? 'translate-x-4' : 'translate-x-0'
-                }`}
-              />
-            </button>
           </div>
         </div>
       </div>
@@ -207,22 +166,7 @@ const TaskerHomeScreen = () => {
           </div>
         )}
 
-        {/* ----------------------------------------------------------------
-             OFFLINE BLOCKER – shown only when tasker is set to Offline.
-             Active tasks remain visible above this block so they can still
-             tap through to manage an accepted job.
-        ---------------------------------------------------------------- */}
-        {!isOnline ? (
-          <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 bg-white rounded-3xl p-6 border border-border">
-            <div className="p-4 bg-gray-100 rounded-full text-gray-400">
-              <WifiOff className="w-10 h-10" />
-            </div>
-            <h3 className="text-base font-black text-dark">You are Offline</h3>
-            <p className="text-xs font-semibold text-gray-400 max-w-[220px]">
-              New tasks are hidden while you're offline. Toggle the switch above to go online and start receiving jobs.
-            </p>
-          </div>
-        ) : visibleJobs.length === 0 ? (
+        {visibleJobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 bg-white rounded-3xl p-6 border border-border">
             <div className="p-4 bg-orange-50 rounded-full text-primary">
               <Inbox className="w-10 h-10" />
