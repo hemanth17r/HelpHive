@@ -136,7 +136,9 @@ const JobHistoryScreen = () => {
             <div className="flex items-start mt-1.5 space-x-1">
               <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
               <span className="text-[10px] font-bold text-gray-500 leading-snug line-clamp-1">
-                {job.address.completeAddress}
+                 {job.address.completeAddress?.startsWith('Location at') && job.address.landmark 
+                  ? job.address.landmark 
+                  : job.address.completeAddress}
               </span>
             </div>
           )}

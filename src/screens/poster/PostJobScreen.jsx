@@ -372,7 +372,11 @@ const PostJobScreen = () => {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Job Location</p>
-              <p className="text-xs font-black text-dark line-clamp-1 mt-0.5">{selectedJobLocation.completeAddress}</p>
+              <p className="text-xs font-black text-dark line-clamp-1 mt-0.5">
+                {selectedJobLocation.completeAddress?.startsWith('Location at') && selectedJobLocation.landmark 
+                  ? selectedJobLocation.landmark 
+                  : selectedJobLocation.completeAddress}
+              </p>
             </div>
           </div>
           <button className="text-[10px] font-bold text-orange-600 bg-white px-2 py-1 rounded-md shadow-sm border border-orange-100 shrink-0">Change</button>
@@ -744,7 +748,11 @@ const PostJobScreen = () => {
                             <h4 className="text-sm font-black text-dark uppercase">{address.type || 'Location'}</h4>
                             {address.isDefault && <span className="text-[9px] font-bold bg-primary/10 text-primary px-1.5 rounded-sm uppercase tracking-wider">Default</span>}
                           </div>
-                          <p className="text-xs font-semibold text-gray-500 mt-1 line-clamp-2">{address.completeAddress}</p>
+                          <p className="text-xs font-semibold text-gray-500 mt-1 line-clamp-2">
+                            {address.completeAddress?.startsWith('Location at') && address.landmark 
+                              ? address.landmark 
+                              : address.completeAddress}
+                          </p>
                         </div>
                       </div>
                     </div>

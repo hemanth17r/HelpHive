@@ -15,7 +15,10 @@ const AddressBookScreen = () => {
   const handleSetDefault = (e, address) => {
     e.stopPropagation();
     setDefaultAddress(address.id);
-    changeLocation({ name: address.completeAddress?.split(',')[0] || address.type || 'Location', lat: address.lat || 0, lng: address.lng || 0 });
+    const addressName = address.completeAddress?.startsWith('Location at') && address.landmark
+      ? address.landmark
+      : (address.completeAddress?.split(',')[0] || address.type || 'Location');
+    changeLocation({ name: addressName, lat: address.lat || 0, lng: address.lng || 0 });
     setActiveMenuId(null);
   };
 
@@ -93,7 +96,11 @@ const AddressBookScreen = () => {
                 </div>
                 
                 <div className="mt-3 text-xs font-medium text-gray-600 pl-[3.25rem] space-y-1">
-                  <p className="line-clamp-2 leading-relaxed">{address.completeAddress}</p>
+                  <p className="line-clamp-2 leading-relaxed">
+                    {address.completeAddress?.startsWith('Location at') && address.landmark 
+                      ? address.landmark 
+                      : address.completeAddress}
+                  </p>
                 </div>
               </div>
             ))}

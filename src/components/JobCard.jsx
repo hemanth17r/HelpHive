@@ -108,7 +108,9 @@ const JobCard = ({ job, onDecline }) => {
             <div className="flex items-start mt-1.5 space-x-1">
               <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
               <span className="text-[11px] font-bold text-gray-500 leading-snug">
-                {job.address.completeAddress}
+                {job.address.completeAddress?.startsWith('Location at') && job.address.landmark 
+                  ? job.address.landmark 
+                  : job.address.completeAddress}
               </span>
             </div>
           )}
