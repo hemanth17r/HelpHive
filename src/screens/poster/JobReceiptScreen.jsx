@@ -99,7 +99,9 @@ const JobReceiptScreen = () => {
                 <div className="flex items-start mt-1.5 space-x-1">
                   <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
                   <span className="text-xs font-bold text-gray-500 leading-snug">
-                    {currentPostedJob.address.completeAddress}
+                    {currentPostedJob.address.completeAddress?.startsWith('Location at') && currentPostedJob.address.landmark 
+                      ? currentPostedJob.address.landmark 
+                      : currentPostedJob.address.completeAddress}
                   </span>
                 </div>
               )}

@@ -196,9 +196,11 @@ const TaskerJobDetailsScreen = () => {
               <span>Service Address</span>
             </div>
             <p className="text-sm font-bold text-dark leading-tight">
-              {acceptedJob.address.completeAddress}
+              {acceptedJob.address.completeAddress?.startsWith('Location at') && acceptedJob.address.landmark 
+                ? acceptedJob.address.landmark 
+                : acceptedJob.address.completeAddress}
             </p>
-            {acceptedJob.address.landmark && (
+            {acceptedJob.address.landmark && !acceptedJob.address.completeAddress?.startsWith('Location at') && (
               <p className="text-xs font-semibold text-gray-500">
                 Landmark: {acceptedJob.address.landmark}
               </p>
