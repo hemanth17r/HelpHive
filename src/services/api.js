@@ -413,17 +413,23 @@ export const api = {
   },
 
   subscribeToJobs: (callback) => {
+    let debounceTimer = null;
+    const debouncedCallback = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(callback, 600);
+    };
     const channel = supabase
       .channel('public:jobs')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
-        callback();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'job_offers' }, () => {
-        callback();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, debouncedCallback)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'job_offers' }, debouncedCallback)
       .subscribe();
       
-    return { unsubscribe: () => supabase.removeChannel(channel) };
+    return {
+      unsubscribe: () => {
+        clearTimeout(debounceTimer);
+        supabase.removeChannel(channel);
+      }
+    };
   },
 
   // --- Addresses API ---

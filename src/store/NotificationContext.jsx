@@ -106,8 +106,8 @@ export const NotificationProvider = ({ children }) => {
             if (payload.new.role === role) {
               setNotifications(prev => [payload.new, ...prev]);
               if (fetchJobs) {
-                console.log('[Notification] New notification received, triggering jobs refetch...');
-                fetchJobs();
+                console.log('[Notification] New notification received, triggering jobs refetch in 800ms...');
+                setTimeout(() => fetchJobs(), 800);
               }
             }
           }
@@ -119,8 +119,8 @@ export const NotificationProvider = ({ children }) => {
             if (payload.new.role === role) {
               setNotifications(prev => prev.map(n => n.id === payload.new.id ? payload.new : n));
               if (fetchJobs) {
-                console.log('[Notification] Notification updated, triggering jobs refetch...');
-                fetchJobs();
+                console.log('[Notification] Notification updated, triggering jobs refetch in 800ms...');
+                setTimeout(() => fetchJobs(), 800);
               }
             }
           }

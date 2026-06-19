@@ -409,8 +409,13 @@ export const AppProvider = ({ children }) => {
       fetchJobs();
     });
 
+    const pollInterval = setInterval(() => {
+      fetchJobs();
+    }, 30000);
+
     return () => {
       if (sub && sub.unsubscribe) sub.unsubscribe();
+      clearInterval(pollInterval);
     };
   }, [fetchJobs]);
 

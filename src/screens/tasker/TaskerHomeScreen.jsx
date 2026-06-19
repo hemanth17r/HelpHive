@@ -27,6 +27,8 @@ const TaskerHomeScreen = () => {
 
   useEffect(() => {
     fetchJobs();
+    const retryTimer = setTimeout(() => fetchJobs(), 1500);
+    return () => clearTimeout(retryTimer);
   }, [fetchJobs]);
 
   const [declinedJobIds, setDeclinedJobIds] = useState([]);
