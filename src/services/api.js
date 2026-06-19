@@ -68,7 +68,7 @@ export const api = {
         return { data: [], error: null };
       }
     } 
-    // Tasker sees: all open/searching jobs (the feed) + jobs with active offers + jobs assigned to them
+    // Tasker sees: jobs with active offers (pending/accepted) + jobs assigned to them
     else if (role === 'tasker') {
       if (!userId) return { data: [], error: null };
       
@@ -82,16 +82,11 @@ export const api = {
       const offerJobIds = offers ? offers.map(o => o.job_id) : [];
       const acceptedJobIds = offers ? offers.filter(o => o.status === 'accepted').map(o => o.job_id) : [];
       
-      // Build a filter that includes:
-      // 1. All open jobs (the general feed — filtered by distance/skills on the frontend)
-      // 2. Jobs with active offers for this tasker (pending/accepted)
-      // 3. Jobs already assigned to this tasker (tasker_id match)
-      const orFilters = ['status.eq.open'];
       if (offerJobIds.length > 0) {
-        orFilters.push(`id.in.(${offerJobIds.join(',')})`);
+        query = query.neq('poster_id', userId).or(`tasker_id.eq.${userId},id.in.(${offerJobIds.join(',')})`);
+      } else {
+        query = query.neq('poster_id', userId).eq('tasker_id', userId);
       }
-      orFilters.push(`tasker_id.eq.${userId}`);
-      query = query.neq('poster_id', userId).or(orFilters.join(','));
       
       const { data, error } = await query;
       if (data) {

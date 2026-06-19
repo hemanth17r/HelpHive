@@ -994,10 +994,10 @@ export const AppProvider = ({ children }) => {
       };
     });
 
-    // If active role is tasker, filter jobs by tasker's coverageRadius
+    // If active role is tasker, filter jobs by tasker's coverageRadius (bypass if it's a pending priority offer)
     if (role === 'tasker' && userProfile?.coverageRadius) {
       const radiusKm = userProfile.coverageRadius / 1000;
-      enrichedJobs = enrichedJobs.filter(j => j.distanceVal <= radiusKm);
+      enrichedJobs = enrichedJobs.filter(j => j.isPendingOffer || j.distanceVal <= radiusKm);
     }
 
     if (referenceCenter) {
