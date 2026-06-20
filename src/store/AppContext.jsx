@@ -1085,12 +1085,18 @@ export const AppProvider = ({ children }) => {
       return;
     }
 
-    setJobs(prevJobs => 
-      prevJobs.map(j => j.id === jobId ? { ...j, status: 'accepted', taskerId: tId, taskerName: tName, taskerBird: tBird } : j)
-    );
-    const job = jobs.find(j => j.id === jobId) || {};
-    const updatedJob = { ...job, status: 'accepted', taskerId: tId, taskerName: tName, taskerBird: tBird };
-    setAcceptedJob(updatedJob);
+    // Fetch latest job details directly from DB to get the true status (waiting room or accepted)
+    const { data: updatedJobs } = await api.fetchJobs();
+    let latestJob = null;
+    if (updatedJobs) {
+      setJobs(updatedJobs);
+      latestJob = updatedJobs.find(j => j.id === jobId);
+      if (latestJob) {
+        setAcceptedJob(latestJob);
+      }
+    }
+
+    const job = latestJob || jobs.find(j => j.id === jobId) || {};
     
     trackEvent(EVENTS.TASK_ACCEPTANCE, { userId: tId, role, entityId: jobId });
 
@@ -1107,8 +1113,8 @@ export const AppProvider = ({ children }) => {
     }
 
     // Start tracking simulation
-    const startLat = job.lat + 0.012; // Start roughly 1.5km away
-    const startLng = job.lng - 0.012;
+    const startLat = (job.lat !== undefined && job.lat !== 0) ? job.lat + 0.012 : 31.2560 + 0.012; // Start roughly 1.5km away
+    const startLng = (job.lng !== undefined && job.lng !== 0) ? job.lng - 0.012 : 75.7051 - 0.012;
     setTrackingTaskerPos({ lat: startLat, lng: startLng });
     setAnimationTick(0);
 

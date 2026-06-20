@@ -72,7 +72,7 @@ Issue: `;
   const completedPosterJobsCount = posterJobs.filter(j => j?.status === 'completed').length;
 
   // Tasker Stats
-  const taskerJobs = jobs?.filter(j => j?.taskerId === userId || j?.taskerId === userProfile?.id || j?.taskerName === userProfile?.name) || [];
+  const taskerJobs = jobs?.filter(j => j?.isAcceptedByMe || j?.taskerId === userId || j?.taskerId === userProfile?.id || j?.taskerName === userProfile?.name) || [];
   const activeTaskerJobs = taskerJobs.filter(j => ['active', 'in_progress'].includes(j?.status)).length;
   const completedJobs = taskerJobs.filter(j => j?.status === 'completed');
   const completedTaskerJobsCount = completedJobs.length;

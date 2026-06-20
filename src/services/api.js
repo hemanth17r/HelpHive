@@ -75,7 +75,7 @@ export const api = {
       // Get all pending and accepted offers for this tasker
       const { data: offers } = await supabase
         .from('job_offers')
-        .select('job_id, status, expires_at')
+        .select('job_id, status, expires_at, otp_verified')
         .eq('tasker_id', userId)
         .in('status', ['pending', 'accepted']);
         
@@ -146,6 +146,7 @@ export const api = {
             isAcceptedByMe: acceptedJobIds.includes(j.id) || j.tasker_id === userId,
             isPendingOffer: offerJobIds.includes(j.id) && !acceptedJobIds.includes(j.id),
             offerExpiresAt: offer ? offer.expires_at : null,
+            otpVerified: offer ? offer.otp_verified : false,
             address: addressObj,
             taskerCurrentLocation: j.tasker_current_location ? parseEWKBPoint(j.tasker_current_location) : null,
             hasBeenRated: !!ratedJobsMap[j.id],
@@ -326,7 +327,7 @@ export const api = {
   fetchJobCrew: async (jobId) => {
     const { data, error } = await supabase
       .from('job_offers')
-      .select('tasker_id, profiles(id, name, bird, phone, upi_id, rating, tasks_completed)')
+      .select('tasker_id, otp_verified, profiles(id, name, bird, phone, upi_id, rating, tasks_completed)')
       .eq('job_id', jobId)
       .eq('status', 'accepted');
       
@@ -338,7 +339,8 @@ export const api = {
         phone: d.profiles?.phone,
         upiId: d.profiles?.upi_id,
         rating: d.profiles?.rating,
-        tasksCompleted: d.profiles?.tasks_completed
+        tasksCompleted: d.profiles?.tasks_completed,
+        otpVerified: d.otp_verified
       })), error };
     }
     return { data: [], error };

@@ -43,6 +43,7 @@ const CrewConfirmedScreen = () => {
   const [paymentsTracker, setPaymentsTracker] = useState({});
 
   const [crewLocations, setCrewLocations] = useState({});
+  const allHelpersVerified = localCrewTaskers.length > 0 && localCrewTaskers.every(t => t.otpVerified);
 
   // Poll the crew members from the API periodically to capture accepts/cancels in real-time
   useEffect(() => {
@@ -266,6 +267,17 @@ const CrewConfirmedScreen = () => {
               </div>
               <div>
                 <h3 className="text-sm font-black text-dark leading-tight">{tasker.name}</h3>
+                
+                {/* OTP Verification Badge */}
+                <div className="mt-1 flex items-center space-x-1.5">
+                  <span className={`inline-flex items-center text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                    tasker.otpVerified 
+                      ? 'text-green-600 bg-green-50 border-green-200' 
+                      : 'text-amber-600 bg-amber-50 border-amber-200'
+                  }`}>
+                    {tasker.otpVerified ? 'OTP Verified' : 'Awaiting OTP'}
+                  </span>
+                </div>
                 {tasker.rating && tasker.tasksCompleted > 0 ? (
                   <div className="flex items-center space-x-2 mt-1">
                     <div className="flex items-center text-primary text-[11px] font-bold">
@@ -292,15 +304,15 @@ const CrewConfirmedScreen = () => {
           </div>
         ))}
 
-        {/* OTP Section (Only show if not in_progress) */}
-        {currentPostedJob?.status !== 'in_progress' ? (
+        {/* OTP Section (Only show if not all helpers are verified) */}
+        {!allHelpersVerified ? (
           <div className="bg-orange-50/50 border border-primary/10 rounded-3xl p-5 space-y-3 text-center">
             <div className="flex items-center justify-center space-x-2 text-xs font-bold text-dark">
               <KeyRound className="w-4.5 h-4.5 text-primary" />
               <span>Secure Verification</span>
             </div>
             <p className="text-[10px] text-gray-500 font-semibold leading-normal max-w-[240px] mx-auto">
-              Provide this code to your helper to authorize and start the job.
+              Provide this code to your helper(s) to authorize and start the job.
             </p>
 
             {otpVisible ? (
@@ -323,8 +335,8 @@ const CrewConfirmedScreen = () => {
              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-1">
                <Check className="w-6 h-6" />
              </div>
-             <span className="text-sm font-black text-green-700">Helper Verified!</span>
-             <span className="text-[10px] text-green-600/80 font-bold text-center">The OTP was verified successfully. The task is currently in progress.</span>
+             <span className="text-sm font-black text-green-700">All Helpers Verified!</span>
+             <span className="text-[10px] text-green-600/80 font-bold text-center">The OTP was verified successfully by all crew members. The task is currently in progress.</span>
           </div>
         )}
 
