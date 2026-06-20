@@ -138,7 +138,7 @@ const PullToRefresh = ({ onRefresh, children, disabled = false }) => {
       <div 
         className="flex-1 flex flex-col h-full w-full transition-transform duration-150"
         style={{
-          transform: pullDistance > 0 ? `translateY(${pullDistance * 0.8}px)` : 'translateY(0px)'
+          transform: pullDistance > 0 ? `translateY(${pullDistance * 0.8}px)` : undefined
         }}
       >
         {children}
