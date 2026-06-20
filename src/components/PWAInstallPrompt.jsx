@@ -134,9 +134,11 @@ const PWAInstallPrompt = () => {
       
       {isIOS ? (
         <div className="bg-orange-50 text-orange-800 text-sm p-3 rounded-lg flex flex-col gap-2">
-          <p>To install on iOS:</p>
-          <ol className="list-decimal pl-4 space-y-1">
-            <li className="flex items-center gap-1">Tap the Share button <Share size={14} className="inline"/> in Safari</li>
+          <p className="font-semibold">To install on iOS:</p>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>
+              Tap the Share button <Share size={14} className="inline-block align-middle mx-1" /> in Safari
+            </li>
             <li>Scroll down and select <strong>"Add to Home Screen"</strong></li>
           </ol>
         </div>
