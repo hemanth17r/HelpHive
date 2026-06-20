@@ -301,7 +301,7 @@ const TaskerJobDetailsScreen = () => {
 
       {/* Buttons Footer */}
       <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-4 shrink-0 space-y-3 pb-6">
-        {acceptedJob.status === 'in_progress' && (
+        {acceptedJob.status === 'in_progress' && (acceptedJob.peopleNeeded || 1) === 1 && (
           <Tooltip text="Mark task as fully completed">
             <button
               onClick={handleComplete}

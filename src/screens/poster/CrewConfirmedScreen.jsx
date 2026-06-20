@@ -176,6 +176,18 @@ const CrewConfirmedScreen = () => {
     setShowCancelModal(true);
   };
 
+  const allOnlinePaymentsInitiated = localCrewTaskers.every(tasker => {
+    return paymentsTracker[tasker.id] || localStorage.getItem(`payment_initiated_${currentPostedJob?.id}_${tasker.id}`) === 'true';
+  });
+
+  const handleConfirmPaymentsClick = () => {
+    if (paymentOption === 'online' && currentPostedJob?.amount > 0 && !allOnlinePaymentsInitiated) {
+      showToast('Please initiate online payment for all crew helpers first.', 'error');
+      return;
+    }
+    setShowConfirmModal(true);
+  };
+
   return (
     <div className="flex-1 flex flex-col justify-between bg-white px-6 py-6 overflow-y-auto select-none">
       
@@ -406,10 +418,14 @@ const CrewConfirmedScreen = () => {
           {/* Primary Action Button */}
           <div className="pt-2">
             {(currentPostedJob?.amount > 0) ? (
-              <Tooltip text="Confirm payment to complete the task">
+              <Tooltip text={paymentOption === 'online' && !allOnlinePaymentsInitiated ? "Please initiate payment for all helpers first" : "Confirm payment to complete the task"}>
                 <button
-                  onClick={() => setShowConfirmModal(true)}
-                  className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide"
+                  onClick={handleConfirmPaymentsClick}
+                  className={`w-full flex items-center justify-center font-black py-4 px-6 rounded-2xl active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide ${
+                    paymentOption === 'online' && !allOnlinePaymentsInitiated
+                      ? 'bg-gray-200 text-gray-400 border border-gray-300 cursor-not-allowed shadow-none'
+                      : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20'
+                  }`}
                 >
                   Confirm Payments & Complete
                 </button>

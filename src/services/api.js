@@ -307,9 +307,10 @@ export const api = {
     return { data, error };
   },
 
-  commitPartialCrew: async (jobId) => {
+  commitPartialCrew: async (jobId, posterId = null) => {
     const { data, error } = await supabase.rpc('commit_partial_crew', {
-      p_job_id: jobId
+      p_job_id: jobId,
+      p_poster_id: posterId
     });
     return { data, error };
   },

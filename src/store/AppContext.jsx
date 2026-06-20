@@ -1083,7 +1083,8 @@ export const AppProvider = ({ children }) => {
   };
 
   const acceptPartialCrew = async (jobId) => {
-    const { data: success } = await api.commitPartialCrew(jobId);
+    const posterId = userProfile?.id || userId || localStorage.getItem('userId');
+    const { data: success } = await api.commitPartialCrew(jobId, posterId);
     if (success) {
       if (showToast) showToast('Crew finalized. Proceeding with active helper(s)!', 'success');
       // Update local job states
