@@ -11,12 +11,23 @@ const PullToRefresh = ({ onRefresh, children, disabled = false }) => {
   const THRESHOLD = 65; // px trigger threshold
   const MAX_PULL = 110;   // max drag distance
 
+  const getScrollParent = (node) => {
+    if (!node) return null;
+    const style = window.getComputedStyle(node);
+    const overflowY = style.overflowY || style.overflow || '';
+    const isScrollable = (overflowY.includes('auto') || overflowY.includes('scroll')) && (node.scrollHeight > node.clientHeight);
+    if (isScrollable) return node;
+    return getScrollParent(node.parentElement || node.parentNode);
+  };
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container || disabled) return;
 
+    const scrollParent = getScrollParent(container) || container;
+
     const handleStart = (clientY) => {
-      if (container.scrollTop === 0) {
+      if (scrollParent.scrollTop === 0) {
         startYRef.current = clientY;
         isPullingRef.current = true;
       }
@@ -26,7 +37,7 @@ const PullToRefresh = ({ onRefresh, children, disabled = false }) => {
       if (!isPullingRef.current || refreshing) return;
       const diff = clientY - startYRef.current;
 
-      if (diff > 0 && container.scrollTop === 0) {
+      if (diff > 0 && scrollParent.scrollTop === 0) {
         const pull = Math.min(diff * 0.4, MAX_PULL);
         setPullDistance(pull);
         if (e.cancelable) e.preventDefault();
