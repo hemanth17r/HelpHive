@@ -11,7 +11,17 @@ const BottomNav = () => {
   const lastScrollTopRef = useRef(0);
 
   useEffect(() => {
+    setVisible(true);
+  }, [currentScreen]);
+
+  useEffect(() => {
     const handleScroll = (e) => {
+      // Keep bottom bar always fixed on Hirer or Tasker Home Screens
+      if (currentScreen === 'tasker_home' || currentScreen === 'poster_home') {
+        setVisible(true);
+        return;
+      }
+
       const scrollTop = e.target.scrollTop;
       if (typeof scrollTop === 'undefined') return;
       if (scrollTop === lastScrollTopRef.current) return;
@@ -36,7 +46,7 @@ const BottomNav = () => {
     return () => {
       window.removeEventListener('scroll', handleScroll, { capture: true });
     };
-  }, []);
+  }, [currentScreen]);
 
   const handleSwitchMode = () => {
     setIsRotating(true);
