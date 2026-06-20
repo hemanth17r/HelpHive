@@ -8,6 +8,7 @@ import { getCurrentLocation } from '../../utils/location';
 import ActionItemsCarousel from '../../components/ActionItemsCarousel';
 import { api } from '../../services/api';
 import SetupWizardModal from '../../components/SetupWizardModal';
+import PullToRefresh from '../../components/PullToRefresh';
 
 const TaskerHomeScreen = () => {
   const { 
@@ -104,7 +105,8 @@ const TaskerHomeScreen = () => {
       </div>
 
       {/* Main Content Feed */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full">
+      <PullToRefresh onRefresh={fetchJobs}>
+        <div className="px-4 py-4 space-y-4 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full">
         {/* Action Items Carousel for missing permissions/profile details */}
         <ActionItemsCarousel />
 
@@ -231,7 +233,8 @@ const TaskerHomeScreen = () => {
             )}
           </div>
         )}
-      </div>
+        </div>
+      </PullToRefresh>
       <SetupWizardModal />
     </div>
   );

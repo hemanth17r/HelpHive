@@ -9,6 +9,7 @@ import IconLabel from '../components/IconLabel';
 import { ToastContext } from '../store/ToastContext';
 import LoginModal from '../components/LoginModal';
 import { useProfileCompletion } from '../hooks/useProfileCompletion';
+import PullToRefresh from '../components/PullToRefresh';
 
 const WhatsAppIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -184,7 +185,8 @@ Issue: `;
   const canSave = editedName.trim().length > 0 && isPhoneValidLength;
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50 h-full overflow-y-auto pb-20 relative">
+    <PullToRefresh onRefresh={refreshProfile}>
+      <div className="flex-1 flex flex-col bg-gray-50 min-h-full pb-20 relative">
       {/* Smooth Gradient Background */}
       <div className="absolute top-0 left-0 right-0 h-72 bg-gradient-to-b from-orange-400 via-orange-300/50 to-gray-50 pointer-events-none z-0"></div>
 
@@ -1112,7 +1114,8 @@ Issue: `;
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PullToRefresh>
   );
 };
 
