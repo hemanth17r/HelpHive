@@ -231,7 +231,7 @@ const CrewConfirmedScreen = () => {
               </div>
               <div>
                 <h3 className="text-sm font-black text-dark leading-tight">{tasker.name}</h3>
-                {tasker.rating ? (
+                {tasker.rating && tasker.tasksCompleted > 0 ? (
                   <div className="flex items-center space-x-2 mt-1">
                     <div className="flex items-center text-primary text-[11px] font-bold">
                       <Star className="w-3 h-3 fill-primary text-primary mr-0.5" />
