@@ -12,12 +12,16 @@ const PullToRefresh = ({ onRefresh, children, disabled = false }) => {
   const MAX_PULL = 110;   // max drag distance
 
   const getScrollParent = (node) => {
-    if (!node) return null;
-    const style = window.getComputedStyle(node);
-    const overflowY = style.overflowY || style.overflow || '';
-    const isScrollable = (overflowY.includes('auto') || overflowY.includes('scroll')) && (node.scrollHeight > node.clientHeight);
-    if (isScrollable) return node;
-    return getScrollParent(node.parentElement || node.parentNode);
+    if (!node || node.nodeType !== 1 || node === document.body || node === document.documentElement) return null;
+    try {
+      const style = window.getComputedStyle(node);
+      const overflowY = style.overflowY || style.overflow || '';
+      const isScrollable = (overflowY.includes('auto') || overflowY.includes('scroll')) && (node.scrollHeight > node.clientHeight);
+      if (isScrollable) return node;
+    } catch (e) {
+      return null;
+    }
+    return getScrollParent(node.parentElement);
   };
 
   useEffect(() => {
