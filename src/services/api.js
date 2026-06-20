@@ -668,13 +668,13 @@ export const api = {
 
   // --- Event Tracking API ---
   logEvent: async (eventType, payload) => {
-    const { userId, role, entityId, metadata } = payload;
+    const { userId, role, entityId, metadata, ...rest } = payload;
     supabase.from('app_events').insert({
       event_type: eventType,
       user_id: userId || null,
       active_role: role || null,
       entity_id: entityId || null,
-      metadata: metadata || {}
+      metadata: { ...metadata, ...rest }
     }).then(({ error }) => {
       if (error) console.error(`[EventTracker] Failed to log event: ${eventType}`, error);
     });
