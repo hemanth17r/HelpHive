@@ -17,6 +17,8 @@ const JobHistoryScreen = () => {
   const activeJobs = userJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft' && j.status !== 'cancelled');
   const completedJobs = userJobs.filter(j => j.status === 'completed');
 
+
+
   const displayActive = activeJobs;
   const displayCompleted = completedJobs;
 

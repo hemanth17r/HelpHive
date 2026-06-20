@@ -77,6 +77,9 @@ Issue: `;
   const completedJobs = taskerJobs.filter(j => j?.status === 'completed');
   const completedTaskerJobsCount = completedJobs.length;
 
+
+
+
   const thisMonthEarnings = completedJobs.filter(j => {
     if (!j.timePosted) return false;
     const jobDate = new Date(j.timePosted);

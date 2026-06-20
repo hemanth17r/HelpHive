@@ -461,7 +461,7 @@ export const AppProvider = ({ children }) => {
 
       setJobs(updatedJobs);
     }
-  }, [userId]);
+  }, [userId, role]);
 
   useEffect(() => {
     fetchJobs();
@@ -1543,6 +1543,7 @@ export const AppProvider = ({ children }) => {
         if (!isAlreadyLoggedIn) {
           showToast('Welcome back!', 'success');
         }
+        fetchJobs();
         
         if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
           window.history.replaceState({}, document.title, window.location.pathname);
