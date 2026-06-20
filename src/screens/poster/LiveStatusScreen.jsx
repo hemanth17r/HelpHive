@@ -8,7 +8,6 @@ import { api } from '../../services/api';
 const LiveStatusScreen = () => {
   const { currentPostedJob, setCurrentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs, acceptPartialCrew } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
-  const [viewers, setViewers] = useState(0);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   // Track the tasker_id that existed when this screen first mounted.
@@ -39,28 +38,6 @@ const LiveStatusScreen = () => {
     };
     snapshotInitialTaskerId();
     
-    const fetchViewersCount = async () => {
-      if (!currentPostedJob?.id) return;
-      
-      try {
-        const { data, error } = await api.supabase
-          .from('app_events')
-          .select('user_id')
-          .eq('event_type', 'job_viewed')
-          .eq('entity_id', currentPostedJob.id);
-          
-        if (error) throw error;
-        
-        if (isMounted && data) {
-          // Count unique user_ids
-          const uniqueViewers = new Set(data.map(e => e.user_id).filter(Boolean));
-          setViewers(uniqueViewers.size);
-        }
-      } catch (err) {
-        console.error("Failed to fetch viewers count:", err);
-      }
-    };
-
     const fetchCrew = async () => {
       if (!currentPostedJob?.id) return;
       const { data } = await api.fetchJobCrew(currentPostedJob.id);
@@ -69,11 +46,9 @@ const LiveStatusScreen = () => {
       }
     };
     fetchCrew();
-    fetchViewersCount();
     
     // Refresh count and job status every 5 seconds (not 1s — avoids test-simulation feel)
     const timer = setInterval(async () => {
-      fetchViewersCount();
       fetchCrew();
       
       // Also poll job status just in case realtime subscription is delayed/missing
@@ -138,21 +113,13 @@ const LiveStatusScreen = () => {
         </div>
 
         {/* Counter Stats */}
-        <div className="grid grid-cols-2 gap-4 w-full">
-          <div className="bg-gray-50 border border-border rounded-2xl p-4 text-center">
-            <div className="flex items-center justify-center space-x-1 text-gray-500 mb-1">
-              <Eye className="w-4 h-4 shrink-0 text-primary" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Viewers</span>
+        <div className="w-full flex justify-start">
+          <div className="bg-gray-50 border border-border rounded-2xl p-3 text-center w-32 shadow-xs">
+            <div className="flex items-center justify-center space-x-1.5 text-gray-500 mb-1">
+              <Users className="w-3.5 h-3.5 shrink-0 text-primary" />
+              <span className="text-[9px] font-black uppercase tracking-wider">Accepted</span>
             </div>
-            <span className="text-xl font-black text-dark">{viewers}</span>
-          </div>
-
-          <div className="bg-gray-50 border border-border rounded-2xl p-4 text-center">
-            <div className="flex items-center justify-center space-x-1 text-gray-500 mb-1">
-              <Users className="w-4 h-4 shrink-0 text-primary" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Accepted</span>
-            </div>
-            <span className="text-xl font-black text-dark">
+            <span className="text-lg font-black text-dark">
               {crewTaskers.length} / {currentPostedJob.peopleNeeded}
             </span>
           </div>

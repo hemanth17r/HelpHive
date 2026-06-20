@@ -96,7 +96,7 @@ export const api = {
         
         let profileMap = {};
         if (profileIds.length > 0) {
-          const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone, upi_id').in('id', profileIds);
+          const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone, upi_id, rating, tasks_completed').in('id', profileIds);
           if (profiles) {
             profiles.forEach(p => { profileMap[p.id] = p; });
           }
@@ -135,10 +135,14 @@ export const api = {
             posterName: poster.name,
             posterBird: poster.bird,
             posterPhone: poster.phone,
+            posterRating: poster.rating,
+            posterTasksCompleted: poster.tasks_completed,
             taskerName: tasker.name,
             taskerBird: tasker.bird,
             taskerPhone: tasker.phone,
             taskerUpi: tasker.upi_id,
+            taskerRating: tasker.rating,
+            taskerTasksCompleted: tasker.tasks_completed,
             isAcceptedByMe: acceptedJobIds.includes(j.id) || j.tasker_id === userId,
             isPendingOffer: offerJobIds.includes(j.id) && !acceptedJobIds.includes(j.id),
             offerExpiresAt: offer ? offer.expires_at : null,
@@ -161,7 +165,7 @@ export const api = {
       
       let profileMap = {};
       if (profileIds.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone, upi_id').in('id', profileIds);
+        const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone, upi_id, rating, tasks_completed').in('id', profileIds);
         if (profiles) {
           profiles.forEach(p => { profileMap[p.id] = p; });
         }
@@ -199,10 +203,14 @@ export const api = {
           posterName: poster.name,
           posterBird: poster.bird,
           posterPhone: poster.phone,
+          posterRating: poster.rating,
+          posterTasksCompleted: poster.tasks_completed,
           taskerName: tasker.name,
           taskerBird: tasker.bird,
           taskerPhone: tasker.phone,
           taskerUpi: tasker.upi_id,
+          taskerRating: tasker.rating,
+          taskerTasksCompleted: tasker.tasks_completed,
           address: addressObj,
           taskerCurrentLocation: j.tasker_current_location ? parseEWKBPoint(j.tasker_current_location) : null,
           hasBeenRated: !!ratedJobsMap[j.id],
@@ -531,8 +539,28 @@ export const api = {
   // --- Profiles API ---
   fetchProfile: async (userId) => {
     try {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      return { data, error };
+      const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      if (error || !profile) return { data: profile, error };
+
+      const receiverAuthId = profile.auth_id || profile.id;
+      const { data: feedbacks } = await supabase
+        .from('feedbacks')
+        .select('*')
+        .eq('receiver_id', receiverAuthId);
+
+      const { data: badges } = await supabase
+        .from('reputation_badges')
+        .select('*')
+        .eq('receiver_id', receiverAuthId);
+
+      return {
+        data: {
+          ...profile,
+          feedbacks: feedbacks || [],
+          reputation_badges: badges || []
+        },
+        error: null
+      };
     } catch (err) {
       console.warn("fetchProfile crashed:", err);
       return { data: null, error: err };

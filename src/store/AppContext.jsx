@@ -23,6 +23,67 @@ export const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return parseFloat(d.toFixed(2));
 };
 
+// Helper to parse profile data with feedbacks & reputation badges
+const parseProfileData = (data, currentRole) => {
+  const verifiedPhones = data.verified_phones || [];
+  const parsedLoc = data.location ? parseEWKBPoint(data.location) : null;
+
+  const feedbacks = data.feedbacks || [];
+  const taskerFeedbacks = feedbacks.filter(f => f.role_context === 'tasker').map(f => f.rating);
+  const posterFeedbacks = feedbacks.filter(f => f.role_context === 'poster').map(f => f.rating);
+
+  const taskerRating = taskerFeedbacks.length > 0 
+    ? parseFloat((taskerFeedbacks.reduce((sum, r) => sum + r, 0) / taskerFeedbacks.length).toFixed(1))
+    : null;
+  const posterRating = posterFeedbacks.length > 0
+    ? parseFloat((posterFeedbacks.reduce((sum, r) => sum + r, 0) / posterFeedbacks.length).toFixed(1))
+    : null;
+
+  const taskerTasks = taskerFeedbacks.length;
+  const posterTasks = posterFeedbacks.length;
+
+  const repBadges = data.reputation_badges || [];
+  const taskerBadges = repBadges.filter(b => b.role_context === 'tasker').map(b => b.badge_type);
+  const posterBadges = repBadges.filter(b => b.role_context === 'poster').map(b => b.badge_type);
+
+  return {
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    posterName: data.posterName || data.name,
+    posterPhone: data.posterPhone || data.phone,
+    taskerName: data.taskerName || data.name,
+    taskerPhone: data.taskerPhone || data.phone,
+    verifiedPhones: verifiedPhones,
+    skills: data.skills || [],
+    
+    // Real Database Ratings and Badges
+    taskerRating,
+    posterRating,
+    taskerTasksCompleted: taskerTasks,
+    posterTasksCompleted: posterTasks,
+    taskerBadges,
+    posterBadges,
+    taskerReviews: taskerFeedbacks,
+    posterReviews: posterFeedbacks,
+
+    // Compatibility fields
+    rating: currentRole === 'tasker' ? taskerRating : posterRating,
+    tasksCompleted: currentRole === 'tasker' ? taskerTasks : posterTasks,
+    badges: currentRole === 'tasker' ? taskerBadges : posterBadges,
+    reviews: currentRole === 'tasker' ? taskerFeedbacks : posterFeedbacks,
+
+    bird: data.bird,
+    upiId: data.upi_id || '',
+    coverageRadius: data.coverage_radius,
+    coverageLevel: data.coverage_level,
+    serviceAreaName: data.service_area_name,
+    serviceAreaLat: parsedLoc?.lat || null,
+    serviceAreaLng: parsedLoc?.lng || null
+  };
+};
+
 export const AppProvider = ({ children }) => {
   const { showToast } = useContext(ToastContext);
 
@@ -444,31 +505,8 @@ export const AppProvider = ({ children }) => {
 
         const { data } = await api.fetchProfile(userId);
         if (data) {
-          const verifiedPhones = data.verified_phones || [];
-
-          const parsedLoc = data.location ? parseEWKBPoint(data.location) : null;
-
-          const updatedProfile = {
-            id: data.id,
-            name: data.name,
-            email: data.email,
-            phone: data.phone,
-            posterName: data.posterName || data.name,
-            posterPhone: data.posterPhone || data.phone,
-            taskerName: data.taskerName || data.name,
-            taskerPhone: data.taskerPhone || data.phone,
-            verifiedPhones: verifiedPhones,
-            skills: data.skills || [],
-            rating: data.rating,
-            tasksCompleted: data.tasks_completed,
-            bird: data.bird,
-            upiId: data.upi_id || '',
-            coverageRadius: data.coverage_radius,
-            coverageLevel: data.coverage_level,
-            serviceAreaName: data.service_area_name,
-            serviceAreaLat: parsedLoc?.lat || null,
-            serviceAreaLng: parsedLoc?.lng || null
-          };
+          const activeRole = localStorage.getItem('activeRole') || data.role || 'tasker';
+          const updatedProfile = parseProfileData(data, activeRole);
 
           setUserProfileState(updatedProfile);
           // Sync with local cache
@@ -482,7 +520,6 @@ export const AppProvider = ({ children }) => {
           if (data.is_online !== true) {
             api.updateProfile(data.id, { is_online: true }).catch(console.error);
           }
-          const activeRole = localStorage.getItem('activeRole') || data.role;
           setRole(activeRole);
           localStorage.setItem('activeRole', activeRole);
           trackEvent(EVENTS.LOGIN, { userId: data.id, role: activeRole });
@@ -837,6 +874,17 @@ export const AppProvider = ({ children }) => {
     window.history.back(); // Triggers popstate → handled below
   }, [currentScreen, screenStack.length]);
 
+  const refreshProfile = async () => {
+    if (!userId) return;
+    const { data } = await api.fetchProfile(userId);
+    if (data) {
+      const activeRole = localStorage.getItem('activeRole') || role || data.role || 'tasker';
+      const parsedProfile = parseProfileData(data, activeRole);
+      setUserProfileState(parsedProfile);
+      localStorage.setItem('userProfile', JSON.stringify(parsedProfile));
+    }
+  };
+
   const switchRole = async (newRole) => {
     if (!userId) {
       setScreenStack(['landing']);
@@ -846,6 +894,17 @@ export const AppProvider = ({ children }) => {
     setRole(newRole);
     localStorage.setItem('activeRole', newRole);
     
+    setUserProfileState(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        rating: newRole === 'tasker' ? prev.taskerRating : prev.posterRating,
+        tasksCompleted: newRole === 'tasker' ? prev.taskerTasksCompleted : prev.posterTasksCompleted,
+        badges: newRole === 'tasker' ? prev.taskerBadges : prev.posterBadges,
+        reviews: newRole === 'tasker' ? prev.taskerReviews : prev.posterReviews
+      };
+    });
+
     api.updateProfile(userId, { role: newRole }).then();
     trackEvent(EVENTS.ROLE_SWITCH, { userId, role: newRole });
 
@@ -1315,8 +1374,8 @@ export const AppProvider = ({ children }) => {
         const taskerInfo = {
           id: updatedJob.taskerId,
           name: updatedJob.taskerName || 'Helper',
-          rating: 5.0, // Should be fetched from profile
-          tasksCompleted: 1,
+          rating: updatedJob.taskerRating,
+          tasksCompleted: updatedJob.taskerTasksCompleted || 0,
           bird: updatedJob.taskerBird || 'falcon',
           upiId: updatedJob.taskerUpi
         };
@@ -1411,7 +1470,7 @@ export const AppProvider = ({ children }) => {
             email: email,
             auth_id: authId,
             role: activeRole,
-            rating: 5.0,
+            rating: null,
             tasks_completed: 0,
             bird: selectedBird || 'falcon'
           });
@@ -1444,30 +1503,8 @@ export const AppProvider = ({ children }) => {
           api.updateProfile(profile.id, { role: finalRole }).then();
         }
 
-        const verifiedPhones = profile.verified_phones || [];
-        const parsedLoc = profile.location ? parseEWKBPoint(profile.location) : null;
-
-        setUserProfileState({
-          id: profile.id,
-          name: profile.name,
-          email: profile.email,
-          phone: profile.phone,
-          posterName: profile.posterName || profile.name,
-          posterPhone: profile.posterPhone || profile.phone,
-          taskerName: profile.taskerName || profile.name,
-          taskerPhone: profile.taskerPhone || profile.phone,
-          verifiedPhones: verifiedPhones,
-          skills: profile.skills || [],
-          rating: profile.rating,
-          tasksCompleted: profile.tasks_completed,
-          bird: profile.bird,
-          upiId: profile.upi_id || '',
-          coverageRadius: profile.coverage_radius,
-          coverageLevel: profile.coverage_level,
-          serviceAreaName: profile.service_area_name,
-          serviceAreaLat: parsedLoc?.lat || null,
-          serviceAreaLng: parsedLoc?.lng || null
-        });
+        const parsedProfile = parseProfileData(profile, finalRole);
+        setUserProfileState(parsedProfile);
 
         if (profile.bird) setSelectedBird(profile.bird);
         setIsAdmin(profile.is_admin === true);
@@ -1619,6 +1656,7 @@ export const AppProvider = ({ children }) => {
         pushScreen,
         popScreen,
         switchRole,
+        refreshProfile,
         screenStack,
         jobs,
         setJobs,

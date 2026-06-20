@@ -24,7 +24,8 @@ const TaskerJobDetailsScreen = () => {
     userProfile,
     role,
     pushScreen,
-    cancelTaskerAssignment
+    cancelTaskerAssignment,
+    userId
   } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   
@@ -73,10 +74,16 @@ const TaskerJobDetailsScreen = () => {
       return;
     }
 
+    const callerId = userProfile?.id || userId;
+    if (!callerId) {
+      setErrorMsg('Unable to verify identity. Please refresh and try again.');
+      return;
+    }
+
     setIsVerifying(true);
     setErrorMsg('');
 
-    const { data, error } = await api.verifyJobOtp(acceptedJob.id, otp, userProfile?.id || userId);
+    const { data, error } = await api.verifyJobOtp(acceptedJob.id, otp, callerId);
 
     setIsVerifying(false);
     

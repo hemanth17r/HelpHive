@@ -1,12 +1,42 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { Home, User, RefreshCw } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 
 const BottomNav = () => {
   const { activeTab, setActiveTab, switchRole, role, pushScreen, currentScreen } = useContext(AppContext);
   const [isRotating, setIsRotating] = useState(false);
+  const [visible, setVisible] = useState(true);
 
-  const timeoutRef = React.useRef(null);
+  const timeoutRef = useRef(null);
+  const lastScrollTopRef = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = (e) => {
+      const scrollTop = e.target.scrollTop;
+      if (typeof scrollTop === 'undefined') return;
+      if (scrollTop === lastScrollTopRef.current) return;
+
+      // Only track scroll on major vertical scroll containers (like page screens)
+      if (e.target.scrollHeight < window.innerHeight * 0.5) return;
+
+      const diff = scrollTop - lastScrollTopRef.current;
+      if (Math.abs(diff) < 10) return;
+
+      if (scrollTop <= 10) {
+        setVisible(true);
+      } else if (diff > 0) {
+        setVisible(false); // Scrolling down
+      } else {
+        setVisible(true); // Scrolling up
+      }
+      lastScrollTopRef.current = scrollTop;
+    };
+
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll, { capture: true });
+    };
+  }, []);
 
   const handleSwitchMode = () => {
     setIsRotating(true);
@@ -42,7 +72,13 @@ const BottomNav = () => {
     : currentScreen === 'my_profile';
 
   return (
-    <div className="grid grid-cols-3 items-center bg-white border-t border-border py-2.5 pb-safe shadow-lg shrink-0 w-full">
+    <div 
+      className={`grid grid-cols-3 items-center bg-white border-t border-border shadow-lg shrink-0 w-full transition-all duration-300 ease-in-out origin-bottom ${
+        visible 
+          ? 'max-h-20 py-2.5 pb-safe opacity-100 translate-y-0' 
+          : 'max-h-0 py-0 opacity-0 pointer-events-none overflow-hidden border-t-transparent translate-y-full'
+      }`}
+    >
       <button
         onClick={handleHomeClick}
         className={`flex flex-col items-center space-y-1 px-1 py-1.5 rounded-xl transition-all cursor-pointer ${

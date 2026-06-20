@@ -16,10 +16,25 @@ const WhatsAppIcon = ({ className }) => (
   </svg>
 );
 
+const BADGE_LABELS = {
+  paid_promptly: 'Paid Promptly',
+  clear_instructions: 'Clear Instructions',
+  easy_to_work: 'Easy to Work With',
+  reliable: 'Reliable Helper',
+  on_time: 'On Time',
+  professional: 'Professional'
+};
+
 const MyProfileScreen = () => {
-  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs, isAdmin } = useContext(AppContext);
+  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs, isAdmin, refreshProfile } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const { completionPercentage } = useProfileCompletion();
+
+  useEffect(() => {
+    if (refreshProfile) {
+      refreshProfile();
+    }
+  }, []);
 
   const handleWhatsAppSupport = () => {
     const uId = userProfile?.id || userId || 'N/A';
@@ -439,7 +454,7 @@ Issue: `;
                   {profile.badges.map((badge, idx) => (
                     <span key={idx} className="text-[10px] font-black uppercase tracking-widest text-green-700 bg-green-50 px-2.5 py-1.5 rounded-xl border border-green-200/50 flex items-center space-x-1 shadow-xs">
                       <Award className="w-3 h-3"/>
-                      <span>{badge}</span>
+                      <span>{BADGE_LABELS[badge] || badge}</span>
                     </span>
                   ))}
                 </div>
@@ -813,7 +828,7 @@ Issue: `;
                   {profile.badges.map((badge, idx) => (
                     <span key={idx} className="text-[10px] font-black uppercase tracking-widest text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-xl border border-blue-200/50 flex items-center space-x-1 shadow-xs">
                       <Award className="w-3 h-3"/>
-                      <span>{badge}</span>
+                      <span>{BADGE_LABELS[badge] || badge}</span>
                     </span>
                   ))}
                 </div>
