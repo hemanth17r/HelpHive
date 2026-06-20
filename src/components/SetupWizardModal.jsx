@@ -447,7 +447,7 @@ const SetupWizardModal = () => {
           upiId: upiId.trim(),
           skills: selectedSkills,
           coverageRadius: coverageRadius,
-          coverageLevel: coverageRadius === 20000 ? 'extended' : coverageRadius === 10000 ? 'local' : 'nearby',
+          coverageLevel: coverageRadius === 20000 ? 'flexible' : coverageRadius === 10000 ? 'local' : 'nearby',
           serviceAreaName: searchQuery || 'Primary Service Area',
           locationStr: `POINT(${serviceAreaLocation.lng} ${serviceAreaLocation.lat})`
         };

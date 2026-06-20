@@ -1451,6 +1451,12 @@ export const AppProvider = ({ children }) => {
           await api.updateProfile(profile.id, { name: googleName });
           profile.name = googleName;
         }
+
+        // Update email if it's missing or set to 'Add Email'
+        if ((!profile.email || profile.email === 'Add Email' || profile.email.trim() === '') && email) {
+          await api.updateProfile(profile.id, { email: email });
+          profile.email = email;
+        }
       } else if (email) {
         // 2. Try to find by email
         const { data: profileByEmail, error: emailErr } = await api.findProfileByEmail(email);
