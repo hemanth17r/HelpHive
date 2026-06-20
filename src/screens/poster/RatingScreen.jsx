@@ -86,7 +86,7 @@ const RatingScreen = () => {
         const badge = badges[tasker.id] || null;
 
         // Persist rating in database with correct arguments
-        const { error: dbError } = await api.submitUserRating(currentPostedJob.id, 'poster', tasker.id, star, badge);
+        const { error: dbError } = await api.submitUserRating(currentPostedJob.id, 'poster', tasker.id, star, badge, userProfile?.id);
         if (dbError) {
           console.error("Failed to submit rating in DB:", dbError);
           showToast(`Failed to submit rating for ${tasker.name}: ${dbError.message || dbError}`, 'error');
@@ -146,7 +146,8 @@ const RatingScreen = () => {
         reportingTaskerId,
         currentPostedJob?.id,
         reportReason,
-        reportDetails
+        reportDetails,
+        userProfile?.id
       );
       if (error) {
         showToast(`Failed to submit report: ${error.message || error}`, 'error');

@@ -76,7 +76,7 @@ const TaskerJobDetailsScreen = () => {
     setIsVerifying(true);
     setErrorMsg('');
 
-    const { data, error } = await api.verifyJobOtp(acceptedJob.id, otp);
+    const { data, error } = await api.verifyJobOtp(acceptedJob.id, otp, userProfile?.id || userId);
 
     setIsVerifying(false);
     

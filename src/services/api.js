@@ -251,31 +251,34 @@ export const api = {
       .eq('id', jobId);
   },
 
-  verifyJobOtp: async (jobId, otp) => {
+  verifyJobOtp: async (jobId, otp, taskerId = null) => {
     const { data, error } = await supabase.rpc('verify_job_otp', {
       p_job_id: jobId,
-      p_otp: otp
+      p_otp: otp,
+      p_tasker_id: taskerId
     });
     return { data, error };
   },
 
-  submitUserRating: async (jobId, giverRole, receiverProfileId, rating, badgeType) => {
+  submitUserRating: async (jobId, giverRole, receiverProfileId, rating, badgeType, giverProfileId = null) => {
     const { data, error } = await supabase.rpc('submit_user_rating', {
       p_job_id: jobId,
       p_giver_role: giverRole,
       p_receiver_profile_id: receiverProfileId,
       p_rating: rating,
-      p_badge_type: badgeType || null
+      p_badge_type: badgeType || null,
+      p_giver_profile_id: giverProfileId
     });
     return { data, error };
   },
 
-  submitUserReport: async (reportedProfileId, jobId, category, details) => {
+  submitUserReport: async (reportedProfileId, jobId, category, details, reporterProfileId = null) => {
     const { data, error } = await supabase.rpc('submit_user_report', {
       p_reported_profile_id: reportedProfileId,
       p_job_id: jobId,
       p_category: category,
-      p_details: details
+      p_details: details,
+      p_reporter_profile_id: reporterProfileId
     });
     return { data, error };
   },

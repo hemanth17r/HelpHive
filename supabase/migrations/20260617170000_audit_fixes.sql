@@ -371,6 +371,20 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
+-- Create helper function to check if user is coworker (runs with SECURITY DEFINER to bypass RLS and avoid infinite recursion)
+CREATE OR REPLACE FUNCTION public.check_is_coworker(p_job_id uuid, p_auth_id uuid)
+RETURNS boolean AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.job_offers jo
+        JOIN public.profiles p ON jo.tasker_id = p.id
+        WHERE jo.job_id = p_job_id
+          AND jo.status = 'accepted'
+          AND p.auth_id = p_auth_id
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Update job_offers SELECT RLS policy to allow posters and coworkers
 DROP POLICY IF EXISTS "Taskers can view their own job offers" ON public.job_offers;
 DROP POLICY IF EXISTS "Users can view relevant job offers" ON public.job_offers;
@@ -386,9 +400,6 @@ USING (
         WHERE poster_id IN (SELECT id FROM public.profiles WHERE auth_id = auth.uid())
     ) OR
     -- 3. Coworkers with accepted offers on the same job can view other accepted offers
-    job_id IN (
-        SELECT job_id FROM public.job_offers 
-        WHERE status = 'accepted' 
-          AND tasker_id IN (SELECT id FROM public.profiles WHERE auth_id = auth.uid())
-    )
+    public.check_is_coworker(job_id, auth.uid())
 );
+
