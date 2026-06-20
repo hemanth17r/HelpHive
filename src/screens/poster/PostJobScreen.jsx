@@ -591,7 +591,7 @@ const PostJobScreen = () => {
 
                 <div className="space-y-1.5">
                   <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                    Total Payout (₹)
+                    Payout Per Helper (₹)
                   </label>
                   <div className="flex items-center bg-gray-50 border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
                     <IndianRupee className="w-4 h-4 text-gray-400 shrink-0" />

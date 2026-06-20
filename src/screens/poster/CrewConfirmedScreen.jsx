@@ -42,36 +42,54 @@ const CrewConfirmedScreen = () => {
   const [isCancelling, setIsCancelling] = useState(false);
   const [paymentsTracker, setPaymentsTracker] = useState({});
 
-  // Bug 2.4 fix: If crewTaskers context state was reset on page-refresh,
-  // fetch the crew directly from the API so the list is never left blank.
+  const [crewLocations, setCrewLocations] = useState({});
+
+  // Poll the crew members from the API periodically to capture accepts/cancels in real-time
   useEffect(() => {
     if (!currentPostedJob?.id) return;
-    if (crewTaskers && crewTaskers.length > 0) {
-      setLocalCrewTaskers(crewTaskers);
-      return;
-    }
+    
     const loadCrew = async () => {
-      setIsLoadingCrew(true);
       try {
         const { data } = await api.fetchJobCrew(currentPostedJob.id);
-        if (data && data.length > 0) {
+        if (data) {
           setLocalCrewTaskers(data);
         }
       } catch (err) {
         console.error('[CrewConfirmedScreen] Failed to load crew:', err);
-      } finally {
-        setIsLoadingCrew(false);
       }
     };
-    loadCrew();
-  }, [currentPostedJob?.id, crewTaskers]);
 
-  // Keep localCrewTaskers in sync if context is updated (e.g. real-time update)
+    loadCrew();
+    
+    const interval = setInterval(loadCrew, 5000);
+    return () => clearInterval(interval);
+  }, [currentPostedJob?.id]);
+
+  // Fetch and update live coordinates of all crew taskers from user_locations table
   useEffect(() => {
-    if (crewTaskers && crewTaskers.length > 0) {
-      setLocalCrewTaskers(crewTaskers);
-    }
-  }, [crewTaskers]);
+    if (localCrewTaskers.length === 0) return;
+    
+    const fetchLocations = async () => {
+      try {
+        const ids = localCrewTaskers.map(t => t.id).filter(Boolean);
+        if (ids.length === 0) return;
+        const { data, error } = await api.fetchUserLocations(ids);
+        if (data) {
+          const locs = {};
+          data.forEach(loc => {
+            locs[loc.user_id] = { lat: loc.latitude, lng: loc.longitude };
+          });
+          setCrewLocations(locs);
+        }
+      } catch (err) {
+        console.error('[CrewConfirmedScreen] Failed to fetch tasker locations:', err);
+      }
+    };
+
+    fetchLocations();
+    const interval = setInterval(fetchLocations, 5000);
+    return () => clearInterval(interval);
+  }, [localCrewTaskers]);
 
   // Real-time synchronization redirect loop
   useEffect(() => {
@@ -146,7 +164,7 @@ const CrewConfirmedScreen = () => {
     const skill = SKILLS.find(s => s.id === currentPostedJob?.skillId);
     const taskTitle = skill?.label || 'General Task';
     
-    const message = `Hi HelpHive Support,\n\nI need help with a task.\n\nTask ID: ${currentPostedJob?.id || 'N/A'}\nTask Title: ${taskTitle}\nAmount: ₹${currentPostedJob?.amount || 0}\nStatus: ${currentPostedJob?.status || 'N/A'}\n\nHirer ID: ${currentPostedJob?.posterId || userId || 'N/A'}\nTasker ID: ${localCrewTaskers[0]?.id || 'N/A'}\n\nIssue: `;
+    const message = `Hi HelpHive Support,\n\nI need help with a task.\n\nTask ID: ${currentPostedJob?.id || 'N/A'}\nTask Title: ${taskTitle}\nAmount: ₹${currentPostedJob?.amount || 0}\nStatus: ${currentPostedJob?.status || 'N/A'}\n\nHirer ID: ${currentPostedJob?.posterId || userId || 'N/A'}\nTasker ID(s): ${localCrewTaskers.map(t => t.id).join(', ') || 'N/A'}\n\nIssue: `;
 
     const whatsappUrl = `https://wa.me/919347442426?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
@@ -222,6 +240,11 @@ const CrewConfirmedScreen = () => {
 
           <MapView 
             jobLocation={{ lat: currentPostedJob?.lat || 31.2560, lng: currentPostedJob?.lng || 75.7051 }}
+            taskers={localCrewTaskers.map(tasker => ({
+              id: tasker.id,
+              bird: tasker.bird || 'falcon',
+              location: crewLocations[tasker.id] || null
+            })).filter(t => t.location !== null)}
             taskerLocation={trackingTaskerPos}
             taskerBirdName={localCrewTaskers[0]?.bird || 'falcon'}
             height="180px"

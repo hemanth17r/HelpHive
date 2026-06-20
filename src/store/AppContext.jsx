@@ -1318,6 +1318,13 @@ export const AppProvider = ({ children }) => {
             await api.updateJob(targetJobId, {
               tasker_current_location: `POINT(${loc.lng} ${loc.lat})`
             });
+            // Save to user_locations database table (scales to multiple taskers)
+            await api.upsertUserLocation({
+              user_id: userId,
+              latitude: loc.lat,
+              longitude: loc.lng,
+              updated_at: new Date().toISOString()
+            });
           } catch(err) {
             console.error("Live tracking location failed", err);
           }
@@ -1371,18 +1378,22 @@ export const AppProvider = ({ children }) => {
         updatedJob.taskerId !== liveStatusInitialTaskerIdRef.current;
 
       if (updatedJob && isNewTasker && updatedJob.status === 'accepted') {
-        const taskerInfo = {
-          id: updatedJob.taskerId,
-          name: updatedJob.taskerName || 'Helper',
-          rating: updatedJob.taskerRating,
-          tasksCompleted: updatedJob.taskerTasksCompleted || 0,
-          bird: updatedJob.taskerBird || 'falcon',
-          upiId: updatedJob.taskerUpi
-        };
-        
-        setCrewTaskers([taskerInfo]);
-        setLiveStatus('crew_set');
-        pushScreen('crew_confirmed', true);
+        api.fetchJobCrew(updatedJob.id).then(({ data }) => {
+          if (data && data.length > 0) {
+            setCrewTaskers(data);
+          } else {
+            setCrewTaskers([{
+              id: updatedJob.taskerId,
+              name: updatedJob.taskerName || 'Helper',
+              rating: updatedJob.taskerRating,
+              tasksCompleted: updatedJob.taskerTasksCompleted || 0,
+              bird: updatedJob.taskerBird || 'falcon',
+              upiId: updatedJob.taskerUpi
+            }]);
+          }
+          setLiveStatus('crew_set');
+          pushScreen('crew_confirmed', true);
+        });
       }
     }
   }, [jobs, currentScreen, currentPostedJob, pushScreen]);

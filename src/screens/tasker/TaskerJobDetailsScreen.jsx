@@ -36,6 +36,25 @@ const TaskerJobDetailsScreen = () => {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [crewMembers, setCrewMembers] = useState([]);
+
+  useEffect(() => {
+    if (!acceptedJob?.id) return;
+    const loadCrew = async () => {
+      try {
+        const { data } = await api.fetchJobCrew(acceptedJob.id);
+        if (data) {
+          setCrewMembers(data);
+        }
+      } catch (err) {
+        console.error('[TaskerJobDetailsScreen] Failed to load crew:', err);
+      }
+    };
+    loadCrew();
+    
+    const interval = setInterval(loadCrew, 5000);
+    return () => clearInterval(interval);
+  }, [acceptedJob?.id]);
 
   useEffect(() => {
     if (acceptedJob && userProfile) {
@@ -158,16 +177,166 @@ const TaskerJobDetailsScreen = () => {
     setShowCancelModal(true);
   };
 
+  const isWaitingRoom = acceptedJob.status === 'open' || acceptedJob.v2_status === 'searching';
+
+  if (isWaitingRoom) {
+    return (
+      <div className="flex-1 flex flex-col justify-between bg-white px-6 py-6 overflow-y-auto select-none">
+        
+        {/* Header */}
+        <div className="text-center pb-3 border-b border-border shrink-0">
+          <div className="inline-flex items-center space-x-1.5 text-[10px] font-black tracking-widest text-primary bg-primary/10 px-2.5 py-1 rounded-full uppercase border border-primary/20">
+            <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
+            <span>Waiting Room</span>
+          </div>
+          <h2 className="text-base font-extrabold text-dark mt-2">
+            Waiting for other Helpers...
+          </h2>
+        </div>
+
+        {/* Main Details */}
+        <div className="flex-1 flex flex-col items-center justify-center space-y-6 my-4 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left">
+          
+          {/* Radar / Loading Pulse */}
+          <div className="relative flex items-center justify-center w-28 h-28 bg-primary/5 rounded-full">
+            <div className="absolute inset-0 bg-primary/10 rounded-full animate-ping opacity-60"></div>
+            <div className="absolute w-20 h-20 bg-primary/20 rounded-full animate-pulse"></div>
+            <div className="relative bg-primary text-white p-4.5 rounded-full shadow-lg shadow-primary/30">
+              <User className="w-8 h-8 animate-pulse" />
+            </div>
+          </div>
+
+          {/* Helpers joined counter */}
+          <div className="bg-gray-50 border border-border rounded-3xl p-5 text-center w-full shadow-xs space-y-3">
+            <div className="flex items-center justify-center space-x-2 text-xs font-bold text-dark">
+              <span>Helper Crew Setup</span>
+            </div>
+            
+            <div className="text-2xl font-black text-primary tracking-tight">
+              {crewMembers.length} / {acceptedJob.peopleNeeded} Confirmed
+            </div>
+
+            {/* Custom progress bar */}
+            <div className="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
+              <div 
+                className="bg-primary h-full transition-all duration-500 ease-out" 
+                style={{ width: `${Math.min(100, (crewMembers.length / (acceptedJob.peopleNeeded || 1)) * 100)}%` }} 
+              />
+            </div>
+
+            <p className="text-[10px] text-gray-400 font-semibold leading-normal max-w-[240px] mx-auto pt-1">
+              Please wait here. The job will start once all helpers have joined or the hirer finalized the crew.
+            </p>
+          </div>
+
+          {/* Job Info Summary */}
+          <div className="bg-gray-50 border border-border rounded-2xl p-4 w-full space-y-2.5">
+            <div className="flex items-center space-x-2 text-[10px] font-black uppercase text-gray-400">
+              <Icon className="w-4 h-4 text-primary" />
+              <span>{skill?.label || 'Task details'}</span>
+            </div>
+            <p className="text-xs font-bold text-dark leading-relaxed">
+              {acceptedJob.description}
+            </p>
+            <div className="bg-primary/5 rounded-xl px-3 py-1.5 border border-primary/10 inline-block">
+              <span className="text-[11px] font-extrabold text-primary">Offered Payout: ₹{acceptedJob.amount} per helper</span>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Action Button Footer */}
+        <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-4 shrink-0 space-y-3 pb-6">
+          <button
+            onClick={handleCancelTask}
+            disabled={isCancelling}
+            className="w-full flex justify-center items-center gap-2 py-4 bg-white border border-red-200 text-red-500 rounded-2xl text-xs font-extrabold hover:bg-red-50 transition-colors cursor-pointer active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {isCancelling ? (
+              <div className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
+            ) : null}
+            <span>Exit Waiting Room</span>
+          </button>
+        </div>
+
+        {/* Cancel Modal */}
+        {showCancelModal && (
+          <div 
+            onClick={() => setShowCancelModal(false)}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 modal-backdrop-open"
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white w-full sm:max-w-md sm:rounded-[32px] rounded-t-[32px] flex flex-col overflow-hidden shadow-2xl p-6 space-y-6 modal-content-open"
+            >
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                  <ShieldAlert className="w-6 h-6 text-red-500" />
+                </div>
+                <h3 className="text-lg font-black text-dark">Cancel Assignment?</h3>
+                <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
+                  Are you sure you want to cancel this task? This action is recorded and may affect your completion rate.
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="flex-1 py-3.5 border border-border text-gray-600 hover:bg-gray-50 rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
+                >
+                  No, Keep Task
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowCancelModal(false);
+                    setIsCancelling(true);
+                    try {
+                      api.logEvent('task_cancelled_by_tasker', { userId: userProfile?.id, role, entityId: acceptedJob.id });
+                      if (!userProfile?.tasksCompleted) {
+                        api.logEvent('first_job_failed', { 
+                          userId: userProfile?.id, 
+                          role: 'tasker', 
+                          entityId: acceptedJob.id,
+                          failure_reason: 'TASKER_CANCELLED'
+                        });
+                      }
+                      if (acceptedJob.posterId) {
+                        api.sendNotification(
+                          acceptedJob.posterId,
+                          "Task Cancelled",
+                          `${userProfile?.name || 'Your helper'} cancelled the task.`,
+                          'crew_confirmed',
+                          'job_cancelled',
+                          'poster'
+                        );
+                      }
+                      await cancelTaskerAssignment(acceptedJob.id);
+                    } finally {
+                      setIsCancelling(false);
+                    }
+                  }}
+                  className="flex-1 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
+                >
+                  Yes, Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col justify-between bg-white px-6 py-6 overflow-y-auto select-none">
       
       {/* Header */}
       <div className="text-center pb-3 border-b border-border shrink-0">
         <span className="text-[10px] font-black tracking-widest text-primary bg-primary/10 px-2.5 py-1 rounded-full uppercase">
-          {acceptedJob.status === 'accepted' ? 'Confirmed' : 'Active Engagement'}
+          {acceptedJob.status === 'accepted' || acceptedJob.status === 'open' ? 'Confirmed' : 'Active Engagement'}
         </span>
         <h2 className="text-base font-extrabold text-dark mt-2">
-          {acceptedJob.status === 'accepted' ? 'Head to Customer' : 'Working on Task'}
+          {acceptedJob.status === 'accepted' || acceptedJob.status === 'open' ? 'Head to Customer' : 'Working on Task'}
         </h2>
       </div>
 

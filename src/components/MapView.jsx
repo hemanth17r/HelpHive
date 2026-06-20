@@ -10,6 +10,7 @@ const MapView = ({
   jobLocation = null, // { lat, lng }
   taskerLocation = null, // { lat, lng }
   taskerBirdName = 'falcon',
+  taskers = null, // Array of { id, bird, location: { lat, lng } }
   height = '300px',
   resolvedAddressText = 'Location pinned on map',
   showAddressBanner = false,
@@ -18,8 +19,8 @@ const MapView = ({
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const draggableMarkerRef = useRef(null);
-  const taskerMarkerRef = useRef(null);
-  const routeLineRef = useRef(null);
+  const taskersMarkersRef = useRef({}); // maps taskerId -> Leaflet marker
+  const routeLinesRef = useRef({}); // maps taskerId -> Leaflet polyline
   const coverageCircleRef = useRef(null);
   useEffect(() => {
     if (!window.L || !mapContainerRef.current) return;
@@ -137,46 +138,87 @@ const MapView = ({
     }
   }, [coverageRadius]);
 
-  // Update Tasker Marker and Route Polyline dynamically when position prop updates
+  // Update Taskers Markers and Route Polylines dynamically when position props update
   useEffect(() => {
-    if (!draggable && mapInstanceRef.current && jobLocation && taskerLocation) {
+    if (!draggable && mapInstanceRef.current && jobLocation) {
       const L = window.L;
       if (!L) return;
 
-      const birdSvgString = renderToString(<BirdAvatar birdName={taskerBirdName} size={30} />);
-      const taskerIcon = L.divIcon({
-        className: 'leaflet-custom-pin-tasker',
-        html: `<div class="bg-white text-dark p-0.5 rounded-full shadow-lg border-2 border-primary flex items-center justify-center animate-pulse">${birdSvgString}</div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
-      });
-
-      // Update or Create Marker
-      if (taskerMarkerRef.current) {
-        taskerMarkerRef.current.setLatLng([taskerLocation.lat, taskerLocation.lng]);
-        taskerMarkerRef.current.setIcon(taskerIcon);
-      } else {
-        taskerMarkerRef.current = L.marker([taskerLocation.lat, taskerLocation.lng], { icon: taskerIcon }).addTo(mapInstanceRef.current);
+      // 1. Resolve taskers list (convert legacy single tasker to list if no array is provided)
+      let activeTaskers = [];
+      if (taskers && Array.isArray(taskers) && taskers.length > 0) {
+        activeTaskers = taskers;
+      } else if (taskerLocation) {
+        activeTaskers = [{
+          id: 'legacy-tasker',
+          bird: taskerBirdName,
+          location: taskerLocation
+        }];
       }
 
-      // Update or Create Polyline
-      if (routeLineRef.current) {
-        routeLineRef.current.setLatLngs([
-          [taskerLocation.lat, taskerLocation.lng], 
-          [jobLocation.lat, jobLocation.lng]
-        ]);
-      } else {
-        routeLineRef.current = L.polyline(
-          [[taskerLocation.lat, taskerLocation.lng], [jobLocation.lat, jobLocation.lng]], 
-          { color: '#2D2D2D', weight: 4, dashArray: '8, 8', opacity: 0.8 }
-        ).addTo(mapInstanceRef.current);
-        
-        // Fit Bounds to fit both pins comfortably when first created
-        const bounds = L.latLngBounds([[taskerLocation.lat, taskerLocation.lng], [jobLocation.lat, jobLocation.lng]]);
+      const activeTaskerIds = new Set(activeTaskers.map(t => t.id).filter(Boolean));
+
+      // 2. Remove markers and polylines of taskers that are no longer active
+      Object.keys(taskersMarkersRef.current).forEach(id => {
+        if (!activeTaskerIds.has(id)) {
+          if (taskersMarkersRef.current[id]) {
+            mapInstanceRef.current.removeLayer(taskersMarkersRef.current[id]);
+            delete taskersMarkersRef.current[id];
+          }
+          if (routeLinesRef.current[id]) {
+            mapInstanceRef.current.removeLayer(routeLinesRef.current[id]);
+            delete routeLinesRef.current[id];
+          }
+        }
+      });
+
+      // 3. Render or update markers & polylines for active taskers
+      activeTaskers.forEach(tasker => {
+        if (!tasker.location) return;
+
+        const birdSvgString = renderToString(<BirdAvatar birdName={tasker.bird || 'falcon'} size={30} />);
+        const taskerIcon = L.divIcon({
+          className: 'leaflet-custom-pin-tasker',
+          html: `<div class="bg-white text-dark p-0.5 rounded-full shadow-lg border-2 border-primary flex items-center justify-center animate-pulse">${birdSvgString}</div>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18]
+        });
+
+        const latLng = [tasker.location.lat, tasker.location.lng];
+
+        // Update or Create Marker
+        if (taskersMarkersRef.current[tasker.id]) {
+          taskersMarkersRef.current[tasker.id].setLatLng(latLng);
+          taskersMarkersRef.current[tasker.id].setIcon(taskerIcon);
+        } else {
+          taskersMarkersRef.current[tasker.id] = L.marker(latLng, { icon: taskerIcon }).addTo(mapInstanceRef.current);
+        }
+
+        // Update or Create Polyline
+        const routeCoords = [latLng, [jobLocation.lat, jobLocation.lng]];
+        if (routeLinesRef.current[tasker.id]) {
+          routeLinesRef.current[tasker.id].setLatLngs(routeCoords);
+        } else {
+          routeLinesRef.current[tasker.id] = L.polyline(
+            routeCoords,
+            { color: '#2D2D2D', weight: 4, dashArray: '8, 8', opacity: 0.8 }
+          ).addTo(mapInstanceRef.current);
+        }
+      });
+
+      // 4. Adjust bounds to fit all markers
+      if (activeTaskers.length > 0) {
+        const boundsPoints = [[jobLocation.lat, jobLocation.lng]];
+        activeTaskers.forEach(t => {
+          if (t.location) {
+            boundsPoints.push([t.location.lat, t.location.lng]);
+          }
+        });
+        const bounds = L.latLngBounds(boundsPoints);
         mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40] });
       }
     }
-  }, [taskerLocation, jobLocation, draggable, taskerBirdName]);
+  }, [taskers, taskerLocation, jobLocation, draggable, taskerBirdName]);
 
   return (
     <div className={`w-full flex flex-col space-y-2 select-none ${height === '100%' ? 'h-full flex-1' : ''}`}>

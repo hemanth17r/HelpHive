@@ -655,6 +655,15 @@ export const api = {
     return { data, error };
   },
 
+  fetchUserLocations: async (userIds) => {
+    if (!userIds || userIds.length === 0) return { data: [], error: null };
+    const { data, error } = await supabase
+      .from('user_locations')
+      .select('*')
+      .in('user_id', userIds);
+    return { data, error };
+  },
+
   // --- Event Tracking API ---
   logEvent: async (eventType, payload) => {
     const { userId, role, entityId, metadata } = payload;

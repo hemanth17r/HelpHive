@@ -153,10 +153,14 @@ const JobReceiptScreen = () => {
            <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-3 mb-3">
              Bill Summary
            </h3>
-           <div className="flex items-center justify-between mt-2">
-             <span className="text-sm font-extrabold text-dark">Total Amount</span>
-             <span className="text-xl font-black text-primary">₹{currentPostedJob.amount}</span>
-           </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs font-bold text-gray-500">Amount Per Helper</span>
+              <span className="text-sm font-black text-dark">₹{currentPostedJob.amount || 0}</span>
+            </div>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+              <span className="text-sm font-extrabold text-dark">Total Amount</span>
+              <span className="text-xl font-black text-primary">₹{(currentPostedJob.amount || 0) * (currentPostedJob.peopleNeeded || 1)}</span>
+            </div>
            <div className="mt-4 pt-3 border-t border-dashed border-gray-200 flex items-center justify-between">
              <div className="inline-flex items-center space-x-1.5 text-[10px] font-black tracking-widest text-green-600 bg-green-50 px-2.5 py-1 rounded-full uppercase border border-green-200">
                 <CheckCircle2 className="w-3 h-3" />
