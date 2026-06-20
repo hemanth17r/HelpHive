@@ -234,7 +234,7 @@ const TaskerOnboardingScreen = () => {
       <div className="flex items-center justify-between shrink-0">
         <button
           onClick={() => {
-            if (step === 2) setStep(1);
+            if (step === 2 && !routeParams?.editServiceAreaOnly) setStep(1);
             else popScreen();
           }}
           className="p-2.5 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
@@ -378,7 +378,7 @@ const TaskerOnboardingScreen = () => {
 
       {/* Button footer */}
       <div className="max-w-md lg:max-w-3xl lg:px-4 mx-auto w-full pt-4 shrink-0 border-t border-border mt-4">
-        <Tooltip text={step === 1 ? 'Next to Service Area' : 'Start earning with selected area'}>
+        <Tooltip text={step === 1 ? 'Next to Service Area' : (routeParams?.editServiceAreaOnly ? 'Save service area changes' : 'Start earning with selected area')}>
           <button
             onClick={handleNextStep}
             disabled={isLoading}
@@ -388,7 +388,7 @@ const TaskerOnboardingScreen = () => {
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
             ) : (
               <>
-                <span>{step === 1 ? 'Next' : 'Start Earning'}</span>
+                <span>{step === 1 ? 'Next' : (routeParams?.editServiceAreaOnly ? 'Save Changes' : 'Start Earning')}</span>
                 {step === 1 ? <ArrowRight className="w-5 h-5" /> : <Check className="w-5 h-5" />}
               </>
             )}

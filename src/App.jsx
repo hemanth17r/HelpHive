@@ -201,7 +201,7 @@ const AppContent = () => {
   };
 
   const isMainScreen = currentScreen === 'landing' || (currentScreen === 'tasker_home' && activeTab === 'home') || currentScreen === 'poster_home';
-  const showBottomNav = currentScreen === 'tasker_home' || currentScreen === 'poster_home' || (currentScreen === 'my_profile' && role === 'poster');
+  const showBottomNav = (currentScreen === 'tasker_home' && activeTab === 'home') || currentScreen === 'poster_home';
 
   if (isProfileLoading) {
     return (
