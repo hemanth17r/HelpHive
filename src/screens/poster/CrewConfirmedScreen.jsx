@@ -44,6 +44,7 @@ const CrewConfirmedScreen = () => {
 
   const [crewLocations, setCrewLocations] = useState({});
   const allHelpersVerified = localCrewTaskers.length > 0 && localCrewTaskers.every(t => t.otpVerified);
+  const verifiedCount = localCrewTaskers.filter(t => t.otpVerified).length;
 
   // Poll the crew members from the API periodically to capture accepts/cancels in real-time
   useEffect(() => {
@@ -304,12 +305,39 @@ const CrewConfirmedScreen = () => {
           </div>
         ))}
 
+        {/* Verification Progress Tracker */}
+        {localCrewTaskers.length > 0 && (
+          <div className="bg-gray-50 border border-border rounded-3xl p-5 text-center w-full shadow-xs space-y-3">
+            <div className="flex items-center justify-center space-x-2 text-xs font-bold text-dark">
+              <span>Job Starting Progress</span>
+            </div>
+            
+            <div className="text-2xl font-black text-green-600 tracking-tight">
+              {verifiedCount} / {localCrewTaskers.length} {localCrewTaskers.length === 1 ? 'Helper' : 'Helpers'} Started Work
+            </div>
+
+            {/* Custom progress bar */}
+            <div className="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
+              <div 
+                className="bg-green-600 h-full transition-all duration-500 ease-out" 
+                style={{ width: `${Math.min(100, (verifiedCount / (localCrewTaskers.length || 1)) * 100)}%` }} 
+              />
+            </div>
+
+            <p className="text-[10px] text-gray-400 font-semibold leading-normal max-w-[240px] mx-auto pt-1">
+              {allHelpersVerified 
+                ? "All crew members have verified the OTP and started work."
+                : "Helpers must ask you for the OTP and enter it on their screens to start."}
+            </p>
+          </div>
+        )}
+
         {/* OTP Section (Only show if not all helpers are verified) */}
         {!allHelpersVerified ? (
           <div className="bg-orange-50/50 border border-primary/10 rounded-3xl p-5 space-y-3 text-center">
             <div className="flex items-center justify-center space-x-2 text-xs font-bold text-dark">
               <KeyRound className="w-4.5 h-4.5 text-primary" />
-              <span>Secure Verification</span>
+              <span>Reveal Start OTP</span>
             </div>
             <p className="text-[10px] text-gray-500 font-semibold leading-normal max-w-[240px] mx-auto">
               Provide this code to your helper(s) to authorize and start the job.

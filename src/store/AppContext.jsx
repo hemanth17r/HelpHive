@@ -781,7 +781,8 @@ export const AppProvider = ({ children }) => {
           latest.taskerCurrentLocation?.lat !== acceptedJob.taskerCurrentLocation?.lat ||
           latest.taskerCurrentLocation?.lng !== acceptedJob.taskerCurrentLocation?.lng ||
           latest.lat !== acceptedJob.lat ||
-          latest.lng !== acceptedJob.lng
+          latest.lng !== acceptedJob.lng ||
+          latest.otpVerified !== acceptedJob.otpVerified
         ) {
           setAcceptedJob(latest);
         }
