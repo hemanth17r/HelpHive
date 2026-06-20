@@ -144,7 +144,7 @@ const AppContent = () => {
     switch (currentScreen) {
       case 'auth_loading':
         return (
-          <div className="flex-1 flex flex-col items-center justify-center min-h-dvh bg-white w-full">
+          <div className="flex-1 flex flex-col items-center justify-center h-full bg-white w-full">
             <div className="w-10 h-10 border-4 border-gray-200 border-t-primary rounded-full animate-spin mb-4"></div>
             <p className="text-sm font-bold text-gray-500">Securely logging you in...</p>
           </div>
@@ -205,7 +205,7 @@ const AppContent = () => {
 
   if (isProfileLoading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-dvh bg-white w-full">
+      <div className="flex-1 flex flex-col items-center justify-center h-full bg-white w-full">
         <div className="w-10 h-10 border-4 border-gray-200 border-t-primary rounded-full animate-spin mb-4"></div>
         <p className="text-sm font-bold text-gray-500">Loading your profile...</p>
       </div>
@@ -213,10 +213,10 @@ const AppContent = () => {
   }
 
   return (
-    <div className="min-h-dvh bg-gray-100 flex items-center justify-center p-0 select-none font-sans overflow-hidden">
+    <div className="h-full w-full bg-gray-100 flex items-center justify-center p-0 select-none font-sans overflow-hidden">
       
       {/* Desktop Dashboard Layout (above 1024px) */}
-      <div className="hidden lg:flex flex-col w-full h-dvh bg-[#F8F9FA] overflow-hidden">
+      <div className="hidden lg:flex flex-col w-full h-full bg-[#F8F9FA] overflow-hidden">
         
         {/* Top Header Bar */}
         {role && isMainScreen && currentScreen !== 'landing' && (
@@ -292,7 +292,7 @@ const AppContent = () => {
 
           {/* Main scrollable body */}
           <main className="flex-1 overflow-y-auto relative flex justify-center w-full bg-[#F8F9FA]">
-            <div key={currentScreen} className="w-full lg:max-w-2xl bg-white lg:shadow-[0_0_20px_rgba(0,0,0,0.03)] lg:border-x lg:border-gray-100 flex flex-col min-h-dvh relative animate-[fadeIn_200ms_ease-in-out]">
+            <div key={currentScreen} className="w-full lg:max-w-2xl bg-white lg:shadow-[0_0_20px_rgba(0,0,0,0.03)] lg:border-x lg:border-gray-100 flex flex-col min-h-full relative animate-[fadeIn_200ms_ease-in-out]">
               <ErrorBoundary key={currentScreen}>
                 {renderScreen()}
               </ErrorBoundary>
@@ -308,7 +308,7 @@ const AppContent = () => {
       </div>
 
       {/* Mobile/Tablet Card Layout (below 1024px) */}
-      <div className="lg:hidden w-full h-dvh bg-white relative flex flex-col overflow-hidden transition-all duration-300">
+      <div className="lg:hidden w-full h-full bg-white relative flex flex-col overflow-hidden transition-all duration-300">
         
         {/* Top bar on Mobile */}
         {role && isMainScreen && currentScreen !== 'landing' && (
