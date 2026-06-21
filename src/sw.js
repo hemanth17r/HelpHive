@@ -31,7 +31,9 @@ self.addEventListener('push', function (event) {
       let bodyText = 'You have a new update.';
       try {
         bodyText = event.data.text() || bodyText;
-      } catch (e) {}
+      } catch (e) {
+        // Ignore errors reading raw text and use the default bodyText fallback
+      }
       
       event.waitUntil(
         self.registration.showNotification('New Update', {
