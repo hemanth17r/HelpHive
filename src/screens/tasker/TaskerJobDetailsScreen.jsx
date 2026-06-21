@@ -113,12 +113,26 @@ const TaskerJobDetailsScreen = () => {
       setIsVerified(true);
       setErrorMsg('');
       
+      // Fetch latest crew list to check verification progress
+      const { data: latestCrew } = await api.fetchJobCrew(acceptedJob.id);
+      const crewList = latestCrew || crewMembers;
+      const totalHelpers = acceptedJob.peopleNeeded || 1;
+      const verifiedCount = crewList.filter(m => m.otpVerified || m.id === callerId).length;
+
       // Send notification to the Poster (Hirer) that the task is started
       if (acceptedJob.posterId) {
+        let title = "Task Started!";
+        let body = `${userProfile?.name || 'Your helper'} has verified the OTP and started the task.`;
+        
+        if (totalHelpers > 1) {
+          title = `${verifiedCount}/${totalHelpers} Helpers Started!`;
+          body = `${userProfile?.name || 'A helper'} verified their OTP. (${verifiedCount} of ${totalHelpers} helpers have started work)`;
+        }
+
         api.sendNotification(
           acceptedJob.posterId,
-          "Task Started!",
-          `${userProfile?.name || 'Your helper'} has verified the OTP and started the task.`,
+          title,
+          body,
           'crew_confirmed',
           'job_started',
           'poster'

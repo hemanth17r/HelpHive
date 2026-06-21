@@ -19,7 +19,7 @@ self.addEventListener('push', function (event) {
       const options = {
         body: data.body || 'You have a new update.',
         icon: '/pwa-192x192.png',
-        badge: '/maskable-icon-512x512.png',
+        badge: '/notification-badge.png',
         data: data, // contains action_url or other metadata
         vibrate: [100, 50, 100],
       };
@@ -27,6 +27,19 @@ self.addEventListener('push', function (event) {
       event.waitUntil(self.registration.showNotification(title, options));
     } catch (err) {
       console.error('Error parsing push data', err);
+      // Fallback: If push payload is not JSON, try to display it as raw text
+      let bodyText = 'You have a new update.';
+      try {
+        bodyText = event.data.text() || bodyText;
+      } catch (e) {}
+      
+      event.waitUntil(
+        self.registration.showNotification('New Update', {
+          body: bodyText,
+          icon: '/pwa-192x192.png',
+          badge: '/notification-badge.png',
+        })
+      );
     }
   }
 });
