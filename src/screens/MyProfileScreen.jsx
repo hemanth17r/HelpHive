@@ -120,6 +120,15 @@ Issue: `;
     reviews: userProfile?.reviews || []
   };
 
+  const groupedBadges = React.useMemo(() => {
+    if (!Array.isArray(profile.badges)) return [];
+    const counts = {};
+    profile.badges.forEach(badge => {
+      counts[badge] = (counts[badge] || 0) + 1;
+    });
+    return Object.entries(counts).map(([badge, count]) => ({ badge, count }));
+  }, [profile.badges]);
+
   const reviews = profile.reviews || [];
   const totalReviews = reviews.length;
   const ratingDistribution = {
@@ -456,10 +465,15 @@ Issue: `;
               <div className="space-y-2 pt-3 border-t border-gray-100">
                 <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Trust Badges</h4>
                 <div className="flex flex-wrap gap-2">
-                  {profile.badges.map((badge, idx) => (
+                  {groupedBadges.map(({ badge, count }, idx) => (
                     <span key={idx} className="text-[10px] font-black uppercase tracking-widest text-green-700 bg-green-50 px-2.5 py-1.5 rounded-xl border border-green-200/50 flex items-center space-x-1 shadow-xs">
-                      <Award className="w-3 h-3"/>
+                      <Award className="w-3 h-3 text-green-600 shrink-0"/>
                       <span>{BADGE_LABELS[badge] || badge}</span>
+                      {count > 1 && (
+                        <span className="ml-1 bg-green-200/80 text-green-800 text-[8px] px-1.5 py-0.5 rounded-full font-black leading-none min-w-[14px] text-center">
+                          {count}x
+                        </span>
+                      )}
                     </span>
                   ))}
                 </div>
@@ -830,10 +844,15 @@ Issue: `;
               <div className="space-y-2 pt-3 border-t border-gray-100">
                 <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Trust Badges</h4>
                 <div className="flex flex-wrap gap-2">
-                  {profile.badges.map((badge, idx) => (
+                  {groupedBadges.map(({ badge, count }, idx) => (
                     <span key={idx} className="text-[10px] font-black uppercase tracking-widest text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-xl border border-blue-200/50 flex items-center space-x-1 shadow-xs">
-                      <Award className="w-3 h-3"/>
+                      <Award className="w-3 h-3 text-blue-600 shrink-0"/>
                       <span>{BADGE_LABELS[badge] || badge}</span>
+                      {count > 1 && (
+                        <span className="ml-1 bg-blue-200/80 text-blue-800 text-[8px] px-1.5 py-0.5 rounded-full font-black leading-none min-w-[14px] text-center">
+                          {count}x
+                        </span>
+                      )}
                     </span>
                   ))}
                 </div>
