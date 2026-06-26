@@ -22,6 +22,7 @@ const MapView = ({
   const taskersMarkersRef = useRef({}); // maps taskerId -> Leaflet marker
   const routeLinesRef = useRef({}); // maps taskerId -> Leaflet polyline
   const coverageCircleRef = useRef(null);
+  const [showDragTip, setShowDragTip] = useState(true);
   useEffect(() => {
     if (!window.L || !mapContainerRef.current) return;
 
@@ -73,6 +74,7 @@ const MapView = ({
         if (typeof onDragEnd === 'function') {
           onDragEnd({ lat: parseFloat(position.lat.toFixed(5)), lng: parseFloat(position.lng.toFixed(5)) });
         }
+        setShowDragTip(false);
       });
     }
 
@@ -223,10 +225,20 @@ const MapView = ({
   return (
     <div className={`w-full flex flex-col space-y-2 select-none ${height === '100%' ? 'h-full flex-1' : ''}`}>
       <div 
-        ref={mapContainerRef} 
         style={{ height: height === '100%' ? 'auto' : height, width: '100%' }} 
-        className={`rounded-2xl overflow-hidden shadow-inner border border-border z-10 ${height === '100%' ? 'flex-1 min-h-0' : ''}`}
-      />
+        className={`relative w-full ${height === '100%' ? 'flex-1 min-h-0' : ''}`}
+      >
+        <div 
+          ref={mapContainerRef} 
+          className="rounded-2xl overflow-hidden shadow-inner border border-border z-10 w-full h-full"
+        />
+        {draggable && showDragTip && (
+          <div className="absolute bottom-4 left-3 z-20 bg-orange-50/95 backdrop-blur-xs text-primary text-[9px] font-extrabold tracking-wide px-2.5 py-1 rounded-full flex items-center space-x-1 shadow-md border border-primary/20 pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-map-pin shrink-0"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Drag pin to set exact location</span>
+          </div>
+        )}
+      </div>
       {draggable && showAddressBanner && (
         <div className="bg-orange-50 border border-primary/10 rounded-xl px-3.5 py-2 flex items-center space-x-2.5">
           <div className="p-1 bg-white rounded-md border border-primary/5 text-primary shrink-0 animate-pulse">
