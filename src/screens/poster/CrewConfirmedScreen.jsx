@@ -148,7 +148,7 @@ const CrewConfirmedScreen = () => {
       await api.updateJob(jobId, { status: 'completed', v2_status: 'completed' });
 
       // Analytics: V2 Marketplace Metric
-      if (!userProfile?.tasksPosted) {
+      if (!userProfile?.posterTasksCompleted) {
         api.logEvent('first_job_completed', { userId, role: 'poster', entityId: jobId });
       }
 
@@ -615,7 +615,7 @@ const CrewConfirmedScreen = () => {
                   try {
                     api.logEvent('task_cancelled_by_poster', { userId, role: 'poster', entityId: currentPostedJob?.id });
                     
-                    if (!userProfile?.tasksPosted) {
+                    if (!userProfile?.posterTasksCompleted) {
                       api.logEvent('first_job_failed', { 
                         userId, 
                         role: 'poster', 

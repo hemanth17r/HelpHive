@@ -24,7 +24,7 @@ BEGIN
               (
                 SELECT SPLIT_PART(ua.formatted_address, ',', 1)
                 FROM public.user_addresses ua
-                ORDER BY ua.coordinates::geometry <-> ST_Centroid(ST_Collect(location::geometry))
+                ORDER BY ua.coordinates <-> ST_Centroid(ST_Collect(location::geometry))::geography
                 LIMIT 1
               ),
               'Unknown Location'
@@ -74,7 +74,7 @@ BEGIN
               (
                 SELECT SPLIT_PART(ua.formatted_address, ',', 1)
                 FROM public.user_addresses ua
-                ORDER BY ua.coordinates::geometry <-> ST_Centroid(ST_Collect(location::geometry))
+                ORDER BY ua.coordinates <-> ST_Centroid(ST_Collect(location::geometry))::geography
                 LIMIT 1
               ),
               'Unknown Location'

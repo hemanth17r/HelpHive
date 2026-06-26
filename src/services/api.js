@@ -1,6 +1,37 @@
 import { supabase } from '../config/supabase';
 import { parseEWKBPoint } from '../utils/location';
 import { reverseGeocode } from '../utils/geocoding';
+const resolveCityFromLatLng = async (lat, lng) => {
+  try {
+    const geo = await reverseGeocode(lat, lng);
+    const locality = geo?.address?.find(c => c.types?.includes('locality'));
+    if (locality) return locality.long_name || locality.short_name;
+    const adminArea2 = geo?.address?.find(c => c.types?.includes('administrative_area_level_2'));
+    if (adminArea2) return adminArea2.long_name || adminArea2.short_name;
+    
+    // Fallback: parse displayName
+    if (geo?.displayName && geo.displayName !== 'Unknown Location') {
+      const parts = geo.displayName.split(',').map(p => p.trim());
+      if (parts.length >= 3) {
+        // Filter out common metadata like India, postal codes, and state names
+        const filtered = parts.filter(p => {
+          const lower = p.toLowerCase();
+          return lower !== 'india' && 
+                 !/^\d{6}$/.test(p) && 
+                 !lower.includes('telangana') && 
+                 !lower.includes('punjab') && 
+                 !lower.includes('andhra pradesh');
+        });
+        if (filtered.length > 0) return filtered[filtered.length - 1];
+      }
+      return parts[1] || parts[0];
+    }
+    return '';
+  } catch (err) {
+    console.error("resolveCityFromLatLng error:", err);
+    return '';
+  }
+};
 
 export const api = {
   supabase,
@@ -463,7 +494,7 @@ export const api = {
         return {
           id: addr.id,
           type: addr.label || 'Other',
-          city: '', 
+          city: addr.city || '', 
           area: '', 
           completeAddress: addr.formatted_address,
           landmark: addr.landmark,
@@ -479,6 +510,11 @@ export const api = {
   },
 
   createAddress: async (userId, address) => {
+    let resolvedCity = address.city || '';
+    if (!resolvedCity && address.lat && address.lng) {
+      resolvedCity = await resolveCityFromLatLng(address.lat, address.lng);
+    }
+
     const coordsStr = `POINT(${address.lng || 0} ${address.lat || 0})`;
     const { data, error } = await supabase.from('user_addresses').insert({
       user_id: userId,
@@ -487,6 +523,7 @@ export const api = {
       landmark: address.landmark || null,
       coordinates: coordsStr,
       is_default: address.isDefault || false,
+      city: resolvedCity || null,
       last_used_at: new Date().toISOString()
     }).select().single();
     
@@ -498,6 +535,7 @@ export const api = {
         completeAddress: data.formatted_address,
         landmark: data.landmark,
         isDefault: data.is_default,
+        city: data.city || '',
         lat: coords.lat,
         lng: coords.lng,
         lastUsedAt: data.last_used_at
@@ -514,6 +552,12 @@ export const api = {
     if (updates.isDefault !== undefined) dbUpdates.is_default = updates.isDefault;
     if (updates.lastUsedAt !== undefined) dbUpdates.last_used_at = updates.lastUsedAt;
     
+    let resolvedCity = updates.city;
+    if (resolvedCity === undefined && updates.lat !== undefined && updates.lng !== undefined) {
+      resolvedCity = await resolveCityFromLatLng(updates.lat, updates.lng);
+    }
+    if (resolvedCity !== undefined) dbUpdates.city = resolvedCity;
+    
     if (updates.lat !== undefined && updates.lng !== undefined) {
       dbUpdates.coordinates = `POINT(${updates.lng} ${updates.lat})`;
     }
@@ -528,6 +572,7 @@ export const api = {
         completeAddress: data.formatted_address,
         landmark: data.landmark,
         isDefault: data.is_default,
+        city: data.city || '',
         lat: coords.lat,
         lng: coords.lng,
         lastUsedAt: data.last_used_at
@@ -609,6 +654,15 @@ export const api = {
   },
 
   updateProfile: async (userId, updates) => {
+    // If updates contains locationStr but no city, resolve the city name
+    if (updates.locationStr && !updates.city) {
+      const match = updates.locationStr.match(/point\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
+      if (match) {
+        const lng = parseFloat(match[1]);
+        const lat = parseFloat(match[2]);
+        updates.city = await resolveCityFromLatLng(lat, lng);
+      }
+    }
     const { data, error } = await supabase.from('profiles').update(updates).eq('id', userId).select().single();
     if (error) console.error("updateProfile error:", error);
     return { data, error };
@@ -767,6 +821,16 @@ export const api = {
 
   getFailedFirstExperiences: async () => {
     const { data, error } = await supabase.rpc('get_failed_first_experiences');
+    return { data: data || [], error };
+  },
+
+  getCityLeaderboard: async () => {
+    const { data, error } = await supabase.rpc('get_city_leaderboard');
+    return { data: data || [], error };
+  },
+
+  getUnresolvedCityLocations: async () => {
+    const { data, error } = await supabase.rpc('get_unresolved_city_locations');
     return { data: data || [], error };
   },
 

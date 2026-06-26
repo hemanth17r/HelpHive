@@ -7,6 +7,29 @@ CREATE OR REPLACE FUNCTION public.get_dashboard_stats()
 RETURNS JSONB AS $$
 DECLARE
   v_stats JSONB;
+  v_total_taskers BIGINT;
+  v_total_hirers BIGINT;
+  
+  -- Jobs counts
+  v_total_jobs BIGINT;
+  v_open_jobs BIGINT;
+  v_accepted_jobs BIGINT;
+  v_completed_jobs BIGINT;
+  v_expired_jobs BIGINT;
+  v_active_jobs BIGINT;
+  v_jobs_today BIGINT;
+
+  -- Event counts
+  v_total_events BIGINT;
+  v_events_today BIGINT;
+  v_users_today BIGINT;
+  v_signups_today BIGINT;
+  v_logins_today BIGINT;
+  v_acceptances_today BIGINT;
+  v_completions_today BIGINT;
+  v_cancellations_today BIGINT;
+  v_reports_today BIGINT;
+  v_help_reports_today BIGINT;
 BEGIN
   IF NOT EXISTS (
       SELECT 1 FROM public.profiles 
@@ -15,19 +38,85 @@ BEGIN
       RAISE EXCEPTION 'Unauthorized: Admin access required.';
   END IF;
 
-  SELECT jsonb_build_object(
-    'total_users', (SELECT COUNT(*) FROM public.profiles),
-    'total_jobs', (SELECT COUNT(*) FROM public.jobs),
-    'total_events', (SELECT COUNT(*) FROM public.app_events),
-    'events_today', (SELECT COUNT(*) FROM public.app_events WHERE created_at >= CURRENT_DATE),
-    'users_today', (SELECT COUNT(DISTINCT user_id) FROM public.app_events WHERE created_at >= CURRENT_DATE),
-    'active_jobs', (SELECT COUNT(*) FROM public.jobs WHERE status IN ('open', 'accepted')),
-    'jobs_today', (SELECT COUNT(*) FROM public.jobs WHERE created_at >= CURRENT_DATE),
-    'open_jobs', (SELECT COUNT(*) FROM public.jobs WHERE status = 'open'),
-    'accepted_jobs', (SELECT COUNT(*) FROM public.jobs WHERE status = 'accepted'),
-    'completed_jobs', (SELECT COUNT(*) FROM public.jobs WHERE status = 'completed'),
-    'expired_jobs', (SELECT COUNT(*) FROM public.jobs WHERE status = 'expired')
-  ) INTO v_stats;
+  -- 1. Count taskers and hirers
+  SELECT COUNT(DISTINCT p.id) INTO v_total_taskers FROM public.profiles p
+  WHERE p.role = 'tasker'
+     OR (p.skills IS NOT NULL AND cardinality(p.skills) > 0)
+     OR p.upi_id IS NOT NULL
+     OR EXISTS (
+         SELECT 1 FROM public.app_events ae
+         WHERE ae.user_id = p.id AND ae.active_role = 'tasker'
+     );
+
+  SELECT COUNT(DISTINCT p.id) INTO v_total_hirers FROM public.profiles p
+  WHERE p.role = 'poster'
+     OR EXISTS (
+         SELECT 1 FROM public.jobs j
+         WHERE j.poster_id = p.id
+     )
+     OR EXISTS (
+         SELECT 1 FROM public.user_addresses ua
+         WHERE ua.user_id = p.id
+     )
+     OR EXISTS (
+         SELECT 1 FROM public.app_events ae
+         WHERE ae.user_id = p.id AND ae.active_role = 'poster'
+     );
+
+  -- 2. Single-pass jobs aggregation
+  SELECT 
+    COUNT(*),
+    COUNT(*) FILTER (WHERE status = 'open'),
+    COUNT(*) FILTER (WHERE status = 'accepted'),
+    COUNT(*) FILTER (WHERE status = 'completed'),
+    COUNT(*) FILTER (WHERE status = 'expired'),
+    COUNT(*) FILTER (WHERE status IN ('open', 'accepted')),
+    COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)
+  INTO 
+    v_total_jobs, v_open_jobs, v_accepted_jobs, v_completed_jobs, v_expired_jobs, v_active_jobs, v_jobs_today
+  FROM public.jobs;
+
+  -- 3. Single-pass events aggregation
+  SELECT 
+    COUNT(*),
+    COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE),
+    COUNT(DISTINCT user_id) FILTER (WHERE created_at >= CURRENT_DATE),
+    COUNT(*) FILTER (WHERE event_type = 'signup' AND created_at >= CURRENT_DATE),
+    COUNT(*) FILTER (WHERE event_type = 'login' AND created_at >= CURRENT_DATE),
+    COUNT(*) FILTER (WHERE event_type = 'task_acceptance' AND created_at >= CURRENT_DATE),
+    COUNT(*) FILTER (WHERE event_type = 'task_completion' AND created_at >= CURRENT_DATE),
+    COUNT(*) FILTER (WHERE event_type IN ('task_cancelled_by_poster', 'task_cancelled_by_tasker', 'task_cancellation') AND created_at >= CURRENT_DATE),
+    COUNT(*) FILTER (WHERE event_type = 'report_submitted' AND created_at >= CURRENT_DATE)
+  INTO 
+    v_total_events, v_events_today, v_users_today, v_signups_today, v_logins_today, v_acceptances_today, v_completions_today, v_cancellations_today, v_reports_today
+  FROM public.app_events;
+
+  -- 4. Count help reports today
+  SELECT COUNT(*) INTO v_help_reports_today 
+  FROM public.help_reports 
+  WHERE created_at >= CURRENT_DATE;
+
+  -- 5. Construct JSON response
+  v_stats := jsonb_build_object(
+    'total_taskers', v_total_taskers,
+    'total_hirers', v_total_hirers,
+    'total_jobs', v_total_jobs,
+    'open_jobs', v_open_jobs,
+    'accepted_jobs', v_accepted_jobs,
+    'completed_jobs', v_completed_jobs,
+    'expired_jobs', v_expired_jobs,
+    'active_jobs', v_active_jobs,
+    'jobs_today', v_jobs_today,
+    'total_events', v_total_events,
+    'events_today', v_events_today,
+    'users_today', v_users_today,
+    'signups_today', v_signups_today,
+    'logins_today', v_logins_today,
+    'acceptances_today', v_acceptances_today,
+    'completions_today', v_completions_today,
+    'cancellations_today', v_cancellations_today,
+    'reports_today', v_reports_today + v_help_reports_today
+  );
   
   RETURN v_stats;
 END;
@@ -191,16 +280,21 @@ BEGIN
             ae.user_id as "userId",
             ae.active_role as role,
             COALESCE(ae.metadata->>'reason', ae.metadata->>'failure_reason', 'UNKNOWN') as reason,
-            ae.created_at as date
+            ae.created_at as date,
+            p.name as "userName",
+            p.phone as "userPhone"
         FROM public.app_events ae
+        JOIN public.profiles p ON p.id = ae.user_id
         JOIN public.jobs j ON j.id = ae.entity_id
-        JOIN public.profiles p ON p.id = j.poster_id
         WHERE ae.event_type = 'first_job_failed'
           AND NOT EXISTS (
             SELECT 1 FROM public.jobs j2
-            WHERE j2.poster_id = p.id 
-              AND j2.status = 'completed'
-              AND j2.created_at < ae.created_at
+            WHERE (
+              (ae.active_role = 'poster' AND j2.poster_id = ae.user_id) OR
+              (ae.active_role = 'tasker' AND j2.tasker_id = ae.user_id)
+            )
+            AND j2.status = 'completed'
+            AND j2.created_at < ae.created_at
           )
         ORDER BY ae.created_at DESC
         LIMIT 50

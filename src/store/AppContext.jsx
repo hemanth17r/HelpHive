@@ -231,6 +231,7 @@ export const AppProvider = ({ children }) => {
       if (!userId) return;
       const { data } = await api.fetchAddresses(userId);
       if (data) {
+        let addresses = data;
         if (data.length > 0) {
           setSavedAddressesState(data);
           setHasMigratedLocalAddresses(true); // Don't migrate if DB already has addresses
@@ -244,14 +245,29 @@ export const AppProvider = ({ children }) => {
             const { data: newData } = await api.fetchAddresses(userId);
             if (newData) {
               setSavedAddressesState(newData);
+              addresses = newData;
             }
           }
           setHasMigratedLocalAddresses(true);
         }
+
+        // Apply default address to active header location on startup/login
+        const defaultAddr = addresses.find(a => a.isDefault);
+        if (defaultAddr && (!userLocation || userLocation.id === 'detected' || userLocation.id === 'default' || !userLocation.id)) {
+          const loc = {
+            id: defaultAddr.id,
+            name: defaultAddr.landmark || defaultAddr.completeAddress?.split(',')[0] || defaultAddr.type || 'Home',
+            lat: defaultAddr.lat,
+            lng: defaultAddr.lng
+          };
+          setUserLocation(loc);
+          localStorage.setItem('userLocation', JSON.stringify(loc));
+          setRealLocation({ lat: defaultAddr.lat, lng: defaultAddr.lng });
+        }
       }
     };
     syncAddresses();
-  }, [userId, hasMigratedLocalAddresses]);
+  }, [userId, hasMigratedLocalAddresses, userLocation]);
 
   // Keep local storage in sync for offline/guest
   useEffect(() => {
@@ -334,7 +350,8 @@ export const AppProvider = ({ children }) => {
 
   // New Address Methods
   const addSavedAddress = async (newAddress) => {
-    const isFirst = savedAddresses.length === 0;
+    const hasDefault = savedAddresses.some(a => a.isDefault);
+    const isFirst = savedAddresses.length === 0 || !hasDefault;
     if (userId) {
       const { data, error } = await api.createAddress(userId, { ...newAddress, isDefault: isFirst });
       if (data) {
@@ -377,10 +394,30 @@ export const AppProvider = ({ children }) => {
   };
 
   const removeSavedAddress = async (addressId) => {
+    const targetAddress = savedAddresses.find(a => a.id === addressId);
+    const wasDefault = targetAddress?.isDefault;
+    
     if (userId) {
       await api.deleteAddress(addressId);
     }
-    setSavedAddressesState(prev => prev.filter(a => a.id !== addressId));
+    
+    const remaining = savedAddresses.filter(a => a.id !== addressId);
+    if (wasDefault && remaining.length > 0) {
+      // Set the first remaining address as default
+      const newDefault = remaining[0];
+      if (userId) {
+        await api.updateAddress(newDefault.id, { isDefault: true, lastUsedAt: new Date().toISOString() });
+        const { data } = await api.fetchAddresses(userId);
+        if (data) setSavedAddressesState(data);
+      } else {
+        setSavedAddressesState(
+          remaining.map((a, i) => i === 0 ? { ...a, isDefault: true, lastUsedAt: new Date().toISOString() } : a)
+          .sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || new Date(b.lastUsedAt || 0) - new Date(a.lastUsedAt || 0))
+        );
+      }
+    } else {
+      setSavedAddressesState(remaining);
+    }
   };
 
   const setDefaultAddress = async (addressId) => {

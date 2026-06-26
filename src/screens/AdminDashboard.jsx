@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { AppContext } from '../store/AppContext';
 import { api } from '../services/api';
+import { reverseGeocode } from '../utils/geocoding';
 import { 
   Shield, Users, Briefcase, TrendingUp, Activity, 
   AlertTriangle, CheckCircle, Clock, ArrowLeft,
@@ -114,10 +115,11 @@ const AdminDashboard = () => {
   const [demandHotspots, setDemandHotspots] = useState([]);
   const [coverageGaps, setCoverageGaps] = useState([]);
   const [failedExperiences, setFailedExperiences] = useState([]);
+  const [cityLeaderboard, setCityLeaderboard] = useState([]);
 
   const fetchAllData = useCallback(async () => {
     try {
-      const [statsRes, countsRes, timeseriesRes, eventsRes, reportsRes, hotspotsRes, gapsRes, failedRes] = await Promise.all([
+      const [statsRes, countsRes, timeseriesRes, eventsRes, reportsRes, hotspotsRes, gapsRes, failedRes, leaderboardRes] = await Promise.all([
         api.getDashboardStats(),
         api.getEventCounts(),
         api.getDailyTimeseries(null, activeTimeRange),
@@ -125,7 +127,8 @@ const AdminDashboard = () => {
         api.getHelpReports(),
         api.getDemandHotspots(),
         api.getCoverageGaps(),
-        api.getFailedFirstExperiences()
+        api.getFailedFirstExperiences(),
+        api.getCityLeaderboard()
       ]);
 
       if (statsRes.data) setStats(statsRes.data);
@@ -136,10 +139,62 @@ const AdminDashboard = () => {
       if (hotspotsRes.data) setDemandHotspots(hotspotsRes.data);
       if (gapsRes.data) setCoverageGaps(gapsRes.data);
       if (failedRes.data) setFailedExperiences(failedRes.data);
+      if (leaderboardRes.data) setCityLeaderboard(leaderboardRes.data);
     } catch (e) {
       console.error('Dashboard data fetch error:', e);
     }
   }, [activeTimeRange]);
+
+  // Self-heal/populate city column for legacy data
+  const healCities = useCallback(async () => {
+    try {
+      const { data: unresolved } = await api.getUnresolvedCityLocations();
+      if (unresolved && unresolved.length > 0) {
+        let hasUpdates = false;
+        for (const loc of unresolved) {
+          try {
+            const geo = await reverseGeocode(loc.lat, loc.lng);
+            const locality = geo?.address?.find(c => c.types?.includes('locality'));
+            let city = locality?.long_name || locality?.short_name;
+            if (!city) {
+              const adminArea2 = geo?.address?.find(c => c.types?.includes('administrative_area_level_2'));
+              city = adminArea2?.long_name || adminArea2?.short_name;
+            }
+            if (!city && geo?.displayName) {
+              const parts = geo.displayName.split(',').map(p => p.trim());
+              if (parts.length >= 3) {
+                const filtered = parts.filter(p => {
+                  const lower = p.toLowerCase();
+                  return lower !== 'india' && !/^\d{6}$/.test(p) && !lower.includes('telangana') && !lower.includes('punjab') && !lower.includes('andhra pradesh');
+                });
+                city = filtered.length > 0 ? filtered[filtered.length - 1] : parts[1] || parts[0];
+              } else {
+                city = parts[1] || parts[0];
+              }
+            }
+            
+            if (city) {
+              if (loc.type === 'tasker') {
+                await api.updateProfile(loc.id, { city });
+              } else if (loc.type === 'address') {
+                await api.updateAddress(loc.id, { city });
+              }
+              hasUpdates = true;
+            }
+          } catch (err) {
+            console.error("Self-heal failed for id " + loc.id, err);
+          }
+        }
+        if (hasUpdates) {
+          // Re-fetch leaderboard to reflect healed cities
+          const leaderboardRes = await api.getCityLeaderboard();
+          if (leaderboardRes.data) setCityLeaderboard(leaderboardRes.data);
+        }
+      }
+    } catch (e) {
+      console.error("Error healing cities:", e);
+    }
+  }, []);
 
   // Verify admin on mount — double-check via DB even if isAdmin is true in state
   useEffect(() => {
@@ -160,13 +215,14 @@ const AdminDashboard = () => {
         }
         setAuthorized(true);
         await fetchAllData();
+        healCities();
       } catch (e) {
         setError('Failed to verify admin access.');
       }
       setLoading(false);
     };
     verify();
-  }, [userId, fetchAllData]);
+  }, [userId, fetchAllData, healCities]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -286,17 +342,96 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-2 gap-3">
           <StatCard 
             icon={Users} 
-            label="Total Users" 
-            value={stats?.total_users ?? '—'} 
-            sub={`${stats?.users_today ?? 0} today`}
+            label="Total Taskers" 
+            value={stats?.total_taskers ?? '—'} 
+            sub={`${stats?.users_today ?? 0} active today`}
             color="blue"
           />
+          <StatCard 
+            icon={Users} 
+            label="Total Hirers" 
+            value={stats?.total_hirers ?? '—'} 
+            sub="Joined & Active"
+            color="purple"
+          />
+        </div>
+
+        {/* Top Cities Leaderboard */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-3.5">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-orange-500" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-dark">Top Cities Leaderboard</h3>
+            </div>
+            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+              India
+            </span>
+          </div>
+
+          {cityLeaderboard.length === 0 ? (
+            <p className="text-xs text-gray-400 font-semibold py-4 text-center">No city data available yet</p>
+          ) : (
+            <div className="space-y-3.5">
+              {cityLeaderboard.map((item, index) => {
+                const maxVal = cityLeaderboard[0]?.total_count || 1;
+                const percentage = ((item.total_count / maxVal) * 100).toFixed(0);
+                
+                // Rank styling
+                const ranks = [
+                  { badge: 'bg-amber-100 text-amber-700 border-amber-200', label: '🏆' },
+                  { badge: 'bg-slate-100 text-slate-700 border-slate-200', label: '🥈' },
+                  { badge: 'bg-orange-100 text-orange-700 border-orange-200', label: '🥉' }
+                ];
+                const defaultRank = { badge: 'bg-gray-50 text-gray-500 border-gray-100', label: `#${index + 1}` };
+                const rankInfo = ranks[index] || defaultRank;
+
+                return (
+                  <div key={item.city_name} className="space-y-1.5 group">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-6 h-6 rounded-lg border flex items-center justify-center text-[10px] font-black shrink-0 ${rankInfo.badge}`}>
+                          {rankInfo.label}
+                        </span>
+                        <span className="text-xs font-bold text-dark truncate group-hover:text-primary transition-colors">
+                          {item.city_name}
+                        </span>
+                      </div>
+                      <div className="text-[11px] font-extrabold text-gray-500 text-right shrink-0">
+                        {item.total_count} <span className="text-[9px] text-gray-400 font-bold">({item.hirer_count}H, {item.tasker_count}T)</span>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-gray-50 rounded-full overflow-hidden relative border border-gray-100/50">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          index === 0 ? 'bg-amber-500' :
+                          index === 1 ? 'bg-slate-400' :
+                          index === 2 ? 'bg-orange-400' : 'bg-primary'
+                        }`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Job Pipeline Metrics */}
+        <div className="grid grid-cols-2 gap-3">
           <StatCard 
             icon={Briefcase} 
             label="Total Jobs" 
             value={stats?.total_jobs ?? '—'} 
             sub={`${stats?.jobs_today ?? 0} today`}
             color="orange"
+          />
+          <StatCard 
+            icon={Zap} 
+            label="Active Jobs" 
+            value={stats?.active_jobs ?? '—'} 
+            sub="open & accepted"
+            color="blue"
           />
         </div>
 
@@ -316,6 +451,71 @@ const AdminDashboard = () => {
             sub="completed / filled"
             color="emerald"
           />
+        </div>
+
+        {/* Platform Health Q&A */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs space-y-3.5">
+          <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Platform Health Q&A</h3>
+          
+          <div className="space-y-3">
+            {/* Q1 */}
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                <Users className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-dark">Are people showing up?</p>
+                <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
+                  <span className="text-blue-600 font-bold">{stats?.signups_today ?? 0}</span> new signups today • <span className="text-blue-600 font-bold">{stats?.logins_today ?? 0}</span> logins today
+                </p>
+              </div>
+            </div>
+
+            {/* Q2 */}
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 mt-0.5">
+                <Briefcase className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-dark">Are jobs getting posted?</p>
+                <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
+                  <span className="text-orange-600 font-bold">{stats?.jobs_today ?? 0}</span> new tasks created today
+                </p>
+              </div>
+            </div>
+
+            {/* Q3 */}
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-dark">Are jobs getting done?</p>
+                <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
+                  <span className="text-green-600 font-bold">{stats?.acceptances_today ?? 0}</span> tasks accepted today • <span className="text-emerald-600 font-bold">{stats?.completions_today ?? 0}</span> completed today
+                </p>
+              </div>
+            </div>
+
+            {/* Q4 */}
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0 mt-0.5">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-dark">Is anything broken?</p>
+                <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
+                  <span className={stats?.cancellations_today > 0 ? "text-red-500 font-bold" : "text-gray-500 font-semibold"}>
+                    {stats?.cancellations_today ?? 0} cancellations today
+                  </span>
+                  {' '}•{' '}
+                  <span className={stats?.reports_today > 0 ? "text-red-500 font-bold" : "text-gray-500 font-semibold"}>
+                    {stats?.reports_today ?? 0} reports/help tickets submitted today
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Job Status Breakdown */}
@@ -371,38 +571,40 @@ const AdminDashboard = () => {
         </div>
 
         {/* Event Breakdown */}
-        {eventCounts.length > 0 && (
-          <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
-            <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-3">Event Breakdown (30d)</h3>
-            <div className="space-y-2">
-              {eventCounts.map(ec => {
-                const Icon = EVENT_ICONS[ec.event_type] || Activity;
-                const colorClass = EVENT_COLORS[ec.event_type] || 'text-gray-500 bg-gray-50';
-                const maxCount = Math.max(...eventCounts.map(e => parseInt(e.event_count)), 1);
-                const barWidth = (parseInt(ec.event_count) / maxCount * 100);
-                return (
-                  <div key={ec.event_type} className="flex items-center gap-3">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}>
-                      <Icon className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-dark truncate">{ec.event_type.replace(/_/g, ' ')}</span>
-                        <span className="text-xs font-black text-gray-600 ml-2">{ec.event_count}</span>
+        {eventCounts.length > 0 && (() => {
+          const maxCount = Math.max(...eventCounts.map(e => parseInt(e.event_count)), 1);
+          return (
+            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
+              <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-3">Event Breakdown (30d)</h3>
+              <div className="space-y-2">
+                {eventCounts.map(ec => {
+                  const Icon = EVENT_ICONS[ec.event_type] || Activity;
+                  const colorClass = EVENT_COLORS[ec.event_type] || 'text-gray-500 bg-gray-50';
+                  const barWidth = (parseInt(ec.event_count) / maxCount * 100);
+                  return (
+                    <div key={ec.event_type} className="flex items-center gap-3">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}>
+                        <Icon className="w-3.5 h-3.5" />
                       </div>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-orange-400 rounded-full transition-all duration-500"
-                          style={{ width: `${barWidth}%` }}
-                        />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-dark truncate">{ec.event_type.replace(/_/g, ' ')}</span>
+                          <span className="text-xs font-black text-gray-600 ml-2">{ec.event_count}</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-orange-400 rounded-full transition-all duration-500"
+                            style={{ width: `${barWidth}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* V2 Metric: Demand Hotspots */}
         <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
@@ -492,7 +694,9 @@ const AdminDashboard = () => {
                     </div>
                     <div>
                       <div className="text-xs font-bold text-dark">{failed.reason.replace(/_/g, ' ')}</div>
-                      <div className="text-[10px] font-semibold text-gray-500">Role: <span className="uppercase">{failed.role}</span> | {timeAgo(failed.date)}</div>
+                      <div className="text-[10px] font-semibold text-gray-500">
+                        {failed.userName || 'Unknown User'} {failed.userPhone ? `(${failed.userPhone})` : ''} | Role: <span className="uppercase">{failed.role}</span> | {timeAgo(failed.date)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -650,6 +854,7 @@ const StatCard = ({ icon: Icon, label, value, sub, color }) => {
     orange: 'text-orange-600 bg-orange-50',
     green: 'text-green-600 bg-green-50',
     emerald: 'text-emerald-600 bg-emerald-50',
+    purple: 'text-purple-600 bg-purple-50',
   };
   const colors = colorMap[color] || colorMap.blue;
   
