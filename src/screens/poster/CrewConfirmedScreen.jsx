@@ -28,6 +28,8 @@ const CrewConfirmedScreen = () => {
     userProfile
   } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
+  const skill = SKILLS.find(s => s.id === currentPostedJob?.skillId || s.id === currentPostedJob?.skill_id);
+  const isRemote = skill?.type === 'remote';
   
   const [localCrewTaskers, setLocalCrewTaskers] = useState(crewTaskers || []);
   const [isLoadingCrew, setIsLoadingCrew] = useState(false);
@@ -232,26 +234,28 @@ const CrewConfirmedScreen = () => {
       <div className="flex-1 space-y-4.5 my-4 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left">
         
         {/* Real-time Tracking Map */}
-        <div className="space-y-1.5">
-          <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
-            <span>Live Location</span>
-            <span className="text-primary animate-pulse uppercase tracking-wider">
-              Active
-            </span>
-          </div>
+        {!isRemote && (
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
+              <span>Live Location</span>
+              <span className="text-primary animate-pulse uppercase tracking-wider">
+                Active
+              </span>
+            </div>
 
-          <MapView 
-            jobLocation={{ lat: currentPostedJob?.lat || 31.2560, lng: currentPostedJob?.lng || 75.7051 }}
-            taskers={localCrewTaskers.map(tasker => ({
-              id: tasker.id,
-              bird: tasker.bird || 'falcon',
-              location: crewLocations[tasker.id] || null
-            })).filter(t => t.location !== null)}
-            taskerLocation={trackingTaskerPos}
-            taskerBirdName={localCrewTaskers[0]?.bird || 'falcon'}
-            height="180px"
-          />
-        </div>
+            <MapView 
+              jobLocation={{ lat: currentPostedJob?.lat || 31.2560, lng: currentPostedJob?.lng || 75.7051 }}
+              taskers={localCrewTaskers.map(tasker => ({
+                id: tasker.id,
+                bird: tasker.bird || 'falcon',
+                location: crewLocations[tasker.id] || null
+              })).filter(t => t.location !== null)}
+              taskerLocation={trackingTaskerPos}
+              taskerBirdName={localCrewTaskers[0]?.bird || 'falcon'}
+              height="180px"
+            />
+          </div>
+        )}
 
         {/* Crew List Card */}
         {isLoadingCrew && localCrewTaskers.length === 0 && (

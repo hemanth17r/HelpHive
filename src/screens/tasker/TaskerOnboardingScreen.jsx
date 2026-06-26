@@ -260,20 +260,52 @@ const TaskerOnboardingScreen = () => {
               Don't worry, you can always change these services later!
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 overflow-y-auto pr-1">
-              {SKILLS.map((skill) => {
-                const isSelected = selectedSkills.includes(skill.id);
-                return (
-                  <IconLabel
-                    key={skill.id}
-                    icon={skill.icon}
-                    label={skill.label}
-                    tooltipText={`Toggle skill: ${skill.label}`}
-                    selected={isSelected}
-                    onClick={() => handleToggleSkill(skill.id)}
-                  />
-                );
-              })}
+            <div className="flex-1 space-y-6 overflow-y-auto pr-1">
+              {/* On-site Section */}
+              <div className="space-y-2.5">
+                <span className="text-[11px] font-black uppercase tracking-wider text-gray-400 block px-1">
+                  📍 On-site & Physical Services
+                </span>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {SKILLS.filter(s => s.type === 'physical').map((skill) => {
+                    const isSelected = selectedSkills.includes(skill.id);
+                    return (
+                      <IconLabel
+                        key={skill.id}
+                        icon={skill.icon}
+                        label={skill.label}
+                        isNew={skill.isNew}
+                        tooltipText={`Toggle skill: ${skill.label}`}
+                        selected={isSelected}
+                        onClick={() => handleToggleSkill(skill.id)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Online Section */}
+              <div className="space-y-2.5">
+                <span className="text-[11px] font-black uppercase tracking-wider text-gray-400 block px-1">
+                  💻 Online & Remote Services
+                </span>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {SKILLS.filter(s => s.type === 'remote').map((skill) => {
+                    const isSelected = selectedSkills.includes(skill.id);
+                    return (
+                      <IconLabel
+                        key={skill.id}
+                        icon={skill.icon}
+                        label={skill.label}
+                        isNew={skill.isNew}
+                        tooltipText={`Toggle skill: ${skill.label}`}
+                        selected={isSelected}
+                        onClick={() => handleToggleSkill(skill.id)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </>
         )}

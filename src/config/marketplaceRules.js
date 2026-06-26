@@ -21,7 +21,12 @@ export const MARKETPLACE_RULES = {
     personal_assistance: 'local',
     events: 'flexible',
     creative: 'flexible',
-    others: 'local'
+    others_physical: 'local',
+    video_editing: 'flexible',
+    graphic_design: 'flexible',
+    writing_translation: 'flexible',
+    tech_support: 'flexible',
+    others_remote: 'flexible'
   },
   
   // Base waitlist activation threshold (if supply is strictly < this, activate waitlist)

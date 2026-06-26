@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useRef, useContext, useCallback } from 'react';
 import { SERVICE_AREAS } from '../config/serviceAreas';
 import { api } from '../services/api';
+import { SKILLS } from '../config/constants';
 import { trackEvent, EVENTS } from '../utils/eventTracker';
 import { ToastContext } from './ToastContext';
 import { parseEWKBPoint, getCurrentLocation } from '../utils/location';
@@ -1054,10 +1055,14 @@ export const AppProvider = ({ children }) => {
       };
     });
 
-    // If active role is tasker, filter jobs by tasker's coverageRadius (bypass if it's a pending priority offer)
+    // If active role is tasker, filter jobs by tasker's coverageRadius (bypass if it's a pending priority offer or a remote task)
     if (role === 'tasker' && userProfile?.coverageRadius) {
       const radiusKm = userProfile.coverageRadius / 1000;
-      enrichedJobs = enrichedJobs.filter(j => j.isPendingOffer || j.distanceVal <= radiusKm);
+      enrichedJobs = enrichedJobs.filter(j => {
+        const skill = SKILLS.find(s => s.id === j.skillId || s.id === j.skill_id);
+        const isRemote = skill?.type === 'remote';
+        return j.isPendingOffer || isRemote || j.distanceVal <= radiusKm;
+      });
     }
 
     if (referenceCenter) {
@@ -1251,7 +1256,8 @@ export const AppProvider = ({ children }) => {
       amount: newJobData.amount,
       locationStr: locationStr,
       primaryAddressId: newJobData.address?.id || null,
-      otp: otp
+      otp: otp,
+      scheduledFor: expiresAt
     });
 
     if (newJobData.address?.id) {

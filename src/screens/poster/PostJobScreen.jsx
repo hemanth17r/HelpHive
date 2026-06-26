@@ -424,34 +424,99 @@ const PostJobScreen = () => {
           <div className="flex-1 space-y-8 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left overflow-y-auto pb-4 pr-1">
             
             {/* Category Section */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-black text-dark tracking-tight mb-1">
                   What kind of help do you need?
                 </h2>
               </div>
-              {/* Responsive 3x3 category grid */}
-              <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
-                {SKILLS.map((skill) => {
-                  const isSelected = selectedSkillId === skill.id;
-                  const Icon = skill.icon;
-                  return (
-                    <button
-                      key={skill.id}
-                      onClick={() => setSelectedSkillId(skill.id)}
-                      className={`flex flex-col items-center justify-center w-full aspect-square rounded-2xl transition-all cursor-pointer border ${
-                        isSelected 
-                          ? 'bg-primary border-primary text-white shadow-md shadow-primary/20 scale-[1.02]' 
-                          : 'bg-gray-50 border-border text-gray-500 hover:bg-orange-50 hover:border-primary/30 hover:text-primary'
-                      }`}
-                    >
-                      <Icon className="w-7 h-7 mb-1" />
-                      <span className={`text-[10px] font-black truncate w-full px-1 text-center ${isSelected ? 'text-white' : 'text-dark'}`}>
-                        {skill.shortLabel || skill.label.split(' ')[0]}
-                      </span>
-                    </button>
-                  );
-                })}
+
+              {/* Physical & On-site Section */}
+              <div className="space-y-2.5">
+                <div className="flex items-center space-x-1.5 px-1">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                    📍 On-site & Physical Services
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
+                  {SKILLS.filter(s => s.type === 'physical').map((skill) => {
+                    const isSelected = selectedSkillId === skill.id;
+                    const Icon = skill.icon;
+                    return (
+                      <button
+                        key={skill.id}
+                        onClick={() => setSelectedSkillId(skill.id)}
+                        className={`relative flex flex-col items-center justify-center w-full aspect-square rounded-2xl transition-all cursor-pointer border ${
+                          isSelected 
+                            ? 'bg-primary border-primary text-white shadow-md shadow-primary/20 scale-[1.02]' 
+                            : 'bg-gray-50 border-border text-gray-500 hover:bg-orange-50 hover:border-primary/30 hover:text-primary'
+                        }`}
+                      >
+                        {skill.isNew && (
+                          <span className={`absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-xs border transition-all duration-300 flex items-center gap-1 ${
+                            isSelected 
+                              ? 'bg-white text-primary border-white scale-105' 
+                              : 'bg-primary text-white border-primary'
+                          }`}>
+                            <span className="relative flex h-1.5 w-1.5 shrink-0">
+                              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isSelected ? 'bg-primary' : 'bg-white'}`}></span>
+                              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isSelected ? 'bg-primary' : 'bg-white'}`}></span>
+                            </span>
+                            NEW
+                          </span>
+                        )}
+                        <Icon className="w-7 h-7 mb-1 shrink-0" />
+                        <span className={`text-[10px] font-black truncate w-full px-1 text-center ${isSelected ? 'text-white' : 'text-dark'}`}>
+                          {skill.shortLabel || skill.label.split(' ')[0]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Online & Remote Section */}
+              <div className="space-y-2.5">
+                <div className="flex items-center space-x-1.5 px-1">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                    💻 Online & Remote Services
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
+                  {SKILLS.filter(s => s.type === 'remote').map((skill) => {
+                    const isSelected = selectedSkillId === skill.id;
+                    const Icon = skill.icon;
+                    return (
+                      <button
+                        key={skill.id}
+                        onClick={() => setSelectedSkillId(skill.id)}
+                        className={`relative flex flex-col items-center justify-center w-full aspect-square rounded-2xl transition-all cursor-pointer border ${
+                          isSelected 
+                            ? 'bg-primary border-primary text-white shadow-md shadow-primary/20 scale-[1.02]' 
+                            : 'bg-gray-50 border-border text-gray-500 hover:bg-orange-50 hover:border-primary/30 hover:text-primary'
+                        }`}
+                      >
+                        {skill.isNew && (
+                          <span className={`absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-xs border transition-all duration-300 flex items-center gap-1 ${
+                            isSelected 
+                              ? 'bg-white text-primary border-white scale-105' 
+                              : 'bg-primary text-white border-primary'
+                          }`}>
+                            <span className="relative flex h-1.5 w-1.5 shrink-0">
+                              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isSelected ? 'bg-primary' : 'bg-white'}`}></span>
+                              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isSelected ? 'bg-primary' : 'bg-white'}`}></span>
+                            </span>
+                            NEW
+                          </span>
+                        )}
+                        <Icon className="w-7 h-7 mb-1 shrink-0" />
+                        <span className={`text-[10px] font-black truncate w-full px-1 text-center ${isSelected ? 'text-white' : 'text-dark'}`}>
+                          {skill.shortLabel || skill.label.split(' ')[0]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

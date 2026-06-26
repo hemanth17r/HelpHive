@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import { parseEWKBPoint } from '../utils/location';
+import { reverseGeocode } from '../utils/geocoding';
 
 export const api = {
   supabase,
@@ -235,7 +236,8 @@ export const api = {
       primary_address_id: jobData.primaryAddressId || null,
       otp: jobData.otp,
       v2_status: 'searching',
-      status: 'open'
+      status: 'open',
+      scheduled_for: jobData.scheduledFor || null
     }).select().single();
     
     if (data) {
@@ -719,11 +721,47 @@ export const api = {
   // --- V2 Marketplace Metrics ---
   getDemandHotspots: async () => {
     const { data, error } = await supabase.rpc('get_demand_hotspots');
+    if (data && data.length > 0) {
+      const mapped = await Promise.all(data.map(async (item) => {
+        try {
+          const geo = await reverseGeocode(item.lat, item.lng);
+          return {
+            ...item,
+            locationName: geo?.displayName || `Location at ${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`
+          };
+        } catch (err) {
+          console.error("Error reverse geocoding demand hotspot:", err);
+          return {
+            ...item,
+            locationName: `Location at ${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`
+          };
+        }
+      }));
+      return { data: mapped, error };
+    }
     return { data: data || [], error };
   },
 
   getCoverageGaps: async () => {
     const { data, error } = await supabase.rpc('get_coverage_gaps');
+    if (data && data.length > 0) {
+      const mapped = await Promise.all(data.map(async (item) => {
+        try {
+          const geo = await reverseGeocode(item.lat, item.lng);
+          return {
+            ...item,
+            locationName: geo?.displayName || `Location at ${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`
+          };
+        } catch (err) {
+          console.error("Error reverse geocoding coverage gap:", err);
+          return {
+            ...item,
+            locationName: `Location at ${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`
+          };
+        }
+      }));
+      return { data: mapped, error };
+    }
     return { data: data || [], error };
   },
 

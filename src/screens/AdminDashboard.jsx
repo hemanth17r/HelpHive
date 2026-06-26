@@ -421,7 +421,7 @@ const AdminDashboard = () => {
                 return (
                   <div key={hotspot.id} className="border border-orange-100 rounded-xl p-3 bg-orange-50/30">
                     <div className="flex justify-between items-start mb-1">
-                      <h4 className="text-sm font-black text-dark">{hotspot.label}</h4>
+                      <h4 className="text-sm font-black text-dark">{hotspot.locationName || hotspot.label}</h4>
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
                         hotspot.urgency === 'high' ? 'bg-red-100 text-red-600' : 
                         hotspot.urgency === 'medium' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
@@ -429,7 +429,7 @@ const AdminDashboard = () => {
                         {hotspot.urgency.toUpperCase()}
                       </span>
                     </div>
-                    <p className="text-[10px] font-bold text-gray-500 mb-2">Category: {skill ? skill.label : hotspot.categoryId}</p>
+                    <p className="text-[10px] font-bold text-gray-500 mb-2">{skill ? skill.label : hotspot.categoryId}</p>
                     <div className="flex justify-between text-xs">
                       <span className="font-semibold"><span className="font-black text-dark">{hotspot.waitlistCount}</span> Waitlisted</span>
                       <span className="font-semibold text-red-500"><span className="font-black text-red-600">{hotspot.supplyDeficit}</span> Missing Taskers</span>
@@ -458,7 +458,7 @@ const AdminDashboard = () => {
                 return (
                   <div key={gap.id} className="border border-red-100 rounded-xl p-3 bg-red-50/30 flex justify-between items-center">
                     <div>
-                      <h4 className="text-sm font-black text-dark">{gap.label}</h4>
+                      <h4 className="text-sm font-black text-dark">{gap.locationName || gap.label}</h4>
                       <p className="text-[10px] font-bold text-gray-500">{skill ? skill.label : gap.categoryId}</p>
                     </div>
                     <div className="text-right">
