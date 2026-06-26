@@ -16,11 +16,10 @@ const JobHistoryScreen = () => {
 
   const activeJobs = userJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft' && j.status !== 'cancelled');
   const completedJobs = userJobs.filter(j => j.status === 'completed');
-
-
+  const expiredJobs = userJobs.filter(j => j.status === 'expired');
 
   const displayActive = activeJobs;
-  const displayCompleted = completedJobs;
+  const displayCompleted = [...completedJobs, ...expiredJobs];
 
   const activeRef = useRef(null);
   const completedRef = useRef(null);
@@ -44,17 +43,22 @@ const JobHistoryScreen = () => {
   }, [jobHistoryTab]);
 
   const renderJobCard = (job, type) => {
-    const skill = SKILLS.find(s => s.id === job.skillId) || SKILLS[0];
+    const skill = SKILLS.find(s => s.id === job.skillId || s.id === job.skill_id) || SKILLS[0];
     const Icon = skill.icon;
     
     let borderColor = 'border-gray-200';
     let iconBg = 'bg-gray-50 text-gray-500';
     let statusPill = null;
+    const isExpired = job.status === 'expired';
 
     if (type === 'active') {
       borderColor = 'border-blue-100';
       iconBg = 'bg-blue-50 text-blue-500';
       statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-blue-500 bg-blue-50 border-blue-200">Active</span>;
+    } else if (isExpired) {
+      borderColor = 'border-red-100';
+      iconBg = 'bg-red-50 text-red-500';
+      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-red-500 bg-red-50 border-red-200">Expired</span>;
     } else if (type === 'completed') {
       borderColor = 'border-green-100';
       iconBg = 'bg-green-50 text-green-500';
@@ -65,6 +69,10 @@ const JobHistoryScreen = () => {
       <div 
         key={job.id} 
         onClick={() => {
+          if (isExpired) {
+            // Expired jobs do not open receipt summary
+            return;
+          }
           if (type === 'completed') {
             setCurrentPostedJob(job);
             pushScreen('job_receipt');
@@ -82,9 +90,10 @@ const JobHistoryScreen = () => {
             }
           }
         }}
-        className={`bg-white border ${borderColor} rounded-2xl p-4 shadow-sm relative overflow-hidden ${(type === 'completed' || type === 'active') ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+        className={`bg-white border ${borderColor} rounded-2xl p-4 shadow-sm relative overflow-hidden ${(!isExpired && (type === 'completed' || type === 'active')) ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
       >
-        {type === 'completed' && <div className="absolute top-0 left-0 w-1 h-full bg-green-400"></div>}
+        {!isExpired && type === 'completed' && <div className="absolute top-0 left-0 w-1 h-full bg-green-400"></div>}
+        {isExpired && <div className="absolute top-0 left-0 w-1 h-full bg-red-400"></div>}
         {type === 'active' && <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>}
         
         <div className="flex items-start justify-between mb-3">

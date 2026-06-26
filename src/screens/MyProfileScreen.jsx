@@ -9,7 +9,6 @@ import IconLabel from '../components/IconLabel';
 import { ToastContext } from '../store/ToastContext';
 import LoginModal from '../components/LoginModal';
 import { useProfileCompletion } from '../hooks/useProfileCompletion';
-import PullToRefresh from '../components/PullToRefresh';
 
 const WhatsAppIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -27,7 +26,7 @@ const BADGE_LABELS = {
 };
 
 const MyProfileScreen = () => {
-  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs, isAdmin, refreshProfile } = useContext(AppContext);
+  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs, isAdmin, refreshProfile, screenStack } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const { completionPercentage } = useProfileCompletion();
 
@@ -197,8 +196,7 @@ Issue: `;
   const canSave = editedName.trim().length > 0 && isPhoneValidLength;
 
   return (
-    <PullToRefresh onRefresh={refreshProfile}>
-      <div className="flex-1 flex flex-col bg-gray-50 min-h-full pb-20 relative">
+    <div className="flex-1 flex flex-col bg-gray-50 h-full w-full overflow-y-auto no-scrollbar relative pb-20">
       {/* Smooth Gradient Background */}
       <div className="absolute top-0 left-0 right-0 h-72 bg-gradient-to-b from-orange-400 via-orange-300/50 to-gray-50 pointer-events-none z-0"></div>
 
@@ -207,7 +205,11 @@ Issue: `;
         {/* Back Button */}
         <button
           onClick={() => {
-            if (role === 'tasker') {
+            // If the profile screen was pushed onto the stack (e.g. navigated from
+            // notifications), use popScreen so the back button returns to the
+            // previous screen. Only switch to the home tab when we're already at
+            // the root (stack length ≤ 1), which is the normal tab-based flow.
+            if (role === 'tasker' && screenStack.length <= 1) {
               setActiveTab('home');
             } else {
               popScreen();
@@ -1078,25 +1080,62 @@ Issue: `;
               <p className="text-xs font-semibold text-gray-500 mb-4">
                 Select the services you want to offer.
               </p>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3 pb-20">
-                {SKILLS.map((skill) => {
-                  const isSelected = editedSkills.includes(skill.id);
-                  return (
-                    <IconLabel
-                      key={skill.id}
-                      icon={skill.icon}
-                      label={skill.label}
-                      selected={isSelected}
-                      onClick={() => {
-                        if (editedSkills.includes(skill.id)) {
-                          setEditedSkills(editedSkills.filter(id => id !== skill.id));
-                        } else {
-                          setEditedSkills([...editedSkills, skill.id]);
-                        }
-                      }}
-                    />
-                  );
-                })}
+              <div className="space-y-6 pb-20">
+                {/* On-site Section */}
+                <div className="space-y-2.5">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-400 block px-1">
+                    📍 On-site & Physical Services
+                  </span>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3">
+                    {SKILLS.filter(s => s.type === 'physical').map((skill) => {
+                      const isSelected = editedSkills.includes(skill.id);
+                      return (
+                        <IconLabel
+                          key={skill.id}
+                          icon={skill.icon}
+                          label={skill.label}
+                          isNew={skill.isNew}
+                          selected={isSelected}
+                          onClick={() => {
+                            if (editedSkills.includes(skill.id)) {
+                              setEditedSkills(editedSkills.filter(id => id !== skill.id));
+                            } else {
+                              setEditedSkills([...editedSkills, skill.id]);
+                            }
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Online Section */}
+                <div className="space-y-2.5">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-400 block px-1">
+                    💻 Online & Remote Services
+                  </span>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3">
+                    {SKILLS.filter(s => s.type === 'remote').map((skill) => {
+                      const isSelected = editedSkills.includes(skill.id);
+                      return (
+                        <IconLabel
+                          key={skill.id}
+                          icon={skill.icon}
+                          label={skill.label}
+                          isNew={skill.isNew}
+                          selected={isSelected}
+                          onClick={() => {
+                            if (editedSkills.includes(skill.id)) {
+                              setEditedSkills(editedSkills.filter(id => id !== skill.id));
+                            } else {
+                              setEditedSkills([...editedSkills, skill.id]);
+                            }
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -1136,8 +1175,7 @@ Issue: `;
           </div>
         </div>
       )}
-      </div>
-    </PullToRefresh>
+    </div>
   );
 };
 

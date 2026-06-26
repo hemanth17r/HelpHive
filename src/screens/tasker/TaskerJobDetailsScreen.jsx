@@ -84,8 +84,9 @@ const TaskerJobDetailsScreen = () => {
 
   if (!acceptedJob) return null;
 
-  const skill = SKILLS.find(s => s.id === acceptedJob.skillId);
+  const skill = SKILLS.find(s => s.id === acceptedJob.skillId || s.id === acceptedJob.skill_id);
   const Icon = skill ? skill.icon : SKILLS[SKILLS.length - 1].icon;
+  const isRemote = skill?.type === 'remote';
 
   const handleVerifyOtp = async () => {
     if (!otp || otp.length !== 4) {
@@ -422,21 +423,23 @@ const TaskerJobDetailsScreen = () => {
         </div>
 
         {/* Live Map with moving marker */}
-        <div className="space-y-1.5">
-          <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
-            <span>Live Location</span>
-            <span className="text-primary animate-pulse font-extrabold uppercase">
-              Active
-            </span>
+        {!isRemote && (
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
+              <span>Live Location</span>
+              <span className="text-primary animate-pulse font-extrabold uppercase">
+                Active
+              </span>
+            </div>
+            
+            <MapView 
+              jobLocation={{ lat: acceptedJob.lat || 31.2560, lng: acceptedJob.lng || 75.7051 }}
+              taskerLocation={trackingTaskerPos}
+              taskerBirdName={userProfile?.bird || 'falcon'}
+              height="180px"
+            />
           </div>
-          
-          <MapView 
-            jobLocation={{ lat: acceptedJob.lat || 31.2560, lng: acceptedJob.lng || 75.7051 }}
-            taskerLocation={trackingTaskerPos}
-            taskerBirdName={userProfile?.bird || 'falcon'}
-            height="180px"
-          />
-        </div>
+        )}
 
         {/* Verification System / Start Task */}
         <div className="bg-gray-50 border border-border rounded-2xl p-4 space-y-3">

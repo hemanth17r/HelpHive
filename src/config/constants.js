@@ -4,17 +4,23 @@ import {
   Truck,
   Home,
   Users,
-  Laptop,
   Camera,
-  HelpCircle
+  HelpCircle,
+  Video,
+  Palette,
+  FileText,
+  Globe,
+  Wifi
 } from 'lucide-react';
 
 const CONFIG_CATEGORIES = [
+  // --- On-site / Physical Services ---
   {
     id: 'errands',
     label: 'Errands & Deliveries',
     shortLabel: 'Errands',
     icon: Package,
+    type: 'physical',
     description: 'Pickups, deliveries, and errands',
     matchingBehavior: 'location_critical',
     examples: [
@@ -29,6 +35,7 @@ const CONFIG_CATEGORIES = [
     label: 'Personal Assistance',
     shortLabel: 'Assist',
     icon: HeartHandshake,
+    type: 'physical',
     description: 'Queue standing, accompanying, and personal help',
     matchingBehavior: 'location_critical',
     examples: [
@@ -43,6 +50,7 @@ const CONFIG_CATEGORIES = [
     label: 'Moving & Heavy Lifting',
     shortLabel: 'Moving',
     icon: Truck,
+    type: 'physical',
     description: 'Heavy lifting and moving assistance',
     matchingBehavior: 'location_critical',
     examples: [
@@ -57,6 +65,7 @@ const CONFIG_CATEGORIES = [
     label: 'Home Help',
     shortLabel: 'Home Help',
     icon: Home,
+    type: 'physical',
     description: 'Furniture assembly, yard cleanup, and household tasks',
     matchingBehavior: 'location_critical',
     examples: [
@@ -71,6 +80,7 @@ const CONFIG_CATEGORIES = [
     label: 'Events & Staffing',
     shortLabel: 'Events',
     icon: Users,
+    type: 'physical',
     description: 'Temporary workers and event assistance',
     matchingBehavior: 'location_important',
     examples: [
@@ -82,32 +92,114 @@ const CONFIG_CATEGORIES = [
   },
   {
     id: 'creative',
-    label: 'Creative Services',
-    shortLabel: 'Creative',
+    label: 'Cameraman & Vlog Shooting',
+    shortLabel: 'Cameraman',
     icon: Camera,
-    description: 'Photography, design, and content creation',
+    type: 'physical',
+    isNew: true,
+    description: 'Hire a cameraman to shoot vlogs, videos, and events locally',
     matchingBehavior: 'location_important',
     examples: [
-      'Photography',
-      'Videography',
-      'Graphic design',
-      'Content creation'
+      'Shoot a YouTube Vlog',
+      'Cameraman for local streamer',
+      'Shoot a local event',
+      'B-roll local videography'
     ]
   },
   {
-    id: 'others',
-    label: 'Others',
+    id: 'others_physical',
+    label: 'Others (On-site)',
     shortLabel: 'Others',
     icon: HelpCircle,
-    description: 'Any other miscellaneous tasks',
+    type: 'physical',
+    description: 'Any other miscellaneous physical tasks',
     matchingBehavior: 'generic',
     examples: [
-      'Tasks not covered by the categories above'
+      'On-site tasks not covered by the categories above'
+    ]
+  },
+
+  // --- Online & Remote Services ---
+  {
+    id: 'video_editing',
+    label: 'Video & Reels Editing',
+    shortLabel: 'Video Edit',
+    icon: Video,
+    type: 'remote',
+    isNew: true,
+    description: 'Instagram reels, vlogs, and YouTube editing',
+    matchingBehavior: 'remote',
+    examples: [
+      'Edit a 30s Instagram Reel',
+      'Splice and color grade a vlog',
+      'Add captions to video',
+      'YouTube video editing'
+    ]
+  },
+  {
+    id: 'graphic_design',
+    label: 'Design & Creatives',
+    shortLabel: 'Design',
+    icon: Palette,
+    type: 'remote',
+    isNew: true,
+    description: 'Thumbnails, logos, social media posts, and layouts',
+    matchingBehavior: 'remote',
+    examples: [
+      'Create a YouTube Thumbnail',
+      'Design a company logo',
+      'Social media post graphics',
+      'Poster or flyer layout'
+    ]
+  },
+  {
+    id: 'writing_translation',
+    label: 'Writing & Content',
+    shortLabel: 'Writing',
+    icon: FileText,
+    type: 'remote',
+    isNew: true,
+    description: 'Content writing, captions, resumes, translation',
+    matchingBehavior: 'remote',
+    examples: [
+      'Write captions for Instagram',
+      'Translate text from English to Hindi',
+      'Proofread a blog post',
+      'Draft a resume or cover letter'
+    ]
+  },
+  {
+    id: 'tech_support',
+    label: 'Website & Tech Help',
+    shortLabel: 'Tech Help',
+    icon: Globe,
+    type: 'remote',
+    isNew: true,
+    description: 'Shopify/WordPress set up, bug fixes, sheets formatting',
+    matchingBehavior: 'remote',
+    examples: [
+      'WordPress website bug fixing',
+      'Format data in Excel sheets',
+      'Set up a Shopify store page',
+      'Basic software troubleshooting'
+    ]
+  },
+  {
+    id: 'others_remote',
+    label: 'Others (Online)',
+    shortLabel: 'Others',
+    icon: Wifi,
+    type: 'remote',
+    isNew: true,
+    description: 'Any other online/virtual digital tasks',
+    matchingBehavior: 'remote',
+    examples: [
+      'Online tasks not covered by the categories above'
     ]
   }
 ];
 
 export const SKILLS = [
-  ...CONFIG_CATEGORIES.filter(c => c.id !== 'others'),
-  ...CONFIG_CATEGORIES.filter(c => c.id === 'others')
+  ...CONFIG_CATEGORIES.filter(c => c.id !== 'others_physical' && c.id !== 'others_remote'),
+  ...CONFIG_CATEGORIES.filter(c => c.id === 'others_physical' || c.id === 'others_remote')
 ];

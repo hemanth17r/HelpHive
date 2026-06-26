@@ -1,5 +1,6 @@
 import { MARKETPLACE_RULES } from '../config/marketplaceRules';
 import { api } from '../services/api';
+import { SKILLS } from '../config/constants';
 
 /**
  * Evaluates the marketplace maturity for a given category and location.
@@ -9,6 +10,16 @@ import { api } from '../services/api';
  * @returns {Promise<{stage: string, supplyCount: number, isActive: boolean}>}
  */
 export const evaluateMarketplaceMaturity = async (categoryId, lat, lng) => {
+  // Bypasses waitlist supply checks for remote categories since nationwide supply is always available
+  const skill = SKILLS.find(s => s.id === categoryId);
+  if (skill && skill.type === 'remote') {
+    return {
+      stage: MARKETPLACE_RULES.MATURITY_THRESHOLDS.MATURE.label,
+      supplyCount: 99,
+      isActive: true
+    };
+  }
+
   try {
     // Determine the max radius we should check for this category
     // For maturity, we can look at the flexible radius (20km) to see total potential supply

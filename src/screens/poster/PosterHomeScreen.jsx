@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { PlusCircle, MapPin, User, Clock, Users, ArrowRight, MoreVertical } from 'lucide-react';
+import { PlusCircle, MapPin, User, Clock, Users, ArrowRight, MoreVertical, RefreshCw } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
@@ -7,7 +7,6 @@ import BirdAvatar from '../../components/BirdAvatars';
 import { getCurrentLocation } from '../../utils/location';
 import ActionItemsCarousel from '../../components/ActionItemsCarousel';
 import SetupWizardModal from '../../components/SetupWizardModal';
-import PullToRefresh from '../../components/PullToRefresh';
 
 const PosterHomeScreen = () => {
   const { 
@@ -24,6 +23,14 @@ const PosterHomeScreen = () => {
     setRealLocation,
     fetchJobs
   } = useContext(AppContext);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchJobs();
+    setIsRefreshing(false);
+  };
 
   useEffect(() => {
     fetchJobs();
@@ -111,7 +118,7 @@ const PosterHomeScreen = () => {
 
 
       {/* Main Content Feed */}
-      <PullToRefresh onRefresh={fetchJobs}>
+      <div className="flex-1 overflow-y-auto no-scrollbar">
         <div className="px-4 pt-6 pb-24 space-y-6 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full">
         
         {/* Action Items Carousel for missing permissions/profile details */}
@@ -138,6 +145,15 @@ const PosterHomeScreen = () => {
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
               My Active Jobs
             </span>
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-white border border-border text-gray-500 hover:text-primary hover:border-primary/30 hover:bg-orange-50/50 active:scale-[0.98] transition-all cursor-pointer text-[10px] font-black uppercase tracking-wider"
+              title="Refresh jobs list"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
           </div>
 
           {displayActiveJobs.length === 0 ? (
@@ -323,7 +339,7 @@ const PosterHomeScreen = () => {
           )}
         </div>
         </div>
-      </PullToRefresh>
+      </div>
       <SetupWizardModal />
     </div>
   );

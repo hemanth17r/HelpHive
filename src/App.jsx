@@ -220,7 +220,7 @@ const AppContent = () => {
         
         {/* Top Header Bar */}
         {role && isMainScreen && currentScreen !== 'landing' && (
-          <header className="h-[72px] mx-auto w-full lg:max-w-2xl bg-white border-b border-border lg:border-x lg:border-gray-100 flex items-center px-4 md:px-6 shrink-0 justify-between shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative z-10">
+          <header className="h-[72px] mx-auto w-full lg:max-w-2xl bg-white border-b border-border lg:border-x lg:border-gray-100 flex items-center px-4 md:px-6 shrink-0 justify-between shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative z-10 rounded-b-3xl">
             
             {/* Left: Branding & Back Button */}
             <div className="flex items-center space-x-3 justify-start overflow-hidden pr-2">
@@ -298,7 +298,7 @@ const AppContent = () => {
               </ErrorBoundary>
               {/* Bottom Nav for desktop */}
               {showBottomNav && (
-                <div className="sticky bottom-0 z-20">
+                <div className="sticky bottom-0 z-20 bg-[#F8F9FA]">
                   <BottomNav />
                 </div>
               )}
@@ -308,12 +308,12 @@ const AppContent = () => {
       </div>
 
       {/* Mobile/Tablet Card Layout (below 1024px) */}
-      <div className="lg:hidden w-full h-full bg-white relative flex flex-col overflow-hidden transition-all duration-300">
+      <div className="lg:hidden w-full h-full bg-gray-50 relative flex flex-col overflow-hidden transition-all duration-300">
         
         {/* Top bar on Mobile */}
         {role && isMainScreen && currentScreen !== 'landing' && (
           <div 
-            className="bg-white border-b border-border px-4 pb-3 flex items-center justify-between shrink-0 shadow-xs z-10 relative pt-safe"
+            className="bg-white border-b border-border px-4 pb-3 flex items-center justify-between shrink-0 shadow-xs z-10 relative pt-safe rounded-b-3xl"
             style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}
           >
             <div className="flex items-center">
@@ -387,7 +387,11 @@ const AppContent = () => {
         </div>
 
       {/* Floating Bottom Nav */}
-      {showBottomNav && <BottomNav />}
+      {showBottomNav && (
+        <div className="bg-gray-50">
+          <BottomNav />
+        </div>
+      )}
     </div>
 
     <ProfileCompletionModal 
