@@ -6,7 +6,7 @@ import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import { api } from '../../services/api';
 const LiveStatusScreen = () => {
-  const { currentPostedJob, setCurrentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs, acceptPartialCrew } = useContext(AppContext);
+  const { currentPostedJob, setCurrentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs, acceptPartialCrew, userId, userProfile } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -215,6 +215,15 @@ const LiveStatusScreen = () => {
                 onClick={async () => {
                   setIsCancelling(true);
                   try {
+                    api.logEvent('task_cancelled_by_poster', { userId, role: 'poster', entityId: currentPostedJob?.id });
+                    if (!userProfile?.posterTasksCompleted) {
+                      api.logEvent('first_job_failed', { 
+                        userId, 
+                        role: 'poster', 
+                        entityId: currentPostedJob?.id,
+                        failure_reason: 'HIRER_CANCELLED'
+                      });
+                    }
                     await api.updateJob(currentPostedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
                     setJobs(prevJobs =>
                       prevJobs.map(j => j.id === currentPostedJob.id ? { ...j, status: 'cancelled', v2_status: 'cancelled' } : j)

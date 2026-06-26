@@ -1,5 +1,5 @@
 import React, { useState, useContext, useRef } from 'react';
-import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar, MapPin, Home, Briefcase } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar, MapPin, Home, Briefcase, Wifi } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
@@ -96,9 +96,17 @@ const PostJobScreen = () => {
   React.useEffect(() => {
     if (savedAddresses && savedAddresses.length > 0 && !isAddressInitializedRef.current) {
       setIsAddingNewAddress(false);
+      
+      // Auto-select the default address (or first address) on initialization
+      if (!selectedJobLocation) {
+        const defaultAddr = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+        setSelectedJobLocation(defaultAddr);
+        setShowAddressPopup(false);
+      }
+      
       isAddressInitializedRef.current = true;
     }
-  }, [savedAddresses]);
+  }, [savedAddresses, selectedJobLocation]);
 
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [city, setCity] = useState('Jalandhar');
@@ -435,7 +443,8 @@ const PostJobScreen = () => {
               <div className="space-y-2.5">
                 <div className="flex items-center space-x-1.5 px-1">
                   <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
-                    📍 On-site & Physical Services
+                  <MapPin className="w-3 h-3 text-primary" />
+                    On-site & Physical Services
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
@@ -458,10 +467,6 @@ const PostJobScreen = () => {
                               ? 'bg-white text-primary border-white scale-105' 
                               : 'bg-primary text-white border-primary'
                           }`}>
-                            <span className="relative flex h-1.5 w-1.5 shrink-0">
-                              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isSelected ? 'bg-primary' : 'bg-white'}`}></span>
-                              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isSelected ? 'bg-primary' : 'bg-white'}`}></span>
-                            </span>
                             NEW
                           </span>
                         )}
@@ -479,7 +484,8 @@ const PostJobScreen = () => {
               <div className="space-y-2.5">
                 <div className="flex items-center space-x-1.5 px-1">
                   <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
-                    💻 Online & Remote Services
+                  <Wifi className="w-3 h-3 text-primary" />
+                    Online & Remote Services
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
@@ -502,10 +508,6 @@ const PostJobScreen = () => {
                               ? 'bg-white text-primary border-white scale-105' 
                               : 'bg-primary text-white border-primary'
                           }`}>
-                            <span className="relative flex h-1.5 w-1.5 shrink-0">
-                              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isSelected ? 'bg-primary' : 'bg-white'}`}></span>
-                              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isSelected ? 'bg-primary' : 'bg-white'}`}></span>
-                            </span>
                             NEW
                           </span>
                         )}

@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { Star, ShieldAlert, Shield, Lock, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2, ChevronDown, ExternalLink } from 'lucide-react';
+import { Star, ShieldAlert, Shield, Lock, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2, ChevronDown, ExternalLink, Wifi } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { SKILLS } from '../config/constants';
 import Tooltip from '../components/Tooltip';
@@ -1083,9 +1083,10 @@ Issue: `;
               <div className="space-y-6 pb-20">
                 {/* On-site Section */}
                 <div className="space-y-2.5">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-400 block px-1">
-                    📍 On-site & Physical Services
-                  </span>
+                  <div className="flex items-center gap-1.5 px-1">
+                    <MapPin className="w-3 h-3 text-primary shrink-0" />
+                    <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">On-site &amp; Physical Services</span>
+                  </div>
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3">
                     {SKILLS.filter(s => s.type === 'physical').map((skill) => {
                       const isSelected = editedSkills.includes(skill.id);
@@ -1111,9 +1112,10 @@ Issue: `;
 
                 {/* Online Section */}
                 <div className="space-y-2.5">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-400 block px-1">
-                    💻 Online & Remote Services
-                  </span>
+                  <div className="flex items-center gap-1.5 px-1">
+                    <Wifi className="w-3 h-3 text-primary shrink-0" />
+                    <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Online &amp; Remote Services</span>
+                  </div>
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3">
                     {SKILLS.filter(s => s.type === 'remote').map((skill) => {
                       const isSelected = editedSkills.includes(skill.id);
