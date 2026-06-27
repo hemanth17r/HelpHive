@@ -1319,7 +1319,23 @@ export const AppProvider = ({ children }) => {
       setJobs(prev => [dbJob, ...prev]);
       setCurrentPostedJob(dbJob);
       trackEvent(EVENTS.TASK_CREATION, { userId: currentUserId, role, entityId: data.id, metadata: { amount: newJobData.amount } });
-      api.notifyAdmin('New Job Posted', `A new job was just posted for ₹${newJobData.amount}!`);
+      
+      // Resolve category name
+      const skillName = SKILLS.find(s => s.id === newJobData.skillId)?.label || 'General';
+      
+      // Format location just like on taskers feed
+      const jobLocation = newJobData.address?.completeAddress?.startsWith('Location at') && newJobData.address.landmark 
+        ? newJobData.address.landmark 
+        : (newJobData.address?.completeAddress || 'Not specified');
+
+      // Construct a detailed admin notification body
+      const adminMessageBody = 
+        `Category: ${skillName}\n` +
+        `Payout: ₹${newJobData.amount}\n` +
+        `Location: ${jobLocation}\n\n` +
+        `Details: ${newJobData.description || 'Quick task'}`;
+
+      api.notifyAdmin('New Job Posted', adminMessageBody);
       
       // OTP state update
       setOtpGenerated(otp);
