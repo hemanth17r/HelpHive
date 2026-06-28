@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useMemo } from 'react';
 import { Inbox, Users, AlertCircle, RefreshCw } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import JobCard from '../../components/JobCard';
@@ -47,21 +47,26 @@ const TaskerHomeScreen = () => {
     await declineJob(jobId);
   };
 
-  const { jobsList = [] } = getJobsInRadius() || {};
+  const visibleJobs = useMemo(() => {
+    const { jobsList = [] } = getJobsInRadius() || {};
+    return jobsList.filter(job => 
+      !declinedJobIds.includes(job?.id) && 
+      job?.posterId !== userProfile?.id
+    );
+  }, [getJobsInRadius, declinedJobIds, userProfile?.id]);
 
-  const visibleJobs = jobsList.filter(job => 
-    !declinedJobIds.includes(job?.id) && 
-    job?.posterId !== userProfile?.id
-  );
+  const matchingSkillsJobs = useMemo(() => {
+    return visibleJobs.filter(job => 
+      userProfile?.skills && Array.isArray(userProfile.skills) ? userProfile.skills.includes(job?.skillId) : false
+    );
+  }, [visibleJobs, userProfile]);
 
-  const matchingSkillsJobs = visibleJobs.filter(job => 
-    userProfile?.skills && Array.isArray(userProfile.skills) ? userProfile.skills.includes(job?.skillId) : false
-  );
-
-  const displayActiveTasks = (jobs || []).filter(job => 
-    job?.isAcceptedByMe &&
-    (job?.v2_status === 'searching' || job?.v2_status === 'accepted' || job?.v2_status === 'in_progress')
-  );
+  const displayActiveTasks = useMemo(() => {
+    return (jobs || []).filter(job => 
+      job?.isAcceptedByMe &&
+      (job?.v2_status === 'searching' || job?.v2_status === 'accepted' || job?.v2_status === 'in_progress')
+    );
+  }, [jobs]);
 
   useEffect(() => {
     if (!userProfile?.id) return;
@@ -261,7 +266,6 @@ const TaskerHomeScreen = () => {
         )}
         </div>
       </div>
-      <SetupWizardModal />
     </div>
   );
 };

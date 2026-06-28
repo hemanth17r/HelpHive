@@ -1,12 +1,12 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useMemo } from 'react';
 import { PlusCircle, MapPin, User, Clock, Users, ArrowRight, MoreVertical, RefreshCw } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import BirdAvatar from '../../components/BirdAvatars';
 import { getCurrentLocation } from '../../utils/location';
-import ActionItemsCarousel from '../../components/ActionItemsCarousel';
 import SetupWizardModal from '../../components/SetupWizardModal';
+import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 
 const PosterHomeScreen = () => {
   const { 
@@ -21,8 +21,11 @@ const PosterHomeScreen = () => {
     deleteJob,
     realLocation,
     setRealLocation,
-    fetchJobs
+    fetchJobs,
+    openOnboardingWizard
   } = useContext(AppContext);
+
+  const { missingItems } = useProfileCompletion();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -37,17 +40,30 @@ const PosterHomeScreen = () => {
   }, [fetchJobs]);
 
   const handlePostJobClick = () => {
-    requireProfile(() => {
-      requireLocation('poster', () => {
+    const isWizardCompleted = userProfile?.id 
+      ? localStorage.getItem(`helphive_wizard_completed_poster_${userProfile.id}`) === 'true' && missingItems.length === 0
+      : false;
+    if (!isWizardCompleted) {
+      openOnboardingWizard(() => {
         pushScreen('post_job');
       });
-    });
+    } else {
+      pushScreen('post_job');
+    }
   };
 
   // Filter jobs for the current user
-  const posterJobs = jobs.filter(j => j.posterName === userProfile?.name || j.posterName === 'You' || j.posterId === userProfile?.id);
-  const activeJobs = posterJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft' && j.status !== 'cancelled');
-  const completedJobs = posterJobs.filter(j => j.status === 'completed');
+  const posterJobs = useMemo(() => {
+    return jobs.filter(j => j.posterName === userProfile?.name || j.posterName === 'You' || j.posterId === userProfile?.id);
+  }, [jobs, userProfile?.name, userProfile?.id]);
+
+  const activeJobs = useMemo(() => {
+    return posterJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft' && j.status !== 'cancelled');
+  }, [posterJobs]);
+
+  const completedJobs = useMemo(() => {
+    return posterJobs.filter(j => j.status === 'completed');
+  }, [posterJobs]);
 
   const displayActiveJobs = activeJobs;
 
@@ -121,9 +137,6 @@ const PosterHomeScreen = () => {
       <div className="flex-1 overflow-y-auto no-scrollbar">
         <div className="px-4 pt-6 pb-24 space-y-6 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full">
         
-        {/* Action Items Carousel for missing permissions/profile details */}
-        <ActionItemsCarousel />
-
         {/* Post a Job Prominent Button */}
         <Tooltip text="Create a new task request">
           <button
@@ -340,7 +353,6 @@ const PosterHomeScreen = () => {
         </div>
         </div>
       </div>
-      <SetupWizardModal />
     </div>
   );
 };

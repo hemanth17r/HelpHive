@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { Star, ShieldAlert, Shield, Lock, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2, ChevronDown, ExternalLink, Wifi } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { SKILLS } from '../config/constants';
@@ -26,9 +26,9 @@ const BADGE_LABELS = {
 };
 
 const MyProfileScreen = () => {
-  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs, isAdmin, refreshProfile, screenStack } = useContext(AppContext);
+  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs, isAdmin, refreshProfile, screenStack, openOnboardingWizard } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
-  const { completionPercentage } = useProfileCompletion();
+  const { completionPercentage, missingItems } = useProfileCompletion();
 
   useEffect(() => {
     if (refreshProfile) {
@@ -66,24 +66,42 @@ Issue: `;
   const currentYear = new Date().getFullYear();
   
   // Hirer (Poster) Stats
-  const posterJobs = jobs?.filter(j => j?.posterId === userId || j?.posterId === userProfile?.id) || [];
-  const activePosterJobs = posterJobs.filter(j => ['open', 'in_progress', 'active'].includes(j?.status)).length;
-  const completedPosterJobsCount = posterJobs.filter(j => j?.status === 'completed').length;
+  const posterJobs = useMemo(() => {
+    return jobs?.filter(j => j?.posterId === userId || j?.posterId === userProfile?.id) || [];
+  }, [jobs, userId, userProfile?.id]);
+
+  const activePosterJobs = useMemo(() => {
+    return posterJobs.filter(j => ['open', 'in_progress', 'active'].includes(j?.status)).length;
+  }, [posterJobs]);
+
+  const completedPosterJobsCount = useMemo(() => {
+    return posterJobs.filter(j => j?.status === 'completed').length;
+  }, [posterJobs]);
 
   // Tasker Stats
-  const taskerJobs = jobs?.filter(j => j?.isAcceptedByMe || j?.taskerId === userId || j?.taskerId === userProfile?.id || j?.taskerName === userProfile?.name) || [];
-  const activeTaskerJobs = taskerJobs.filter(j => ['active', 'in_progress'].includes(j?.status)).length;
-  const completedJobs = taskerJobs.filter(j => j?.status === 'completed');
-  const completedTaskerJobsCount = completedJobs.length;
+  const taskerJobs = useMemo(() => {
+    return jobs?.filter(j => j?.isAcceptedByMe || j?.taskerId === userId || j?.taskerId === userProfile?.id || j?.taskerName === userProfile?.name) || [];
+  }, [jobs, userId, userProfile?.id, userProfile?.name]);
 
+  const activeTaskerJobs = useMemo(() => {
+    return taskerJobs.filter(j => ['active', 'in_progress'].includes(j?.status)).length;
+  }, [taskerJobs]);
 
+  const completedJobs = useMemo(() => {
+    return taskerJobs.filter(j => j?.status === 'completed');
+  }, [taskerJobs]);
 
+  const completedTaskerJobsCount = useMemo(() => {
+    return completedJobs.length;
+  }, [completedJobs]);
 
-  const thisMonthEarnings = completedJobs.filter(j => {
-    if (!j.timePosted) return false;
-    const jobDate = new Date(j.timePosted);
-    return jobDate.getMonth() === currentMonth && jobDate.getFullYear() === currentYear;
-  }).reduce((sum, job) => sum + (job.amount || 0), 0);
+  const thisMonthEarnings = useMemo(() => {
+    return completedJobs.filter(j => {
+      if (!j.timePosted) return false;
+      const jobDate = new Date(j.timePosted);
+      return jobDate.getMonth() === currentMonth && jobDate.getFullYear() === currentYear;
+    }).reduce((sum, job) => sum + (job.amount || 0), 0);
+  }, [completedJobs, currentMonth, currentYear]);
 
   const [shouldRenderSkillsModal, setShouldRenderSkillsModal] = useState(false);
   const [isAnimatingSkillsOut, setIsAnimatingSkillsOut] = useState(false);
@@ -253,9 +271,14 @@ Issue: `;
                 <Tooltip text="Edit account details" position="left">
                   <button 
                     onClick={() => { 
-                      setEditedName(profile.name === 'New User' ? '' : profile.name); 
-                      setEditedPhone(profile.phone === 'Add Phone' ? '' : profile.phone); 
-                      setIsEditingAccount(true); 
+                      const isWizardCompleted = localStorage.getItem(`helphive_wizard_completed_poster_${profile.id}`) === 'true' && missingItems.length === 0;
+                      if (!isWizardCompleted) {
+                        openOnboardingWizard();
+                      } else {
+                        setEditedName(profile.name === 'New User' ? '' : profile.name); 
+                        setEditedPhone(profile.phone === 'Add Phone' ? '' : profile.phone); 
+                        setIsEditingAccount(true); 
+                      }
                     }} 
                     className="text-gray-400 hover:text-primary transition-colors p-1 hover:bg-gray-50 rounded-lg cursor-pointer"
                   >
@@ -494,7 +517,19 @@ Issue: `;
                 <ChevronRight className="w-4 h-4 text-primary" />
               </button>
 
-              <button onClick={() => pushScreen('address_book')} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <button 
+                onClick={() => {
+                  const isWizardCompleted = localStorage.getItem(`helphive_wizard_completed_poster_${profile.id}`) === 'true' && missingItems.length === 0;
+                  if (!isWizardCompleted) {
+                    openOnboardingWizard(() => {
+                      pushScreen('address_book');
+                    });
+                  } else {
+                    pushScreen('address_book');
+                  }
+                }} 
+                className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer"
+              >
                 <div className="flex items-center space-x-3">
                   <MapPin className="w-4.5 h-4.5 text-gray-400" />
                   <span>Address Book</span>

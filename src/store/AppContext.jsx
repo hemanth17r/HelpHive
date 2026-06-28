@@ -231,7 +231,6 @@ export const AppProvider = ({ children }) => {
       if (!userId) return;
       const { data } = await api.fetchAddresses(userId);
       if (data) {
-        let addresses = data;
         if (data.length > 0) {
           setSavedAddressesState(data);
           setHasMigratedLocalAddresses(true); // Don't migrate if DB already has addresses
@@ -245,15 +244,31 @@ export const AppProvider = ({ children }) => {
             const { data: newData } = await api.fetchAddresses(userId);
             if (newData) {
               setSavedAddressesState(newData);
-              addresses = newData;
             }
           }
           setHasMigratedLocalAddresses(true);
         }
+      }
+    };
+    syncAddresses();
+  }, [userId, hasMigratedLocalAddresses]);
 
-        // Apply default address to active header location on startup/login
-        const defaultAddr = addresses.find(a => a.isDefault);
-        if (defaultAddr && (!userLocation || userLocation.id === 'detected' || userLocation.id === 'default' || !userLocation.id)) {
+  // Apply default address to active header location on startup/login when addresses load
+  useEffect(() => {
+    if (savedAddresses.length > 0) {
+      const defaultAddr = savedAddresses.find(a => a.isDefault);
+      if (defaultAddr) {
+        const storedLoc = localStorage.getItem('userLocation');
+        const shouldOverride = !storedLoc || (() => {
+          try {
+            const parsed = JSON.parse(storedLoc);
+            return parsed.id === 'detected' || parsed.id === 'default' || !parsed.id;
+          } catch {
+            return true;
+          }
+        })();
+
+        if (shouldOverride) {
           const loc = {
             id: defaultAddr.id,
             name: defaultAddr.landmark || defaultAddr.completeAddress?.split(',')[0] || defaultAddr.type || 'Home',
@@ -265,9 +280,8 @@ export const AppProvider = ({ children }) => {
           setRealLocation({ lat: defaultAddr.lat, lng: defaultAddr.lng });
         }
       }
-    };
-    syncAddresses();
-  }, [userId, hasMigratedLocalAddresses, userLocation]);
+    }
+  }, [savedAddresses]);
 
   // Keep local storage in sync for offline/guest
   useEffect(() => {
@@ -676,6 +690,43 @@ export const AppProvider = ({ children }) => {
     activeTabRef.current = tab;
   };
   
+  // Onboarding Wizard State
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardOnComplete, setWizardOnComplete] = useState(null);
+
+  const openOnboardingWizard = (onCompleteCallback = null) => {
+    setWizardOnComplete(() => onCompleteCallback);
+    setShowWizard(true);
+  };
+
+  const closeOnboardingWizard = (completed = false) => {
+    setShowWizard(false);
+    if (completed && wizardOnComplete) {
+      const cb = wizardOnComplete;
+      setWizardOnComplete(null);
+      // Run callback in the next tick to ensure state updates settle down
+      setTimeout(() => {
+        try {
+          cb();
+        } catch (e) {
+          console.error('[Onboarding] Error executing complete callback:', e);
+        }
+      }, 0);
+    } else {
+      setWizardOnComplete(null);
+    }
+  };
+
+  // Auto-open wizard for tasker on mount/login if not completed
+  useEffect(() => {
+    if (userId && userProfile && role === 'tasker') {
+      const isCompleted = localStorage.getItem(`helphive_wizard_completed_tasker_${userId}`) === 'true';
+      if (!isCompleted) {
+        setShowWizard(true);
+      }
+    }
+  }, [userId, userProfile, role]);
+
   // Profile Action Interceptor
   const [profileActionCallback, setProfileActionCallback] = useState(null);
 
@@ -1071,7 +1122,7 @@ export const AppProvider = ({ children }) => {
   };
 
   // Radius Logic for Job Feeds
-  const getJobsInRadius = () => {
+  const getJobsInRadius = useCallback(() => {
     const openJobs = (jobs || []).filter(j => j?.status === 'open' && !j?.isAcceptedByMe);
     
     // Decouple tasker distance calculation: use tasker's serviceAreaLat/Lng if active role is tasker, falling back to realLocation
@@ -1111,7 +1162,7 @@ export const AppProvider = ({ children }) => {
       radius: (role === 'tasker' && userProfile?.coverageRadius) ? userProfile.coverageRadius / 1000 : 5,
       message: 'Showing results in your area'
     };
-  };
+  }, [jobs, role, userProfile, realLocation]);
 
   const acceptJob = async (jobId) => {
     const tId = userProfile?.id || userId || localStorage.getItem('userId');
@@ -1803,6 +1854,9 @@ export const AppProvider = ({ children }) => {
         completeLocationAction,
         cancelLocationAction,
         
+        showWizard,
+        openOnboardingWizard,
+        closeOnboardingWizard,
 
         isAdmin,
         userId,

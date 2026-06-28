@@ -40,6 +40,7 @@ import JobHistoryScreen from './screens/JobHistoryScreen';
 import AdminDashboard from './screens/AdminDashboard';
 import ProfileCompletionModal from './components/ProfileCompletionModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import SetupWizardModal from './components/SetupWizardModal';
 import NotificationsScreen from './screens/NotificationsScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import LocationPermissionModal from './components/LocationPermissionModal';
@@ -76,7 +77,10 @@ const AppContent = () => {
     setLocationModalOpen,
     realLocation,
     setRealLocation,
-    isProfileLoading
+    isProfileLoading,
+    showWizard,
+    openOnboardingWizard,
+    closeOnboardingWizard
   } = useContext(AppContext);
 
   const { 
@@ -86,7 +90,7 @@ const AppContent = () => {
     subscribeToPush 
   } = useContext(NotificationContext);
 
-  const { completionPercentage } = useProfileCompletion();
+  const { completionPercentage, missingItems } = useProfileCompletion();
 
 
 
@@ -127,14 +131,24 @@ const AppContent = () => {
   }, [currentScreen, userProfile?.id]);
 
   const handleNotificationClick = async () => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      try {
-        await Notification.requestPermission();
-      } catch (e) {
-        console.error("Notification permission request failed", e);
+    const isWizardCompleted = userProfile?.id 
+      ? localStorage.getItem(`helphive_wizard_completed_${role}_${userProfile.id}`) === 'true' && missingItems.length === 0
+      : false;
+      
+    if (role === 'poster' && !isWizardCompleted) {
+      openOnboardingWizard(() => {
+        pushScreen('notifications');
+      });
+    } else {
+      if ('Notification' in window && Notification.permission === 'default') {
+        try {
+          await Notification.requestPermission();
+        } catch (e) {
+          console.error("Notification permission request failed", e);
+        }
       }
+      pushScreen('notifications');
     }
-    pushScreen('notifications');
   };
 
 
@@ -408,6 +422,13 @@ const AppContent = () => {
     />
 
     <PWAInstallPrompt />
+
+    {showWizard && (
+      <SetupWizardModal 
+        onComplete={() => closeOnboardingWizard(true)}
+        onClose={() => closeOnboardingWizard(false)}
+      />
+    )}
 
   </div>
 );

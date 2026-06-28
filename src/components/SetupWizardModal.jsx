@@ -14,7 +14,8 @@ import {
   ArrowLeft,
   Check,
   ShieldCheck,
-  Smartphone
+  Smartphone,
+  X
 } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { NotificationContext } from '../store/NotificationContext';
@@ -36,7 +37,7 @@ const formatPhoneNumber = (value) => {
   return input;
 };
 
-const SetupWizardModal = () => {
+const SetupWizardModal = ({ onComplete, onClose }) => {
   const { 
     role, 
     userId, 
@@ -244,13 +245,22 @@ const SetupWizardModal = () => {
   // Check if wizard completed flag is set
   const isCompleted = localStorage.getItem(`helphive_wizard_completed_${role}_${userId}`) === 'true';
 
+  useEffect(() => {
+    if (userId && userProfile && !isCompleted && missingItems.length === 0) {
+      localStorage.setItem(`helphive_wizard_completed_${role}_${userId}`, 'true');
+      if (onComplete) {
+        onComplete();
+      }
+    }
+  }, [missingItems.length, role, userId, userProfile, isCompleted, onComplete]);
+
+  const isWizardReallyCompleted = isCompleted && missingItems.length === 0;
+
   // Do not render if already completed OR userProfile isn't loaded yet
-  if (!userId || !userProfile || isCompleted) return null;
+  if (!userId || !userProfile || isWizardReallyCompleted) return null;
 
   // Render ONLY if there are missing items to onboarding
   if (missingItems.length === 0) {
-    // If no missing items but flag not set, auto-mark completed
-    localStorage.setItem(`helphive_wizard_completed_${role}_${userId}`, 'true');
     return null;
   }
 
@@ -481,6 +491,9 @@ const SetupWizardModal = () => {
       // Complete wizard!
       localStorage.setItem(`helphive_wizard_completed_${role}_${userId}`, 'true');
       showToast('Profile & settings updated successfully!', 'success');
+      if (onComplete) {
+        onComplete();
+      }
     } catch (err) {
       console.error('Error completing setup wizard:', err);
       setError('An unexpected error occurred. Please try again.');
@@ -512,12 +525,23 @@ const SetupWizardModal = () => {
                 {role === 'tasker' ? 'Helper Setup' : 'Hirer Setup'}
               </span>
             </div>
-            <button
-              onClick={handleRoleSwitch}
-              className="text-[10px] font-extrabold uppercase bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
-            >
-              Switch to {role === 'tasker' ? 'Hirer' : 'Helper'}
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleRoleSwitch}
+                className="text-[10px] font-extrabold uppercase bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+              >
+                Switch to {role === 'tasker' ? 'Hirer' : 'Helper'}
+              </button>
+              {onClose && role === 'poster' && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Progress Indicators */}
