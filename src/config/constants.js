@@ -21,6 +21,7 @@ const CONFIG_CATEGORIES = [
     shortLabel: 'Errands',
     icon: Package,
     type: 'physical',
+    isUrgent: true,
     description: 'Pickups, deliveries, and errands',
     matchingBehavior: 'location_critical',
     examples: [
@@ -51,6 +52,7 @@ const CONFIG_CATEGORIES = [
     shortLabel: 'Moving',
     icon: Truck,
     type: 'physical',
+    isHighDemand: true,
     description: 'Heavy lifting and moving assistance',
     matchingBehavior: 'location_critical',
     examples: [
@@ -127,6 +129,7 @@ const CONFIG_CATEGORIES = [
     icon: Video,
     type: 'remote',
     isNew: true,
+    isHighDemand: true,
     description: 'Instagram reels, vlogs, and YouTube editing',
     matchingBehavior: 'remote',
     examples: [
@@ -175,6 +178,7 @@ const CONFIG_CATEGORIES = [
     icon: Globe,
     type: 'remote',
     isNew: true,
+    isUrgent: true,
     description: 'Shopify/WordPress set up, bug fixes, sheets formatting',
     matchingBehavior: 'remote',
     examples: [

@@ -21,6 +21,7 @@ const TaskerJobDetailsScreen = () => {
     completeJob, 
     otpGenerated, 
     trackingTaskerPos,
+    trackingLocationError,
     userProfile,
     role,
     pushScreen,
@@ -424,13 +425,32 @@ const TaskerJobDetailsScreen = () => {
 
         {/* Live Map with moving marker */}
         {!isRemote && (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
               <span>Live Location</span>
-              <span className="text-primary animate-pulse font-extrabold uppercase">
-                Active
-              </span>
+              {trackingLocationError ? (
+                <span className="text-red-500 font-extrabold uppercase flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+                  <span>Error</span>
+                </span>
+              ) : (
+                <span className="text-primary animate-pulse font-extrabold uppercase">
+                  Active
+                </span>
+              )}
             </div>
+            
+            {trackingLocationError && (
+              <div className="flex items-start space-x-2.5 bg-orange-50 border border-orange-100 rounded-2xl p-3.5 animate-scale-up">
+                <ShieldAlert className="w-4.5 h-4.5 text-orange-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-black text-orange-700">Location sharing is paused</p>
+                  <p className="text-[10px] font-semibold text-orange-600 mt-0.5 leading-normal">
+                    Please enable location access/GPS in your browser or device settings so the customer knows you are on your way.
+                  </p>
+                </div>
+              </div>
+            )}
             
             <MapView 
               jobLocation={{ lat: acceptedJob.lat || 31.2560, lng: acceptedJob.lng || 75.7051 }}

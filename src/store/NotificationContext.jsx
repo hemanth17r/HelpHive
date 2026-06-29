@@ -105,10 +105,6 @@ export const NotificationProvider = ({ children }) => {
             // Client-side role matching check
             if (payload.new.role === role) {
               setNotifications(prev => [payload.new, ...prev]);
-              if (fetchJobs) {
-                console.log('[Notification] New notification received, triggering jobs refetch in 800ms...');
-                setTimeout(() => fetchJobs(), 800);
-              }
             }
           }
         )
@@ -118,10 +114,6 @@ export const NotificationProvider = ({ children }) => {
           (payload) => {
             if (payload.new.role === role) {
               setNotifications(prev => prev.map(n => n.id === payload.new.id ? payload.new : n));
-              if (fetchJobs) {
-                console.log('[Notification] Notification updated, triggering jobs refetch in 800ms...');
-                setTimeout(() => fetchJobs(), 800);
-              }
             }
           }
         )
@@ -135,7 +127,7 @@ export const NotificationProvider = ({ children }) => {
         try { api.supabase.removeChannel(sub); } catch (e) { /* ignore */ }
       }
     };
-  }, [userId, role, fetchJobs]);
+  }, [userId, role]);
 
   const markAsRead = useCallback(async (notificationId) => {
     // Optimistic update

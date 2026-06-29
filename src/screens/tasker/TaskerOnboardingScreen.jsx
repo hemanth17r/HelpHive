@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, Check, MapPin, Search, Loader2, Navigation, Wifi } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, MapPin, Search, Loader2, Navigation, Wifi, Flame, Zap } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
 import { SKILLS } from '../../config/constants';
@@ -12,7 +12,7 @@ import { searchAddress, reverseGeocode } from '../../utils/geocoding';
 import { getCurrentLocation } from '../../utils/location';
 
 const TaskerOnboardingScreen = () => {
-  const { setUserProfile, pushScreen, popScreen, userProfile, requireProfile, routeParams } = useContext(AppContext);
+  const { setUserProfile, pushScreen, popScreen, userProfile, requireProfile, routeParams, userId } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   
   const [step, setStep] = useState(() => routeParams?.editServiceAreaOnly ? 2 : 1); // 1: Skills, 2: Service Area
@@ -178,7 +178,7 @@ const TaskerOnboardingScreen = () => {
   };
 
   const handleComplete = () => {
-    requireProfile(async () => {
+    const performUpdate = async () => {
       setIsLoading(true);
       try {
         // Reverse-geocode the pin location to get a human-readable area name
@@ -206,7 +206,7 @@ const TaskerOnboardingScreen = () => {
 
         // Analytics: V2 Marketplace Metric
         api.logEvent('coverage_area_defined', {
-          userId: userProfile?.id,
+          userId: userProfile?.id || 'guest',
           role: 'tasker',
           level: coverageLevel,
           radius: coverageRadius,
@@ -218,14 +218,20 @@ const TaskerOnboardingScreen = () => {
           return;
         }
         showToast('Settings saved successfully!', 'success');
-        pushScreen('tasker_home');
+        popScreen();
       } catch (err) {
         console.error('Failed to save skills and service area:', err);
         showToast('Failed to save settings. Please try again.', 'error');
       } finally {
         setIsLoading(false);
       }
-    });
+    };
+
+    if (!userId) {
+      performUpdate();
+    } else {
+      requireProfile(performUpdate);
+    }
   };
 
   return (
@@ -276,6 +282,8 @@ const TaskerOnboardingScreen = () => {
                         icon={skill.icon}
                         label={skill.label}
                         isNew={skill.isNew}
+                        isHighDemand={skill.isHighDemand}
+                        isUrgent={skill.isUrgent}
                         tooltipText={`Toggle skill: ${skill.label}`}
                         selected={isSelected}
                         onClick={() => handleToggleSkill(skill.id)}
@@ -300,12 +308,36 @@ const TaskerOnboardingScreen = () => {
                         icon={skill.icon}
                         label={skill.label}
                         isNew={skill.isNew}
+                        isHighDemand={skill.isHighDemand}
+                        isUrgent={skill.isUrgent}
                         tooltipText={`Toggle skill: ${skill.label}`}
                         selected={isSelected}
                         onClick={() => handleToggleSkill(skill.id)}
                       />
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="pt-5 mt-4 border-t border-border flex flex-wrap items-center justify-center gap-x-5 gap-y-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary text-white border border-primary">
+                    NEW
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-500">Newly Added</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
+                    <Flame className="w-2.5 h-2.5 fill-current text-white" />
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-500">High Demand</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
+                    <Zap className="w-2.5 h-2.5 fill-current text-white" />
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-500">Quick Match</span>
                 </div>
               </div>
             </div>

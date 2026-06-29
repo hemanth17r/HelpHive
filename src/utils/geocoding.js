@@ -77,6 +77,9 @@ export const getNearbyLandmark = async (lat, lng) => {
   return null;
 };
 
+// In-memory cache for reverse geocoding results to prevent redundant API calls
+const reverseGeocodeCache = {};
+
 /**
  * Perform a reverse geocode from coordinates
  * @param {number} lat 
@@ -84,15 +87,26 @@ export const getNearbyLandmark = async (lat, lng) => {
  * @returns {Promise<Object|null>}
  */
 export const reverseGeocode = async (lat, lng) => {
+  if (lat === undefined || lat === null || lng === undefined || lng === null) {
+    return null;
+  }
+  
+  const cacheKey = `${parseFloat(lat).toFixed(4)},${parseFloat(lng).toFixed(4)}`;
+  if (reverseGeocodeCache[cacheKey]) {
+    return reverseGeocodeCache[cacheKey];
+  }
+
   if (!OLA_MAPS_API_KEY) {
     console.warn('Ola Maps API key is missing. Please add VITE_OLA_MAPS_API_KEY to your .env file.');
-    return {
+    const result = {
       lat: parseFloat(lat),
       lng: parseFloat(lng),
       displayName: `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`,
       fullAddress: `Location at Latitude ${lat}, Longitude ${lng}`,
       address: []
     };
+    reverseGeocodeCache[cacheKey] = result;
+    return result;
   }
 
   try {
@@ -114,32 +128,38 @@ export const reverseGeocode = async (lat, lng) => {
         displayName = landmark ? `Near ${landmark}` : `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
       }
       
-      return {
+      const result = {
         lat: parseFloat(bestResult.geometry?.location?.lat || lat),
         lng: parseFloat(bestResult.geometry?.location?.lng || lng),
         displayName: displayName,
         fullAddress: bestResult.formatted_address,
         address: bestResult.address_components
       };
+      reverseGeocodeCache[cacheKey] = result;
+      return result;
     }
     
     const landmark = await getNearbyLandmark(lat, lng);
-    return {
+    const result = {
       lat: parseFloat(lat),
       lng: parseFloat(lng),
       displayName: landmark ? `Near ${landmark}` : `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`,
       fullAddress: `Location at Latitude ${lat}, Longitude ${lng}`,
       address: []
     };
+    reverseGeocodeCache[cacheKey] = result;
+    return result;
   } catch (error) {
     console.error('Error in reverseGeocode:', error);
     const landmark = await getNearbyLandmark(lat, lng);
-    return {
+    const result = {
       lat: parseFloat(lat),
       lng: parseFloat(lng),
       displayName: landmark ? `Near ${landmark}` : `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`,
       fullAddress: `Location at Latitude ${lat}, Longitude ${lng}`,
       address: []
     };
+    reverseGeocodeCache[cacheKey] = result;
+    return result;
   }
 };

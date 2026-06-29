@@ -5,10 +5,12 @@ import { AppContext } from '../store/AppContext';
 import { ToastContext } from '../store/ToastContext';
 import Tooltip from './Tooltip';
 import { formatSelectedTime, getCurrentLocation } from '../utils/location';
+import { useProfileCompletion } from '../hooks/useProfileCompletion';
 
 const JobCard = ({ job, onDecline }) => {
-  const { acceptJob, requireProfile, requireLocation, realLocation, setRealLocation, userProfile, pushScreen, setTaskerActivityScrollTarget, role } = useContext(AppContext);
+  const { acceptJob, requireProfile, requireLocation, realLocation, setRealLocation, userProfile, pushScreen, setTaskerActivityScrollTarget, role, userId, openLoginModal, openOnboardingWizard } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
+  const { missingWizardItems } = useProfileCompletion();
 
   const hasReferenceLocation = role === 'tasker'
     ? ((userProfile?.serviceAreaLat !== null && userProfile?.serviceAreaLng !== null && userProfile?.serviceAreaLat !== undefined && userProfile?.serviceAreaLng !== undefined) || (realLocation !== null && realLocation !== undefined))
@@ -32,24 +34,37 @@ const JobCard = ({ job, onDecline }) => {
   const [isAccepting, setIsAccepting] = useState(false);
 
   const handleAcceptJob = () => {
-    requireProfile(() => {
-      // 1. Check UPI ID first
-      if (!userProfile?.upiId) {
-        showToast('Please add your UPI ID to receive payments.', 'error');
-        setTaskerActivityScrollTarget('upi');
-        pushScreen('tasker_activity');
-        return;
-      }
-
-      // 2. Require Location before accepting
-      requireLocation('tasker', async () => {
-        setIsAccepting(true);
-        try {
-          await acceptJob(job.id);
-        } finally {
-          setIsAccepting(false);
-        }
+    if (!userId) {
+      openLoginModal(() => {
+        handleAcceptJob();
       });
+      return;
+    }
+
+    const isWizardCompleted = localStorage.getItem(`helphive_wizard_completed_tasker_${userId}`) === 'true' && missingWizardItems.length === 0;
+    if (!isWizardCompleted) {
+      openOnboardingWizard(() => {
+        handleAcceptJob();
+      });
+      return;
+    }
+
+    // 1. Check UPI ID first
+    if (!userProfile?.upiId) {
+      showToast('Please add your UPI ID to receive payments.', 'error');
+      setTaskerActivityScrollTarget('upi');
+      pushScreen('tasker_activity');
+      return;
+    }
+
+    // 2. Require Location before accepting
+    requireLocation('tasker', async () => {
+      setIsAccepting(true);
+      try {
+        await acceptJob(job.id);
+      } finally {
+        setIsAccepting(false);
+      }
     });
   };
 

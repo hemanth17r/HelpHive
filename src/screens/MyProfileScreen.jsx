@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useMemo } from 'react';
-import { Star, ShieldAlert, Shield, Lock, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2, ChevronDown, ExternalLink, Wifi } from 'lucide-react';
+import { Star, ShieldAlert, Shield, Lock, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2, ChevronDown, ExternalLink, Wifi, Flame, Zap } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { SKILLS } from '../config/constants';
 import Tooltip from '../components/Tooltip';
@@ -26,9 +26,9 @@ const BADGE_LABELS = {
 };
 
 const MyProfileScreen = () => {
-  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs, isAdmin, refreshProfile, screenStack, openOnboardingWizard } = useContext(AppContext);
+  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs, isAdmin, refreshProfile, screenStack, openLoginModal } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
-  const { completionPercentage, missingItems } = useProfileCompletion();
+  const { completionPercentage, missingItems, missingWizardItems } = useProfileCompletion();
 
   useEffect(() => {
     if (refreshProfile) {
@@ -127,14 +127,14 @@ Issue: `;
   // Fallback profile
   const profile = {
     ...userProfile,
-    name: userProfile?.name || 'New User',
-    email: (userProfile?.email && userProfile.email !== 'Add Email') ? userProfile.email : '',
-    phone: userProfile?.phone || 'Add Phone',
+    name: userId ? (userProfile?.name || 'New User') : 'Guest User',
+    email: userId ? ((userProfile?.email && userProfile.email !== 'Add Email') ? userProfile.email : '') : 'Not Linked (Guest Mode)',
+    phone: userId ? (userProfile?.phone || 'Add Phone') : '',
     skills: userProfile?.skills || [],
-    rating: userProfile?.rating || 0,
-    tasksCompleted: userProfile?.tasksCompleted || 0,
-    badges: userProfile?.badges || [],
-    reviews: userProfile?.reviews || []
+    rating: userId ? (userProfile?.rating || 0) : 0,
+    tasksCompleted: userId ? (userProfile?.tasksCompleted || 0) : 0,
+    badges: userId ? (userProfile?.badges || []) : [],
+    reviews: userId ? (userProfile?.reviews || []) : []
   };
 
   const groupedBadges = React.useMemo(() => {
@@ -247,7 +247,7 @@ Issue: `;
               <button 
                 onClick={() => setShowBirdSelector(true)}
                 className="w-[88px] h-[88px] rounded-full -mt-16 mb-3 flex items-center justify-center cursor-pointer hover:scale-105 transition-all active:scale-95 p-[3px]"
-                style={{ background: `conic-gradient(#f97316 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)` }}
+                style={{ background: `conic-gradient(#FF6B35 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)` }}
               >
                 <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-[3px] border-white shadow-md">
                   <BirdAvatar birdName={selectedBird} size={64} />
@@ -271,14 +271,9 @@ Issue: `;
                 <Tooltip text="Edit account details" position="left">
                   <button 
                     onClick={() => { 
-                      const isWizardCompleted = localStorage.getItem(`helphive_wizard_completed_poster_${profile.id}`) === 'true' && missingItems.length === 0;
-                      if (!isWizardCompleted) {
-                        openOnboardingWizard();
-                      } else {
-                        setEditedName(profile.name === 'New User' ? '' : profile.name); 
-                        setEditedPhone(profile.phone === 'Add Phone' ? '' : profile.phone); 
-                        setIsEditingAccount(true); 
-                      }
+                      setEditedName(profile.name === 'New User' || profile.name === 'Guest User' ? '' : profile.name); 
+                      setEditedPhone(profile.phone === 'Add Phone' ? '' : profile.phone); 
+                      setIsEditingAccount(true); 
                     }} 
                     className="text-gray-400 hover:text-primary transition-colors p-1 hover:bg-gray-50 rounded-lg cursor-pointer"
                   >
@@ -518,16 +513,7 @@ Issue: `;
               </button>
 
               <button 
-                onClick={() => {
-                  const isWizardCompleted = localStorage.getItem(`helphive_wizard_completed_poster_${profile.id}`) === 'true' && missingItems.length === 0;
-                  if (!isWizardCompleted) {
-                    openOnboardingWizard(() => {
-                      pushScreen('address_book');
-                    });
-                  } else {
-                    pushScreen('address_book');
-                  }
-                }} 
+                onClick={() => pushScreen('address_book')} 
                 className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer"
               >
                 <div className="flex items-center space-x-3">
@@ -584,7 +570,7 @@ Issue: `;
                   </div>
                 </button>
               ) : (
-                <button onClick={() => setShowLoginModal(true)} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer">
+                <button onClick={() => openLoginModal()} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer">
                   <div className="flex items-center space-x-3">
                     <LogIn className="w-4.5 h-4.5 text-primary" />
                     <span>Sign In / Sign Up</span>
@@ -640,7 +626,7 @@ Issue: `;
               <button 
                 onClick={() => setShowBirdSelector(true)}
                 className="w-[88px] h-[88px] rounded-full -mt-16 mb-3 flex items-center justify-center cursor-pointer hover:scale-105 transition-all active:scale-95 p-[3px]"
-                style={{ background: `conic-gradient(#f97316 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)` }}
+                style={{ background: `conic-gradient(#FF6B35 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)` }}
               >
                 <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-[3px] border-white shadow-md">
                   <BirdAvatar birdName={selectedBird} size={64} />
@@ -1131,6 +1117,8 @@ Issue: `;
                           icon={skill.icon}
                           label={skill.label}
                           isNew={skill.isNew}
+                          isHighDemand={skill.isHighDemand}
+                          isUrgent={skill.isUrgent}
                           selected={isSelected}
                           onClick={() => {
                             if (editedSkills.includes(skill.id)) {
@@ -1160,6 +1148,8 @@ Issue: `;
                           icon={skill.icon}
                           label={skill.label}
                           isNew={skill.isNew}
+                          isHighDemand={skill.isHighDemand}
+                          isUrgent={skill.isUrgent}
                           selected={isSelected}
                           onClick={() => {
                             if (editedSkills.includes(skill.id)) {
@@ -1171,6 +1161,28 @@ Issue: `;
                         />
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="pt-5 mt-4 border-t border-border flex flex-wrap items-center justify-center gap-x-5 gap-y-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary text-white border border-primary">
+                      NEW
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-500">Newly Added</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
+                      <Flame className="w-2.5 h-2.5 fill-current text-white" />
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-500">High Demand</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
+                      <Zap className="w-2.5 h-2.5 fill-current text-white" />
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-500">Quick Match</span>
                   </div>
                 </div>
               </div>

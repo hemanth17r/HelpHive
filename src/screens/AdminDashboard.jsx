@@ -466,7 +466,7 @@ const AdminDashboard = () => {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-dark">Are people showing up?</p>
                 <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                  <span className="text-blue-600 font-bold">{stats?.signups_today ?? 0}</span> new signups today • <span className="text-blue-600 font-bold">{stats?.logins_today ?? 0}</span> logins today
+                  <span className="text-blue-600 font-bold">{stats?.signups_today ?? 0}</span> new signups today • <span className="text-blue-600 font-bold">{stats?.logins_today ?? 0}</span> sign-ins today
                 </p>
               </div>
             </div>

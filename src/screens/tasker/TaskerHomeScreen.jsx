@@ -1,13 +1,14 @@
 import React, { useState, useContext, useEffect, useMemo } from 'react';
-import { Inbox, Users, AlertCircle, RefreshCw } from 'lucide-react';
+import { Inbox, Users, AlertCircle, RefreshCw, Briefcase } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import JobCard from '../../components/JobCard';
 import Tooltip from '../../components/Tooltip';
 import { SKILLS } from '../../config/constants';
 import { getCurrentLocation } from '../../utils/location';
-import ActionItemsCarousel from '../../components/ActionItemsCarousel';
+import ProfileProgressBar from '../../components/ProfileProgressBar';
 import { api } from '../../services/api';
 import SetupWizardModal from '../../components/SetupWizardModal';
+import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 
 
 const TaskerHomeScreen = () => {
@@ -23,8 +24,12 @@ const TaskerHomeScreen = () => {
     setRealLocation,
     setActiveTab,
     fetchJobs,
-    declineJob
+    declineJob,
+    userId,
+    openOnboardingWizard
   } = useContext(AppContext);
+
+  const { missingItems } = useProfileCompletion();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -61,12 +66,24 @@ const TaskerHomeScreen = () => {
     );
   }, [visibleJobs, userProfile]);
 
+  const otherLocalJobs = useMemo(() => {
+    return visibleJobs.filter(job => 
+      userProfile?.skills && Array.isArray(userProfile.skills) ? !userProfile.skills.includes(job?.skillId) : true
+    );
+  }, [visibleJobs, userProfile]);
+
   const displayActiveTasks = useMemo(() => {
     return (jobs || []).filter(job => 
       job?.isAcceptedByMe &&
       (job?.v2_status === 'searching' || job?.v2_status === 'accepted' || job?.v2_status === 'in_progress')
     );
   }, [jobs]);
+
+  const isProfileReady = useMemo(() => {
+    const hasSkills = userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0;
+    const hasServiceArea = !!(userProfile?.serviceAreaLat && userProfile?.serviceAreaLng);
+    return !!userId && hasSkills && hasServiceArea;
+  }, [userId, userProfile]);
 
   useEffect(() => {
     if (!userProfile?.id) return;
@@ -120,8 +137,25 @@ const TaskerHomeScreen = () => {
       {/* Main Content Feed */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
         <div className="px-4 py-4 space-y-4 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full">
-        {/* Action Items Carousel for missing permissions/profile details */}
-        <ActionItemsCarousel />
+        {/* Start Earning Prominent Button */}
+        {(!userId || missingItems.length > 0) && (
+          <Tooltip text="Complete configuration to start accepting jobs">
+            <button
+              onClick={() => openOnboardingWizard()}
+              className="w-full bg-primary hover:bg-primary/95 text-white flex flex-row items-center px-6 py-4 md:py-5 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer group relative overflow-hidden text-left"
+            >
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-all"></div>
+              <Briefcase className="w-8 h-8 md:w-9 md:h-9 mr-4 shrink-0" />
+              <div className="flex flex-col">
+                <h2 className="text-lg md:text-xl font-black leading-tight">Start Earning</h2>
+                <p className="text-[11px] md:text-xs font-bold text-white/80 mt-0.5">Find local tasks and get paid</p>
+              </div>
+            </button>
+          </Tooltip>
+        )}
+
+        {/* Profile completion progress bar */}
+        <ProfileProgressBar />
 
         {/* My Active Tasks Section */}
         {displayActiveTasks.length > 0 && (
@@ -183,7 +217,25 @@ const TaskerHomeScreen = () => {
           </div>
         )}
 
-        {visibleJobs.length === 0 ? (
+        {!isProfileReady ? (
+          <div className="flex flex-col items-center justify-center text-center space-y-4 py-12 px-6 bg-white rounded-[32px] border border-border shadow-xs my-4">
+            <div className="p-4.5 bg-primary/10 text-primary rounded-full shrink-0">
+              <Briefcase className="w-10 h-10 stroke-[2.2]" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-dark tracking-tight">Configure Helper Profile</h3>
+              <p className="text-xs font-semibold text-gray-400 max-w-[280px] mx-auto leading-normal">
+                To start getting job notifications and browsing open tasks nearby, please select your skills and define your service range.
+              </p>
+            </div>
+            <button
+              onClick={() => openOnboardingWizard()}
+              className="px-6 py-3 bg-primary hover:bg-primary/95 text-white active:scale-[0.98] transition-all rounded-2xl text-xs font-black tracking-wide cursor-pointer shadow-md shadow-primary/10"
+            >
+              Configure Profile
+            </button>
+          </div>
+        ) : visibleJobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 bg-white rounded-3xl p-6 border border-border">
             <div className="p-4 bg-orange-50 rounded-full text-primary">
               <Inbox className="w-10 h-10" />
@@ -203,34 +255,13 @@ const TaskerHomeScreen = () => {
           </div>
         ) : (
           <div className="space-y-6 pb-20">
-
-            {/* Skill-mismatch info banner: shown when the tasker has skills configured
-                but none of the visible nearby jobs match them. Displays the banner
-                and then shows ALL nearby tasks as a graceful fallback so the screen
-                is never left blank. */}
-            {userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0 && matchingSkillsJobs.length === 0 && (
-              <div className="flex items-start space-x-3 bg-blue-50 border border-blue-100 rounded-2xl p-4">
-                <AlertCircle className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-black text-blue-700">No tasks match your selected skills right now</p>
-                  <p className="text-[11px] font-semibold text-blue-500 mt-0.5">Showing all nearby open tasks instead.</p>
-                </div>
-              </div>
-            )}
-
-            {/* Section 1: Matching Skills or All Open Tasks */}
-            {((
-              userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0 && matchingSkillsJobs.length > 0
-                ? matchingSkillsJobs
-                : visibleJobs
-            ).length > 0) && (
+            {/* Section 1: Matching Skills */}
+            {matchingSkillsJobs.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center space-x-2">
                     <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-                      {userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0 && matchingSkillsJobs.length > 0
-                        ? 'Jobs Matching Your Skills'
-                        : 'Open Tasks Nearby'}
+                      Jobs Matching Your Skills
                     </span>
                     <button
                       onClick={handleRefresh}
@@ -242,18 +273,43 @@ const TaskerHomeScreen = () => {
                     </button>
                   </div>
                   <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                    {(
-                      userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0 && matchingSkillsJobs.length > 0
-                        ? matchingSkillsJobs
-                        : visibleJobs
-                    ).length} Live
+                    {matchingSkillsJobs.length} Live
                   </span>
                 </div>
-                {(
-                  userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0 && matchingSkillsJobs.length > 0
-                    ? matchingSkillsJobs
-                    : visibleJobs
-                ).map((job, idx) => (
+                {matchingSkillsJobs.map((job, idx) => (
+                  <JobCard
+                    key={job?.id || idx}
+                    job={{ ...job, distance: `${job?.distanceVal || 0} km` }}
+                    onDecline={handleDeclineJob}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Section 2: Other Local Fallback Tasks */}
+            {otherLocalJobs.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
+                      Other Tasks in Your Area
+                    </span>
+                    {matchingSkillsJobs.length === 0 && (
+                      <button
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        className="p-1 rounded-lg text-gray-400 hover:text-primary hover:bg-gray-100 transition-colors flex items-center justify-center cursor-pointer"
+                        title="Refresh tasks"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      </button>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                    {otherLocalJobs.length} Live
+                  </span>
+                </div>
+                {otherLocalJobs.map((job, idx) => (
                   <JobCard
                     key={job?.id || idx}
                     job={{ ...job, distance: `${job?.distanceVal || 0} km` }}

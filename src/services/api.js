@@ -74,20 +74,10 @@ export const api = {
     const role = localStorage.getItem('activeRole');
     
     let ratedJobsMap = {};
+    let authUserId = null;
     if (userId) {
       const sessionRes = await supabase.auth.getSession();
-      const authUserId = sessionRes.data?.session?.user?.id;
-      if (authUserId) {
-        const { data: feedbacks } = await supabase
-          .from('feedbacks')
-          .select('job_id, rating')
-          .eq('giver_id', authUserId);
-        if (feedbacks) {
-          feedbacks.forEach(f => {
-            ratedJobsMap[f.job_id] = f.rating;
-          });
-        }
-      }
+      authUserId = sessionRes.data?.session?.user?.id;
     }
 
     let query = supabase.from('jobs').select('*, primary_address:user_addresses!jobs_primary_address_id_fkey(*)');
@@ -131,6 +121,21 @@ export const api = {
           const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone, upi_id, rating, tasks_completed').in('id', profileIds);
           if (profiles) {
             profiles.forEach(p => { profileMap[p.id] = p; });
+          }
+        }
+
+        // Fetch feedbacks only for the returned jobs
+        if (authUserId && data.length > 0) {
+          const jobIds = data.map(j => j.id);
+          const { data: feedbacks } = await supabase
+            .from('feedbacks')
+            .select('job_id, rating')
+            .eq('giver_id', authUserId)
+            .in('job_id', jobIds);
+          if (feedbacks) {
+            feedbacks.forEach(f => {
+              ratedJobsMap[f.job_id] = f.rating;
+            });
           }
         }
 
@@ -201,6 +206,21 @@ export const api = {
         const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone, upi_id, rating, tasks_completed').in('id', profileIds);
         if (profiles) {
           profiles.forEach(p => { profileMap[p.id] = p; });
+        }
+      }
+
+      // Fetch feedbacks only for the returned jobs
+      if (authUserId && data.length > 0) {
+        const jobIds = data.map(j => j.id);
+        const { data: feedbacks } = await supabase
+          .from('feedbacks')
+          .select('job_id, rating')
+          .eq('giver_id', authUserId)
+          .in('job_id', jobIds);
+        if (feedbacks) {
+          feedbacks.forEach(f => {
+            ratedJobsMap[f.job_id] = f.rating;
+          });
         }
       }
 

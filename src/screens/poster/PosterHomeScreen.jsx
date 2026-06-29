@@ -4,9 +4,9 @@ import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import BirdAvatar from '../../components/BirdAvatars';
-import { getCurrentLocation } from '../../utils/location';
 import SetupWizardModal from '../../components/SetupWizardModal';
 import { useProfileCompletion } from '../../hooks/useProfileCompletion';
+import ProfileProgressBar from '../../components/ProfileProgressBar';
 
 const PosterHomeScreen = () => {
   const { 
@@ -22,10 +22,12 @@ const PosterHomeScreen = () => {
     realLocation,
     setRealLocation,
     fetchJobs,
-    openOnboardingWizard
+    openOnboardingWizard,
+    userId,
+    openLoginModal
   } = useContext(AppContext);
 
-  const { missingItems } = useProfileCompletion();
+  const { missingWizardItems } = useProfileCompletion();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -40,9 +42,13 @@ const PosterHomeScreen = () => {
   }, [fetchJobs]);
 
   const handlePostJobClick = () => {
-    const isWizardCompleted = userProfile?.id 
-      ? localStorage.getItem(`helphive_wizard_completed_poster_${userProfile.id}`) === 'true' && missingItems.length === 0
-      : false;
+    if (!userId) {
+      openLoginModal(() => {
+        handlePostJobClick();
+      });
+      return;
+    }
+    const isWizardCompleted = localStorage.getItem(`helphive_wizard_completed_poster_${userId}`) === 'true' && missingWizardItems.length === 0;
     if (!isWizardCompleted) {
       openOnboardingWizard(() => {
         pushScreen('post_job');
@@ -151,6 +157,9 @@ const PosterHomeScreen = () => {
             </div>
           </button>
         </Tooltip>
+
+        {/* Profile completion progress bar */}
+        <ProfileProgressBar />
 
         {/* My Active Jobs Section */}
         <div className="space-y-4">

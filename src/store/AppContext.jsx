@@ -107,9 +107,27 @@ export const AppProvider = ({ children }) => {
         console.error("Failed to parse cached userProfile", e);
       }
     }
+    const hasUserId = localStorage.getItem('userId');
+    if (!hasUserId) {
+      const guestSaved = localStorage.getItem('helphive_guest_profile');
+      if (guestSaved) {
+        try {
+          return JSON.parse(guestSaved);
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
     return null;
   }); // { name, phone, skills, rating, tasksCompleted }
   const [userId, setUserId] = useState(() => localStorage.getItem('userId'));
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const loginCallbackRef = useRef(null);
+
+  const openLoginModal = (callback = null) => {
+    loginCallbackRef.current = callback;
+    setShowLoginModal(true);
+  };
   const [isProfileLoading, setIsProfileLoading] = useState(() => {
     const hasUserId = !!localStorage.getItem('userId');
     const hasCachedProfile = !!localStorage.getItem('userProfile');
@@ -502,8 +520,7 @@ export const AppProvider = ({ children }) => {
             const diffTime = now - selectedDate;
             const diffDays = diffTime / (1000 * 60 * 60 * 24);
             if (diffDays > 5) {
-              // Update in backend asynchronously
-              api.updateJob(j.id, { status: 'expired', v2_status: 'expired' }).then();
+              // Only override locally in state, database expiration is handled by backend auto-dispatch cron
               return { ...j, status: 'expired', v2_status: 'expired' };
             }
           }
@@ -524,7 +541,7 @@ export const AppProvider = ({ children }) => {
 
     const pollInterval = setInterval(() => {
       fetchJobs();
-    }, 30000);
+    }, 120000); // 2 minutes (120s) fallback polling — realtime sync channel handles live updates
 
     return () => {
       if (sub && sub.unsubscribe) sub.unsubscribe();
@@ -613,7 +630,7 @@ export const AppProvider = ({ children }) => {
     if (profileData.phone && profileData.phone !== userProfile?.phone) {
       const { data: existingProfile } = await api.findProfileByPhone(profileData.phone);
       if (existingProfile && existingProfile.id !== currentUserId) {
-        return { success: false, error: 'An account already exists with this phone number. Please log in.' };
+        return { success: false, error: 'An account already exists with this phone number. Please sign in.' };
       }
     }
 
@@ -680,8 +697,28 @@ export const AppProvider = ({ children }) => {
         }
       }
       return { success: true };
+    } else {
+      // Guest mode: save to local storage cache
+      try {
+        const guestSaved = localStorage.getItem('helphive_guest_profile');
+        const guestProfile = guestSaved ? JSON.parse(guestSaved) : {};
+        const updatedGuest = {
+          ...guestProfile,
+          ...profileData,
+          ...roleSpecificUpdates,
+          ...locUpdates
+        };
+        localStorage.setItem('helphive_guest_profile', JSON.stringify(updatedGuest));
+        setUserProfileState(updatedGuest);
+        if (profileData.bird !== undefined) {
+          setSelectedBird(profileData.bird);
+        }
+        return { success: true };
+      } catch (err) {
+        console.error('Error saving guest profile:', err);
+        return { success: false, error: 'Failed to save guest profile.' };
+      }
     }
-    return { success: false, error: 'User is not logged in.' };
   };
 
   const [activeTab, setActiveTabState] = useState('home'); // For tasker: 'home' | 'profile'
@@ -717,15 +754,7 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Auto-open wizard for tasker on mount/login if not completed
-  useEffect(() => {
-    if (userId && userProfile && role === 'tasker') {
-      const isCompleted = localStorage.getItem(`helphive_wizard_completed_tasker_${userId}`) === 'true';
-      if (!isCompleted) {
-        setShowWizard(true);
-      }
-    }
-  }, [userId, userProfile, role]);
+
 
   // Profile Action Interceptor
   const [profileActionCallback, setProfileActionCallback] = useState(null);
@@ -921,6 +950,7 @@ export const AppProvider = ({ children }) => {
   
   // Live Tracking state (30 seconds map pin animation)
   const [trackingTaskerPos, setTrackingTaskerPos] = useState(null); // { lat, lng }
+  const [trackingLocationError, setTrackingLocationError] = useState(false);
   const [animationTick, setAnimationTick] = useState(0);
   const trackingIntervalRef = useRef(null);
   const activeJobIdRef = useRef(null);
@@ -977,7 +1007,19 @@ export const AppProvider = ({ children }) => {
 
   const switchRole = async (newRole) => {
     if (!userId) {
-      setScreenStack(['landing']);
+      setRole(newRole);
+      localStorage.setItem('activeRole', newRole);
+      const guestSaved = localStorage.getItem('helphive_guest_profile');
+      if (guestSaved) {
+        try {
+          setUserProfileState(JSON.parse(guestSaved));
+        } catch (e) {
+          // Ignore JSON parse error
+        }
+      } else {
+        setUserProfileState(null);
+      }
+      pushScreen(newRole === 'tasker' ? 'tasker_home' : 'poster_home');
       return;
     }
 
@@ -1222,6 +1264,10 @@ export const AppProvider = ({ children }) => {
 
   const declineJob = async (jobId) => {
     const tId = userProfile?.id || userId || localStorage.getItem('userId');
+    if (!tId) {
+      setJobs(prevJobs => prevJobs.filter(j => j.id !== jobId));
+      return;
+    }
     await api.declineJobOffer(jobId, tId);
     setJobs(prevJobs => prevJobs.filter(j => j.id !== jobId));
     trackEvent(EVENTS.TASK_REJECTION, { userId: tId, role, entityId: jobId });
@@ -1431,11 +1477,8 @@ export const AppProvider = ({ children }) => {
           try {
             const loc = await getCurrentLocation();
             setTrackingTaskerPos(loc);
-            // Save to database
-            await api.updateJob(targetJobId, {
-              tasker_current_location: `POINT(${loc.lng} ${loc.lat})`
-            });
-            // Save to user_locations database table (scales to multiple taskers)
+            setTrackingLocationError(false); // Success, clear error
+            // Save only to user_locations database table (scales to multiple taskers, avoids redundant heavy job table writes/realtime syncs)
             await api.upsertUserLocation({
               user_id: userId,
               latitude: loc.lat,
@@ -1444,6 +1487,7 @@ export const AppProvider = ({ children }) => {
             });
           } catch(err) {
             console.error("Live tracking location failed", err);
+            setTrackingLocationError(true); // Failed, set error flag
           }
         }, 5000);
       } else {
@@ -1456,6 +1500,7 @@ export const AppProvider = ({ children }) => {
         trackingIntervalRef.current = null;
       }
       activeJobIdRef.current = null;
+      setTrackingLocationError(false); // Reset error state
     }
   }, [currentScreen, acceptedJob?.id, currentPostedJob?.id, crewTaskers?.length, role, currentPostedJob?.taskerCurrentLocation]);
 
@@ -1573,8 +1618,8 @@ export const AppProvider = ({ children }) => {
       if (profileByAuth) {
         profile = profileByAuth;
         
-        // Update name from Google if it is still 'New User'
-        if (profile.name === 'New User' && session.user.user_metadata?.full_name) {
+        // Update name from Google if it is missing, empty, or default 'New User' / 'Guest User'
+        if ((!profile.name || profile.name === 'New User' || profile.name === 'Guest User' || profile.name.trim() === '') && session.user.user_metadata?.full_name) {
           const googleName = session.user.user_metadata.full_name;
           await api.updateProfile(profile.id, { name: googleName });
           profile.name = googleName;
@@ -1609,6 +1654,7 @@ export const AppProvider = ({ children }) => {
             bird: selectedBird || 'falcon'
           });
 
+          let isNewSignup = false;
           if (createErr) {
             console.error('[Auth] Error creating profile:', createErr);
             // If insert failed due to unique constraint (duplicate), try finding again
@@ -1616,9 +1662,10 @@ export const AppProvider = ({ children }) => {
             profile = retryProfile;
           } else {
             profile = newProfile;
+            isNewSignup = true;
           }
 
-          if (profile) {
+          if (profile && isNewSignup) {
             api.notifyAdmin('New User Registration', `A new user (${email}) just signed up!`);
             trackEvent(EVENTS.SIGNUP, { userId: profile.id, role: activeRole });
           }
@@ -1626,6 +1673,50 @@ export const AppProvider = ({ children }) => {
       }
 
       if (profile) {
+        // Check if we have cached guest details to merge
+        const guestSaved = localStorage.getItem('helphive_guest_profile');
+        if (guestSaved) {
+          try {
+            const guestProfile = JSON.parse(guestSaved);
+            const updatesPayload = {
+              name: (guestProfile.name && guestProfile.name !== 'New User' && guestProfile.name !== 'Guest User') ? guestProfile.name : profile.name,
+              phone: (guestProfile.phone && guestProfile.phone !== 'Add Phone') ? guestProfile.phone : profile.phone,
+              upi_id: guestProfile.upiId || profile.upi_id,
+              skills: guestProfile.skills || profile.skills || [],
+              bird: guestProfile.bird || profile.bird || 'falcon',
+              coverage_radius: guestProfile.coverageRadius || profile.coverage_radius,
+              service_area_name: guestProfile.serviceAreaName || profile.service_area_name,
+              coverage_level: guestProfile.coverageLevel || profile.coverage_level
+            };
+
+            if (guestProfile.serviceAreaLat && guestProfile.serviceAreaLng) {
+              updatesPayload.location = `POINT(${guestProfile.serviceAreaLng} ${guestProfile.serviceAreaLat})`;
+            }
+
+            const { data: updatedDbProfile } = await api.updateProfile(profile.id, updatesPayload);
+            if (updatedDbProfile) {
+              profile = updatedDbProfile;
+            }
+            localStorage.removeItem('helphive_guest_profile');
+
+            // Migrate wizard completion states
+            const guestWizardTasker = localStorage.getItem('helphive_wizard_completed_tasker_null') || localStorage.getItem('helphive_wizard_completed_tasker_undefined');
+            if (guestWizardTasker) {
+              localStorage.setItem(`helphive_wizard_completed_tasker_${profile.id}`, guestWizardTasker);
+              localStorage.removeItem('helphive_wizard_completed_tasker_null');
+              localStorage.removeItem('helphive_wizard_completed_tasker_undefined');
+            }
+            const guestWizardPoster = localStorage.getItem('helphive_wizard_completed_poster_null') || localStorage.getItem('helphive_wizard_completed_poster_undefined');
+            if (guestWizardPoster) {
+              localStorage.setItem(`helphive_wizard_completed_poster_${profile.id}`, guestWizardPoster);
+              localStorage.removeItem('helphive_wizard_completed_poster_null');
+              localStorage.removeItem('helphive_wizard_completed_poster_undefined');
+            }
+          } catch (mergeErr) {
+            console.error('[Auth] Error merging guest profile:', mergeErr);
+          }
+        }
+
         const isAlreadyLoggedIn = localStorage.getItem('userId') === profile.id;
         setUserId(profile.id);
         localStorage.setItem('userId', profile.id);
@@ -1649,7 +1740,15 @@ export const AppProvider = ({ children }) => {
           api.updateProfile(profile.id, { is_online: true }).catch(console.error);
         }
 
-        pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
+        if (loginCallbackRef.current) {
+          const callback = loginCallbackRef.current;
+          loginCallbackRef.current = null;
+          setShowLoginModal(false);
+          callback();
+        } else {
+          pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
+        }
+
         if (!isAlreadyLoggedIn) {
           showToast('Welcome back!', 'success');
         }
@@ -1831,6 +1930,7 @@ export const AppProvider = ({ children }) => {
         getJobsInRadius,
         trackingTaskerPos,
         setTrackingTaskerPos,
+        trackingLocationError,
         realLocation,
         setRealLocation,
         isLocationModalOpen,
@@ -1857,6 +1957,10 @@ export const AppProvider = ({ children }) => {
         showWizard,
         openOnboardingWizard,
         closeOnboardingWizard,
+
+        showLoginModal,
+        setShowLoginModal,
+        openLoginModal,
 
         isAdmin,
         userId,

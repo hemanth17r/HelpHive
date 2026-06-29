@@ -3,7 +3,7 @@ import { AppContext } from '../store/AppContext';
 import { NotificationContext } from '../store/NotificationContext';
 
 export const useProfileCompletion = () => {
-  const { userProfile, role, realLocation, savedAddresses = [] } = useContext(AppContext);
+  const { userId, userProfile, role, realLocation, savedAddresses = [] } = useContext(AppContext);
   const { pushPermission, pushSupported } = useContext(NotificationContext);
   
   const [locationPermission, setLocationPermission] = useState('prompt');
@@ -34,45 +34,76 @@ export const useProfileCompletion = () => {
   const hasOsLocation = locationPermission === 'granted' || !!realLocation;
   const hasNotifications = !pushSupported || pushPermission === 'granted';
   const hasEmail = !!userProfile?.email && userProfile.email !== 'Add Email';
+  const hasServiceArea = !!(userProfile?.serviceAreaLat && userProfile?.serviceAreaLng);
 
   let completionPercentage = 0;
   const missingItems = [];
-
+  const missingWizardItems = [];
 
   if (role === 'tasker') {
-    if (hasValidNameAndPhone) completionPercentage += 20;
-    else missingItems.push('profile');
+    // 4 Steps: 1. Auth (25%), 2. Skills (25%), 3. Service Area (25%), 4. Profile & UPI (25%)
+    const hasAuth = !!userId;
+    if (hasAuth) completionPercentage += 25;
+    
+    if (hasSkills) completionPercentage += 25;
+    else {
+      missingItems.push('skills');
+      missingWizardItems.push('skills');
+    }
 
-    if (hasSkills) completionPercentage += 20;
-    else missingItems.push('skills');
+    if (hasServiceArea) completionPercentage += 25;
+    else {
+      missingItems.push('service_area');
+      missingWizardItems.push('service_area');
+    }
 
-    if (hasUpiId) completionPercentage += 20;
-    else missingItems.push('upi');
+    if (hasValidNameAndPhone && hasUpiId) completionPercentage += 25;
+    else {
+      if (!hasValidNameAndPhone) {
+        missingItems.push('profile');
+        missingWizardItems.push('profile');
+      }
+      if (!hasUpiId) {
+        missingItems.push('upi');
+        missingWizardItems.push('upi');
+      }
+    }
 
-    if (hasOsLocation) completionPercentage += 20;
+    if (hasOsLocation) completionPercentage += 0; // Excluded from loading percentage calculation
     else missingItems.push('os_location');
 
-    if (hasNotifications) completionPercentage += 20;
+    if (hasNotifications) completionPercentage += 0; // Excluded from loading percentage calculation
     else missingItems.push('notifications');
 
   } else {
     // Poster (Hirer)
-    if (hasJobLocation) completionPercentage += 30;
-    else missingItems.push('job_location');
+    // 3 Steps: 1. Auth (34%), 2. Profile/Name/Phone (33%), 3. Address setup (33%)
+    const hasAuth = !!userId;
+    if (hasAuth) completionPercentage += 34;
 
-    if (hasValidNameAndPhone) completionPercentage += 30;
-    else missingItems.push('profile');
+    if (hasValidNameAndPhone) completionPercentage += 33;
+    else {
+      missingItems.push('profile');
+      missingWizardItems.push('profile');
+    }
 
-    if (hasNotifications) completionPercentage += 20;
+    if (hasJobLocation) completionPercentage += 33;
+    else {
+      missingItems.push('job_location');
+      missingWizardItems.push('job_location');
+    }
+
+    if (hasNotifications) completionPercentage += 0; // Excluded from loading percentage
     else missingItems.push('notifications');
 
-    if (hasOsLocation) completionPercentage += 20;
+    if (hasOsLocation) completionPercentage += 0; // Excluded from loading percentage
     else missingItems.push('os_location');
   }
 
   return {
     completionPercentage,
     missingItems,
+    missingWizardItems,
     hasJobLocation,
     hasOsLocation,
     hasNotifications,

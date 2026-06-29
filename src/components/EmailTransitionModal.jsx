@@ -116,7 +116,7 @@ const EmailTransitionModal = ({ isOpen, onClose }) => {
         <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-white shrink-0">
           <div>
             <h2 className="text-lg font-black text-dark">Secure Your Account</h2>
-            <p className="text-xs font-semibold text-gray-500 mt-0.5">Link an email to switch to passwordless login</p>
+            <p className="text-xs font-semibold text-gray-500 mt-0.5">Link an email to switch to passwordless sign-in</p>
           </div>
           <button 
             onClick={onClose}
@@ -175,7 +175,7 @@ const EmailTransitionModal = ({ isOpen, onClose }) => {
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-2 font-medium leading-relaxed pt-1">
-                  HelpHive is moving to a modern, email-first login system. By linking your email, you will be able to log in easily without entering a phone number again.
+                  HelpHive is moving to a modern, email-first sign-in system. By linking your email, you will be able to sign in easily without entering a phone number again.
                 </p>
               </div>
 

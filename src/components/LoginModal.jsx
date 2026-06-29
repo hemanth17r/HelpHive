@@ -96,7 +96,7 @@ const LoginModal = ({ isOpen, onClose }) => {
         <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-white shrink-0">
           <div>
             <h2 className="text-lg font-black text-dark">Welcome to HelpHive</h2>
-            <p className="text-xs font-semibold text-gray-500 mt-0.5">Log in or create an account</p>
+            <p className="text-xs font-semibold text-gray-500 mt-0.5">Sign in or Create an account</p>
           </div>
           <button 
             onClick={onClose}
@@ -192,7 +192,7 @@ const LoginModal = ({ isOpen, onClose }) => {
               </div>
               <h3 className="text-xl font-black text-dark">Check your email</h3>
               <p className="text-sm font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
-                We sent a magic link to <span className="text-dark font-bold">{email}</span>. Click the link to log in.
+                We sent a magic link to <span className="text-dark font-bold">{email}</span>. Click the link to sign in.
               </p>
               <button 
                 onClick={() => setView('main')}

@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { api } from './services/api';
 import { AppProvider, AppContext } from './store/AppContext';
 import { ToastProvider } from './store/ToastContext';
@@ -41,6 +41,7 @@ import AdminDashboard from './screens/AdminDashboard';
 import ProfileCompletionModal from './components/ProfileCompletionModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import SetupWizardModal from './components/SetupWizardModal';
+import LoginModal from './components/LoginModal';
 import NotificationsScreen from './screens/NotificationsScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import LocationPermissionModal from './components/LocationPermissionModal';
@@ -80,7 +81,10 @@ const AppContent = () => {
     isProfileLoading,
     showWizard,
     openOnboardingWizard,
-    closeOnboardingWizard
+    closeOnboardingWizard,
+    showLoginModal,
+    setShowLoginModal,
+    userId
   } = useContext(AppContext);
 
   const { 
@@ -90,7 +94,51 @@ const AppContent = () => {
     subscribeToPush 
   } = useContext(NotificationContext);
 
-  const { completionPercentage, missingItems } = useProfileCompletion();
+  const { 
+    completionPercentage, 
+    missingWizardItems, 
+    hasOsLocation, 
+    hasNotifications,
+    hasValidNameAndPhone,
+    hasSkills,
+    hasUpiId,
+    hasJobLocation
+  } = useProfileCompletion();
+
+  // Compulsory Onboarding Wizard for Authenticated Users
+  useEffect(() => {
+    if (userId && !isProfileLoading) {
+      // Determine if they are missing any required profile inputs or permission grants
+      let isProfileIncomplete = false;
+      
+      // Permissions are compulsory for real users
+      const hasPermissions = hasOsLocation && hasNotifications;
+
+      if (role === 'tasker') {
+        const hasServiceArea = !missingWizardItems.includes('service_area');
+        isProfileIncomplete = !hasSkills || !hasServiceArea || !hasValidNameAndPhone || !hasUpiId || !hasPermissions;
+      } else {
+        isProfileIncomplete = !hasValidNameAndPhone || !hasJobLocation || !hasPermissions;
+      }
+
+      if (isProfileIncomplete && !showWizard) {
+        openOnboardingWizard();
+      }
+    }
+  }, [
+    userId,
+    role,
+    hasSkills,
+    hasValidNameAndPhone,
+    hasUpiId,
+    hasJobLocation,
+    hasOsLocation,
+    hasNotifications,
+    missingWizardItems,
+    isProfileLoading,
+    showWizard,
+    openOnboardingWizard
+  ]);
 
 
 
@@ -131,24 +179,14 @@ const AppContent = () => {
   }, [currentScreen, userProfile?.id]);
 
   const handleNotificationClick = async () => {
-    const isWizardCompleted = userProfile?.id 
-      ? localStorage.getItem(`helphive_wizard_completed_${role}_${userProfile.id}`) === 'true' && missingItems.length === 0
-      : false;
-      
-    if (role === 'poster' && !isWizardCompleted) {
-      openOnboardingWizard(() => {
-        pushScreen('notifications');
-      });
-    } else {
-      if ('Notification' in window && Notification.permission === 'default') {
-        try {
-          await Notification.requestPermission();
-        } catch (e) {
-          console.error("Notification permission request failed", e);
-        }
+    if ('Notification' in window && Notification.permission === 'default') {
+      try {
+        await Notification.requestPermission();
+      } catch (e) {
+        console.error("Notification permission request failed", e);
       }
-      pushScreen('notifications');
     }
+    pushScreen('notifications');
   };
 
 
@@ -288,7 +326,7 @@ const AppContent = () => {
                 <div className="relative">
                   <div 
                     className="w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center p-[2px]"
-                    style={{ background: `conic-gradient(#f97316 ${completionPercentage}%, #f3f4f6 ${completionPercentage}%)` }}
+                    style={{ background: `conic-gradient(#FF6B35 ${completionPercentage}%, #f3f4f6 ${completionPercentage}%)` }}
                   >
                     <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-2 border-white">
                       <BirdAvatar birdName={selectedBird} size={36} />
@@ -371,7 +409,7 @@ const AppContent = () => {
                 >
                   <div 
                     className="w-9 h-9 rounded-full flex items-center justify-center p-[2px]"
-                    style={{ background: `conic-gradient(#f97316 ${completionPercentage}%, #f3f4f6 ${completionPercentage}%)` }}
+                    style={{ background: `conic-gradient(#FF6B35 ${completionPercentage}%, #f3f4f6 ${completionPercentage}%)` }}
                   >
                     <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-2 border-white">
                       <BirdAvatar birdName={selectedBird} size={28} />
@@ -426,9 +464,14 @@ const AppContent = () => {
     {showWizard && (
       <SetupWizardModal 
         onComplete={() => closeOnboardingWizard(true)}
-        onClose={() => closeOnboardingWizard(false)}
+        onClose={userId ? null : () => closeOnboardingWizard(false)}
       />
     )}
+
+    <LoginModal 
+      isOpen={showLoginModal}
+      onClose={() => setShowLoginModal(false)}
+    />
 
   </div>
 );

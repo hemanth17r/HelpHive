@@ -1,22 +1,13 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext } from 'react';
 import { HeartHandshake, Briefcase, Sparkles, ChevronRight } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
-import Tooltip from '../components/Tooltip';
-import LoginModal from '../components/LoginModal';
 
 const LandingScreen = () => {
-  const { switchRole, userId } = useContext(AppContext);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const { switchRole } = useContext(AppContext);
 
   const selectRole = (selectedRole) => {
-    if (!userId) {
-      localStorage.setItem('activeRole', selectedRole);
-      setShowLoginModal(true);
-    } else {
-      switchRole(selectedRole);
-    }
+    switchRole(selectedRole);
   };
-
 
   return (
     <div 
@@ -78,16 +69,10 @@ const LandingScreen = () => {
         </button>
       </div>
 
-
       {/* Footer Branding */}
       <div className="text-center text-[9px] font-black text-gray-400 tracking-wider uppercase shrink-0 pt-2 border-t border-border/10">
         Connect • Help • Earn
       </div>
-
-      <LoginModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
-      />
     </div>
   );
 };

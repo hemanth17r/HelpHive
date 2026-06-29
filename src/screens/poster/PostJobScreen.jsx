@@ -1,5 +1,5 @@
 import React, { useState, useContext, useRef } from 'react';
-import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar, MapPin, Home, Briefcase, Wifi } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar, MapPin, Home, Briefcase, Wifi, Flame, Zap } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
@@ -8,7 +8,7 @@ import { ToastContext } from '../../store/ToastContext';
 import { evaluateMarketplaceMaturity } from '../../utils/marketplaceMaturity';
 import { api } from '../../services/api';
 const PostJobScreen = () => {
-  const { userLocation, postJob, popScreen, editJobData, setEditJobData, savedAddresses, addSavedAddress, userProfile, setUserProfile, realLocation } = useContext(AppContext);
+  const { userLocation, postJob, popScreen, editJobData, setEditJobData, savedAddresses, addSavedAddress, userProfile, setUserProfile, realLocation, setRealLocation } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const [selectedSkillId, setSelectedSkillId] = useState(editJobData?.skillId || '');
   const [description, setDescription] = useState(editJobData?.description || '');
@@ -114,10 +114,20 @@ const PostJobScreen = () => {
   const [completeAddress, setCompleteAddress] = useState('');
   const [landmark, setLandmark] = useState('');
   const [addressType, setAddressType] = useState('Home');
-  // Bug 2.6 fix: Initialize map center from user's real location instead of hardcoded Hyderabad.
-  const [lat, setLat] = useState(realLocation?.lat || userLocation?.lat || 17.3850);
-  const [lng, setLng] = useState(realLocation?.lng || userLocation?.lng || 78.4867);
-  // Bug 2.7 fix: Use posterName/posterPhone role-specific fields as the address contact details.
+  // Initialize map center using the best available location context.
+  // Priority: explicit GPS → user's location header → saved default address → India center
+  const INDIA_CENTER_LAT = 20.5937;
+  const INDIA_CENTER_LNG = 78.9629;
+  const _defaultAddr = Array.isArray(savedAddresses) && savedAddresses.length > 0
+    ? (savedAddresses.find(a => a.isDefault) || savedAddresses[0])
+    : null;
+  const [lat, setLat] = useState(
+    realLocation?.lat || userLocation?.lat || _defaultAddr?.lat || INDIA_CENTER_LAT
+  );
+  const [lng, setLng] = useState(
+    realLocation?.lng || userLocation?.lng || _defaultAddr?.lng || INDIA_CENTER_LNG
+  );
+  // Use posterName/posterPhone role-specific fields as the address contact details.
   // These are separate from the generic name/phone and are set per-role in the tasker profile.
   const [contactName, setContactName] = useState(userProfile?.posterName || userProfile?.name || '');
   const [contactPhone, setContactPhone] = useState(userProfile?.posterPhone || userProfile?.phone || '');
@@ -129,9 +139,11 @@ const PostJobScreen = () => {
       setContactName(pName);
       setContactPhone(pPhone);
     }
-    // Also keep map center in sync if real GPS comes in after mount
-    setLat(prev => prev === 17.3850 ? (realLocation?.lat || userLocation?.lat || 17.3850) : prev);
-    setLng(prev => prev === 78.4867 ? (realLocation?.lng || userLocation?.lng || 78.4867) : prev);
+    // Keep map center in sync if GPS becomes available after mount.
+    // Only update if we're still showing the India fallback (meaning no real location was
+    // available at mount time). This avoids overriding a user-dragged pin.
+    setLat(prev => prev === INDIA_CENTER_LAT ? (realLocation?.lat || userLocation?.lat || INDIA_CENTER_LAT) : prev);
+    setLng(prev => prev === INDIA_CENTER_LNG ? (realLocation?.lng || userLocation?.lng || INDIA_CENTER_LNG) : prev);
   }, [userProfile, realLocation, userLocation]);
 
   const [maturityInfo, setMaturityInfo] = useState(null);
@@ -461,13 +473,18 @@ const PostJobScreen = () => {
                             : 'bg-gray-50 border-border text-gray-500 hover:bg-orange-50 hover:border-primary/30 hover:text-primary'
                         }`}
                       >
-                        {skill.isNew && (
+                        {(skill.isNew || skill.isHighDemand || skill.isUrgent) && (
                           <span className={`absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-xs border transition-all duration-300 flex items-center gap-1 ${
                             isSelected 
                               ? 'bg-white text-primary border-white scale-105' 
                               : 'bg-primary text-white border-primary'
                           }`}>
-                            NEW
+                            {skill.isHighDemand ? (
+                              <Flame className="w-2.5 h-2.5 shrink-0 fill-current" />
+                            ) : skill.isUrgent ? (
+                              <Zap className="w-2.5 h-2.5 shrink-0 fill-current" />
+                            ) : null}
+                            {skill.isNew && <span>NEW</span>}
                           </span>
                         )}
                         <Icon className="w-7 h-7 mb-1 shrink-0" />
@@ -502,13 +519,18 @@ const PostJobScreen = () => {
                             : 'bg-gray-50 border-border text-gray-500 hover:bg-orange-50 hover:border-primary/30 hover:text-primary'
                         }`}
                       >
-                        {skill.isNew && (
+                        {(skill.isNew || skill.isHighDemand || skill.isUrgent) && (
                           <span className={`absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-xs border transition-all duration-300 flex items-center gap-1 ${
                             isSelected 
                               ? 'bg-white text-primary border-white scale-105' 
                               : 'bg-primary text-white border-primary'
                           }`}>
-                            NEW
+                            {skill.isHighDemand ? (
+                              <Flame className="w-2.5 h-2.5 shrink-0 fill-current" />
+                            ) : skill.isUrgent ? (
+                              <Zap className="w-2.5 h-2.5 shrink-0 fill-current" />
+                            ) : null}
+                            {skill.isNew && <span>NEW</span>}
                           </span>
                         )}
                         <Icon className="w-7 h-7 mb-1 shrink-0" />
@@ -844,6 +866,7 @@ const PostJobScreen = () => {
                         setLat(loc.lat);
                         setLng(loc.lng);
                       }}
+                      onLocationGranted={(coords) => setRealLocation(coords)}
                     />
                   </div>
                   <div className="space-y-1.5">
