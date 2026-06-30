@@ -41,10 +41,12 @@ const TaskerJobDetailsScreen = () => {
 
   useEffect(() => {
     if (!acceptedJob?.id) return;
+    let isMounted = true;
+    
     const loadCrew = async () => {
       try {
         const { data } = await api.fetchJobCrew(acceptedJob.id);
-        if (data) {
+        if (data && isMounted) {
           setCrewMembers(data);
         }
       } catch (err) {
@@ -53,8 +55,23 @@ const TaskerJobDetailsScreen = () => {
     };
     loadCrew();
     
-    const interval = setInterval(loadCrew, 5000);
-    return () => clearInterval(interval);
+    // Focused Supabase Realtime Subscription replacing the 5-second polling loop
+    const channel = api.supabase
+      .channel(`tasker-job-crew-${acceptedJob.id}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'job_offers', 
+        filter: `job_id=eq.${acceptedJob.id}` 
+      }, () => {
+        if (isMounted) loadCrew();
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      api.supabase.removeChannel(channel);
+    };
   }, [acceptedJob?.id]);
 
   useEffect(() => {
@@ -137,7 +154,8 @@ const TaskerJobDetailsScreen = () => {
           body,
           'crew_confirmed',
           'job_started',
-          'poster'
+          'poster',
+          { job_id: acceptedJob.id }
         );
       }
       
@@ -320,9 +338,10 @@ const TaskerJobDetailsScreen = () => {
                           acceptedJob.posterId,
                           "Task Cancelled",
                           `${userProfile?.name || 'Your helper'} cancelled the task.`,
-                          'crew_confirmed',
+                          'live_status',
                           'job_cancelled',
-                          'poster'
+                          'poster',
+                          { job_id: acceptedJob.id }
                         );
                       }
                       await cancelTaskerAssignment(acceptedJob.id);
@@ -603,9 +622,10 @@ const TaskerJobDetailsScreen = () => {
                         acceptedJob.posterId,
                         "Task Cancelled",
                         `${userProfile?.name || 'Your helper'} cancelled the task.`,
-                        'poster_home',
+                        'live_status',
                         'job_cancelled',
-                        'poster'
+                        'poster',
+                        { job_id: acceptedJob.id }
                       );
                     }
                     await cancelTaskerAssignment(acceptedJob.id);

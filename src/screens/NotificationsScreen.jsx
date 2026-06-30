@@ -2,6 +2,7 @@ import React, { useContext, useState } from 'react';
 import { ArrowLeft, Bell, CheckCircle2, Navigation, Star, AlertTriangle, BellOff } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { NotificationContext } from '../store/NotificationContext';
+import { api } from '../services/api';
 
 const getIconForType = (type) => {
   switch (type) {
@@ -14,7 +15,7 @@ const getIconForType = (type) => {
 };
 
 const NotificationsScreen = () => {
-  const { popScreen, pushScreen } = useContext(AppContext);
+  const { popScreen, pushScreen, jobs, setJobs, setCurrentPostedJob, setAcceptedJob, role } = useContext(AppContext);
   const { 
     notifications, 
     markAsRead, 
@@ -27,10 +28,35 @@ const NotificationsScreen = () => {
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState(null);
 
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = async (notification) => {
     if (!notification.is_read) {
       markAsRead(notification.id);
     }
+
+    const jobId = notification.metadata?.job_id || notification.metadata?.jobId;
+    if (jobId) {
+      let job = jobs.find(j => j.id === jobId);
+      if (!job) {
+        try {
+          const { data } = await api.fetchJobs();
+          if (data) {
+            setJobs(data);
+            job = data.find(j => j.id === jobId);
+          }
+        } catch (e) {
+          console.error("Failed to fetch jobs on notification click:", e);
+        }
+      }
+
+      if (job) {
+        if (role === 'tasker') {
+          setAcceptedJob(job);
+        } else {
+          setCurrentPostedJob(job);
+        }
+      }
+    }
+
     if (notification.action_url) {
       pushScreen(notification.action_url);
     }

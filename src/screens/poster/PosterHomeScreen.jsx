@@ -67,18 +67,15 @@ const PosterHomeScreen = () => {
     return posterJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft' && j.status !== 'cancelled');
   }, [posterJobs]);
 
-  const completedJobs = useMemo(() => {
-    return posterJobs.filter(j => j.status === 'completed');
-  }, [posterJobs]);
+
 
   const displayActiveJobs = activeJobs;
-
   const [activeDropdownId, setActiveDropdownId] = useState(null);
   const EXAMPLE_TASKS = [
     "Need someone to pick up urgent medicines and deliver to my parents - ₹150",
     "Need 2 people to help shift heavy furniture during house moving - ₹500",
     "Need someone to stand in queue for a hospital OPD token early morning - ₹250",
-    "Need urgent help to fix a leaking tap in my kitchen - ₹300"
+    "Need someone to walk my dog around the neighborhood park for an hour - ₹200"
   ];
 
   const [exampleIndex, setExampleIndex] = useState(0);
@@ -147,13 +144,13 @@ const PosterHomeScreen = () => {
         <Tooltip text="Create a new task request">
           <button
             onClick={handlePostJobClick}
-            className="w-full bg-primary hover:bg-primary/95 text-white flex flex-row items-center px-6 py-4 md:py-5 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer group relative overflow-hidden text-left"
+            className="w-full bg-primary hover:bg-primary/95 text-white flex flex-row items-center px-5 py-3 md:py-3.5 rounded-2xl shadow-md shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer group relative overflow-hidden text-left"
           >
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-all"></div>
-            <PlusCircle className="w-8 h-8 md:w-9 md:h-9 mr-4 shrink-0" />
+            <div className="absolute -right-4 -top-4 w-16 h-16 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-all"></div>
+            <PlusCircle className="w-6 h-6 md:w-7 md:h-7 mr-3.5 shrink-0" />
             <div className="flex flex-col">
-              <h2 className="text-lg md:text-xl font-black leading-tight">Post a Job</h2>
-              <p className="text-[11px] md:text-xs font-bold text-white/80 mt-0.5">Get local help in seconds</p>
+              <h2 className="text-base md:text-lg font-black leading-tight">Post a Job</h2>
+              <p className="text-[10px] md:text-xs font-semibold text-white/85 mt-0.5">Get local help in seconds</p>
             </div>
           </button>
         </Tooltip>
@@ -292,74 +289,7 @@ const PosterHomeScreen = () => {
           )}
         </div>
 
-        {/* Completed Jobs Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-              Completed Jobs
-            </span>
-          </div>
-          {completedJobs.length === 0 ? (
-            <p className="text-xs font-semibold text-gray-400 px-2 pb-2">
-              No completed jobs.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {completedJobs.map(job => {
-                const skill = SKILLS.find(s => s.id === job.skillId);
-                const Icon = skill ? skill.icon : SKILLS[0].icon;
-                
-                return (
-                  <div 
-                    key={job.id} 
-                    onClick={() => handleJobClick(job)}
-                    className="bg-white border border-border hover:border-primary/30 rounded-2xl p-4 cursor-pointer active:scale-[0.99] transition-all shadow-2xs hover:shadow-md group"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <div className="p-2 bg-gray-100 text-gray-500 rounded-xl shrink-0">
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-black uppercase text-gray-400 block leading-none mb-1">
-                            {skill?.label || 'Task'}
-                          </span>
-                          <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-gray-500 bg-gray-50 border-gray-200">
-                            Completed
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mb-3">
-                      <p className="text-xs font-bold text-gray-600 line-clamp-2">
-                        {job.description}
-                      </p>
-                      {job.address?.completeAddress && (
-                        <div className="flex items-start mt-1.5 space-x-1 opacity-70">
-                          <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                          <span className="text-[10px] font-bold text-gray-400 leading-snug line-clamp-1">
-                            {job.address.completeAddress?.startsWith('Location at') && job.address.landmark 
-                              ? job.address.landmark 
-                              : job.address.completeAddress}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-[10px] font-bold text-gray-400 border-t border-dashed border-border pt-3">
-                      <div className="flex items-center space-x-1">
-                        <Users className="w-3.5 h-3.5" />
-                        <span>Completed by {job.peopleNeeded} {job.peopleNeeded > 1 ? 'helpers' : 'helper'}</span>
-                      </div>
-                      <span className="text-dark font-black text-xs">₹{job.amount}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
         </div>
       </div>
     </div>

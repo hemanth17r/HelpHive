@@ -171,6 +171,63 @@ const AppContent = () => {
     }
   }, [currentScreen]);
 
+  // Dynamic SEO Metadata and Document Title Updates based on route
+  React.useEffect(() => {
+    let title = "HelpHive | Local Help, Side Hustles & Quick Tasks";
+    let description = "HelpHive connects you with trusted local helpers and flexible side hustles in your neighborhood. Post tasks or find quick services on demand.";
+
+    switch (currentScreen) {
+      case 'landing':
+        title = "HelpHive | Local Help, Side Hustles & Quick Tasks";
+        description = "Get trusted local help, fast. Post tasks or find local gigs and side hustles near you on HelpHive.";
+        break;
+      case 'about_us':
+        title = "About HelpHive | Connect • Help • Earn";
+        description = "Learn more about HelpHive, our mission, values, and how we connect local helpers with people needing assistance.";
+        break;
+      case 'need_help':
+        title = "HelpHive Support | Help & FAQs";
+        description = "Need assistance? Find answers to frequently asked questions and get in touch with HelpHive support.";
+        break;
+      case 'poster_home':
+        title = "Poster Dashboard | HelpHive";
+        description = "Manage your posted tasks, review applications from local helpers, and coordinate jobs.";
+        break;
+      case 'tasker_home':
+        title = "Tasker Dashboard | HelpHive";
+        description = "Find local tasks in your area, submit offers, and start earning on your own schedule.";
+        break;
+      case 'post_job':
+        title = "Post a New Task | HelpHive";
+        description = "Quickly post a new task on HelpHive to find local verified helpers in minutes.";
+        break;
+      case 'notifications':
+        title = "Notifications | HelpHive";
+        description = "View your recent notifications, matches, and chat updates on HelpHive.";
+        break;
+      case 'my_profile':
+        title = "My Profile | HelpHive";
+        description = "Manage your HelpHive profile, ratings, verification status, and app settings.";
+        break;
+      case 'job_history':
+        title = "My Tasks History | HelpHive";
+        description = "Review your past jobs, transactions, and completed works on HelpHive.";
+        break;
+      case 'admin_dashboard':
+        title = "Admin Portal | HelpHive";
+        description = "Administrative analytics, system health metrics, and user management dashboard.";
+        break;
+      default:
+        break;
+    }
+
+    document.title = title;
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', description);
+    }
+  }, [currentScreen]);
+
   // Update last active timestamp for active pool logic
   React.useEffect(() => {
     if (userProfile?.id && currentScreen !== 'landing') {

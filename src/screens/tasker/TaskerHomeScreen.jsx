@@ -142,13 +142,13 @@ const TaskerHomeScreen = () => {
           <Tooltip text="Complete configuration to start accepting jobs">
             <button
               onClick={() => openOnboardingWizard()}
-              className="w-full bg-primary hover:bg-primary/95 text-white flex flex-row items-center px-6 py-4 md:py-5 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer group relative overflow-hidden text-left"
+              className="w-full bg-primary hover:bg-primary/95 text-white flex flex-row items-center px-5 py-3 md:py-3.5 rounded-2xl shadow-md shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer group relative overflow-hidden text-left"
             >
-              <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-all"></div>
-              <Briefcase className="w-8 h-8 md:w-9 md:h-9 mr-4 shrink-0" />
+              <div className="absolute -right-4 -top-4 w-16 h-16 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-all"></div>
+              <Briefcase className="w-6 h-6 md:w-7 md:h-7 mr-3.5 shrink-0" />
               <div className="flex flex-col">
-                <h2 className="text-lg md:text-xl font-black leading-tight">Start Earning</h2>
-                <p className="text-[11px] md:text-xs font-bold text-white/80 mt-0.5">Find local tasks and get paid</p>
+                <h2 className="text-base md:text-lg font-black leading-tight">Start Earning</h2>
+                <p className="text-[10px] md:text-xs font-semibold text-white/85 mt-0.5">Find local tasks and get paid</p>
               </div>
             </button>
           </Tooltip>
@@ -228,12 +228,6 @@ const TaskerHomeScreen = () => {
                 To start getting job notifications and browsing open tasks nearby, please select your skills and define your service range.
               </p>
             </div>
-            <button
-              onClick={() => openOnboardingWizard()}
-              className="px-6 py-3 bg-primary hover:bg-primary/95 text-white active:scale-[0.98] transition-all rounded-2xl text-xs font-black tracking-wide cursor-pointer shadow-md shadow-primary/10"
-            >
-              Configure Profile
-            </button>
           </div>
         ) : visibleJobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 bg-white rounded-3xl p-6 border border-border">

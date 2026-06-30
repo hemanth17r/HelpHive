@@ -51,6 +51,12 @@ self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   
   let actionUrl = event.notification.data?.action_url || '/';
+  const jobId = event.notification.data?.metadata?.job_id || event.notification.data?.metadata?.jobId;
+  
+  if (jobId) {
+    actionUrl += (actionUrl.includes('?') ? '&' : '?') + 'jobId=' + jobId;
+  }
+
   if (actionUrl && !actionUrl.startsWith('/') && !actionUrl.startsWith('http')) {
     actionUrl = '/' + actionUrl;
   }
@@ -63,7 +69,11 @@ self.addEventListener('notificationclick', function (event) {
         if (client.url.includes(self.registration.scope) && 'focus' in client) {
           client.focus();
           // Optionally send a message to the client to navigate to actionUrl
-          client.postMessage({ type: 'NAVIGATE', url: actionUrl });
+          client.postMessage({ 
+            type: 'NAVIGATE', 
+            url: actionUrl, 
+            metadata: event.notification.data?.metadata 
+          });
           return;
         }
       }

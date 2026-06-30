@@ -256,12 +256,12 @@ BEGIN
           AND p.upi_id IS NOT NULL AND p.upi_id != ''
           AND p.skills IS NOT NULL AND cardinality(p.skills) > 0
           AND p.location IS NOT NULL
-          -- Prioritize exact category matches.
-          -- Fall back to other local taskers if exact matches are fewer than required, OR if we are in Wave 2/3
+          -- Prioritize exact category matches in Wave 1.
+          -- Fall back to other local taskers only if we are in Wave 2/3
           AND (
               (v_job.skill_id = ANY(p.skills))
               OR
-              (v_exact_match_count < v_remaining_needed OR p_wave_number > 1)
+              (p_wave_number > 1)
           )
           AND p.id != v_job.poster_id
           AND NOT EXISTS (SELECT 1 FROM public.job_offers jo WHERE jo.job_id = p_job_id AND jo.tasker_id = p.id)
@@ -540,7 +540,8 @@ BEGIN
                 'body', 'You have a new task request for ₹' || COALESCE(NEW.amount_offered, v_amount) || '. Accept now before it expires!',
                 'action_url', 'tasker_home',
                 'type', 'new_job_offer',
-                'role', 'tasker'
+                'role', 'tasker',
+                'metadata', jsonb_build_object('job_id', NEW.job_id)
             ),
             headers := jsonb_build_object('Content-Type', 'application/json', 'apikey', v_apikey, 'Authorization', 'Bearer ' || v_apikey)
         );
@@ -554,7 +555,8 @@ BEGIN
                 'body', 'A new ' || v_category_label || ' task for ₹' || COALESCE(NEW.amount_offered, v_amount) || ' is available nearby. Tap to view and accept!',
                 'action_url', 'tasker_home',
                 'type', 'new_job_offer',
-                'role', 'tasker'
+                'role', 'tasker',
+                'metadata', jsonb_build_object('job_id', NEW.job_id)
             ),
             headers := jsonb_build_object('Content-Type', 'application/json', 'apikey', v_apikey, 'Authorization', 'Bearer ' || v_apikey)
         );

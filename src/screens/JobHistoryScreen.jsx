@@ -19,10 +19,12 @@ const JobHistoryScreen = () => {
   const expiredJobs = userJobs.filter(j => j.status === 'expired');
 
   const displayActive = activeJobs;
-  const displayCompleted = [...completedJobs, ...expiredJobs];
+  const displayCompleted = completedJobs;
+  const displayExpired = expiredJobs;
 
   const activeRef = useRef(null);
   const completedRef = useRef(null);
+  const expiredRef = useRef(null);
 
   const [activeDropdownId, setActiveDropdownId] = useState(null);
 
@@ -90,11 +92,11 @@ const JobHistoryScreen = () => {
             }
           }
         }}
-        className={`bg-white border ${borderColor} rounded-2xl p-4 shadow-sm relative overflow-hidden ${(!isExpired && (type === 'completed' || type === 'active')) ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+        className={`bg-white border ${borderColor} rounded-2xl p-4 shadow-sm relative ${(!isExpired && (type === 'completed' || type === 'active')) ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
       >
-        {!isExpired && type === 'completed' && <div className="absolute top-0 left-0 w-1 h-full bg-green-400"></div>}
-        {isExpired && <div className="absolute top-0 left-0 w-1 h-full bg-red-400"></div>}
-        {type === 'active' && <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>}
+        {!isExpired && type === 'completed' && <div className="absolute top-0 left-0 w-1 h-full bg-green-400 rounded-l-2xl"></div>}
+        {isExpired && <div className="absolute top-0 left-0 w-1 h-full bg-red-400 rounded-l-2xl"></div>}
+        {type === 'active' && <div className="absolute top-0 left-0 w-1 h-full bg-blue-400 rounded-l-2xl"></div>}
         
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center space-x-2">
@@ -214,6 +216,21 @@ const JobHistoryScreen = () => {
             )}
           </div>
         </div>
+
+        {/* Expired Section */}
+        {displayExpired.length > 0 && (
+          <div ref={expiredRef} className="space-y-4 pt-4 scroll-m-4" id="expired-section">
+            <div className="flex items-center space-x-2 px-1">
+              <Clock className="w-4 h-4 text-red-500" />
+              <span className="text-sm font-black uppercase tracking-widest text-dark">
+                Expired Tasks
+              </span>
+            </div>
+            <div className="space-y-3">
+              {displayExpired.map(job => renderJobCard(job, 'completed'))}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

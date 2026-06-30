@@ -18,13 +18,17 @@ const RatingScreen = () => {
   const [localCrew, setLocalCrew] = useState([]);
 
   useEffect(() => {
-    if (crewTaskers && crewTaskers.length > 0) {
-      setLocalCrew(crewTaskers);
-    } else if (currentPostedJob?.id) {
+    let isMounted = true;
+    if (currentPostedJob?.id) {
       api.fetchJobCrew(currentPostedJob.id).then(({ data }) => {
-        if (data) setLocalCrew(data);
+        if (data && isMounted) setLocalCrew(data);
       });
+    } else if (crewTaskers && crewTaskers.length > 0) {
+      setLocalCrew(crewTaskers);
     }
+    return () => {
+      isMounted = false;
+    };
   }, [crewTaskers, currentPostedJob]);
 
   const [reportingTaskerId, setReportingTaskerId] = useState(null);

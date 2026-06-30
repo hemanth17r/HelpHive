@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
-import { Home, User, RefreshCw } from 'lucide-react';
+import { Home, User, Repeat } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 
 const BottomNav = () => {
@@ -113,7 +113,7 @@ const BottomNav = () => {
         onClick={handleSwitchMode}
         className="flex flex-col items-center space-y-1 px-1 py-1.5 rounded-xl text-gray-400 hover:text-primary transition-all cursor-pointer justify-center"
       >
-        <RefreshCw className={`w-6 h-6 transition-transform duration-300 ${isRotating ? 'rotate-180' : ''}`} />
+        <Repeat className={`w-6 h-6 transition-transform duration-300 ${isRotating ? 'rotate-180' : ''}`} />
         <span className="text-[10px] font-bold">
           {role === 'tasker' ? 'Switch to Hirer' : 'Switch to Tasker'}
         </span>

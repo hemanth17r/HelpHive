@@ -2,10 +2,11 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #FF6B35;
-  --color-dark: #2D2D2D;
-  --color-light-gray: #F5F5F5;
-  --color-border: #E5E5E5;
+  --color-primary: #F26419;
+  --color-primary-hover: #FF884D;
+  --color-dark: #0F172A;
+  --color-light-gray: #F8FAFC;
+  --color-border: #E2E8F0;
 }
 
 html, body, #root {
@@ -100,15 +101,42 @@ body {
 
 @keyframes slideOutLeft {
   from { opacity: 1; transform: translateX(0); }
-  to { opacity: 0; transform: translateX(-100%); }
+  to { opacity: 0.7; transform: translateX(-15%); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0.7; transform: translateX(-15%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(100%); }
 }
 
 .slide-in-right {
-  animation: slideInRight 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideInRight 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .slide-out-left {
-  animation: slideOutLeft 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideOutLeft 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.slide-in-left {
+  animation: slideInLeft 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.slide-out-right {
+  animation: slideOutRight 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Tactile Active Interaction Styling */
+.active-press {
+  transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.15s ease;
+}
+.active-press:active {
+  transform: scale(0.96);
+  filter: brightness(0.95);
 }
 
 /* Custom Leaflet Overrides for a cleaner, smaller, and more modern map look */

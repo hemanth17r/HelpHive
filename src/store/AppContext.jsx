@@ -478,6 +478,11 @@ export const AppProvider = ({ children }) => {
   
   // Job and tasker registers
   const [jobs, setJobs] = useState([]);
+  const jobsRef = useRef(jobs);
+  useEffect(() => {
+    jobsRef.current = jobs;
+  }, [jobs]);
+  
   const [taskers, setTaskers] = useState([]);
 
   // Fetch jobs from API
@@ -954,6 +959,7 @@ export const AppProvider = ({ children }) => {
   const [animationTick, setAnimationTick] = useState(0);
   const trackingIntervalRef = useRef(null);
   const activeJobIdRef = useRef(null);
+  const lastWrittenLocationRef = useRef(null);
 
   // Email notifications for coming soon
   const [leadNotifications, setLeadNotifications] = useState([]);
@@ -1100,12 +1106,35 @@ export const AppProvider = ({ children }) => {
   // Listen for navigation messages from the Service Worker (e.g. when clicking a push notification while the app is open)
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      const handleServiceWorkerMessage = (event) => {
+      const handleServiceWorkerMessage = async (event) => {
         if (event.data && event.data.type === 'NAVIGATE') {
-          // Extract target screen from relative URL or path
           const targetUrl = event.data.url;
+          const metadata = event.data.metadata;
+          const jobId = metadata?.job_id || metadata?.jobId;
+
+          if (jobId) {
+            let currentJobs = jobsRef.current;
+            if (!currentJobs || currentJobs.length === 0) {
+              const { data } = await api.fetchJobs();
+              if (data) {
+                setJobs(data);
+                currentJobs = data;
+              }
+            }
+            const job = currentJobs.find(j => j.id === jobId);
+            if (job) {
+              if (role === 'tasker') {
+                setAcceptedJob(job);
+              } else {
+                setCurrentPostedJob(job);
+              }
+            }
+          }
+
           if (targetUrl) {
-            const targetScreen = targetUrl.replace(/^\/+/g, '').replace(/\/+$/g, '');
+            // Strip query params for routing
+            const cleanUrl = targetUrl.split('?')[0];
+            const targetScreen = cleanUrl.replace(/^\/+/g, '').replace(/\/+$/g, '');
             pushScreen(targetScreen);
             fetchJobs(); // Force feed refresh when notification triggers navigation
           }
@@ -1116,7 +1145,43 @@ export const AppProvider = ({ children }) => {
         navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
       };
     }
-  }, [pushScreen, fetchJobs]);
+  }, [pushScreen, fetchJobs, role]);
+
+  // Parse URL parameters on initial mount to resolve and navigate from deep links / push notifications
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlJobId = params.get('jobId') || params.get('job_id');
+
+    if (urlJobId && userId) {
+      const resolveUrlJob = async () => {
+        try {
+          const { data } = await api.fetchJobs();
+          if (data) {
+            setJobs(data);
+            const job = data.find(j => j.id === urlJobId);
+            if (job) {
+              // Get clean path without query params
+              const cleanUrl = window.location.pathname.split('?')[0].replace(/^\/+/g, '').replace(/\/+$/g, '');
+              const targetScreen = cleanUrl || (role === 'tasker' ? 'tasker_accepted_job' : (job.status === 'open' || job.v2_status === 'searching' ? 'live_status' : 'crew_confirmed'));
+
+              if (role === 'tasker') {
+                setAcceptedJob(job);
+              } else {
+                setCurrentPostedJob(job);
+              }
+              pushScreen(targetScreen);
+
+              // Clear search params from URL so reloading doesn't re-trigger navigation
+              window.history.replaceState({}, '', window.location.pathname);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to resolve URL jobId:", e);
+        }
+      };
+      resolveUrlJob();
+    }
+  }, [userId, role]);
 
   // Refresh jobs when app becomes visible (e.g. returning to app after clicking a notification or resuming)
   useEffect(() => {
@@ -1211,66 +1276,106 @@ export const AppProvider = ({ children }) => {
     const tName = userProfile?.taskerName || userProfile?.name || 'Tasker';
     const tBird = userProfile?.bird || 'falcon';
 
-    // Call V2 RPC first to ensure atomic acceptance safety
-    const { data: success } = await api.acceptJobOffer(jobId, tId);
-    if (!success) {
-      if (showToast) showToast('This job is no longer available.', 'error');
-      // Force refresh of jobs
-      const { data } = await api.fetchJobs();
-      if (data) setJobs(data);
-      return;
-    }
+    // 1. Optimistic Update Phase
+    const originalJobs = [...jobs];
+    const targetJob = jobs.find(j => j.id === jobId);
+    if (!targetJob) return;
 
-    // Fetch latest job details directly from DB to get the true status (waiting room or accepted)
-    const { data: updatedJobs } = await api.fetchJobs();
-    let latestJob = null;
-    if (updatedJobs) {
-      setJobs(updatedJobs);
-      latestJob = updatedJobs.find(j => j.id === jobId);
-      if (latestJob) {
-        setAcceptedJob(latestJob);
-      }
-    }
+    // Create an optimistically accepted version of the job
+    const optimisticJob = {
+      ...targetJob,
+      status: 'accepted',
+      v2_status: 'accepted',
+      isAcceptedByMe: true,
+      taskerId: tId,
+      taskerName: tName,
+      taskerBird: tBird
+    };
 
-    const job = latestJob || jobs.find(j => j.id === jobId) || {};
-    
-    trackEvent(EVENTS.TASK_ACCEPTANCE, { userId: tId, role, entityId: jobId });
-
-    // Send Notification to Hirer
-    if (job.posterId) {
-      api.sendNotification(
-        job.posterId,
-        "Job Accepted!",
-        `${tName} has accepted your job and is on their way.`,
-        'crew_confirmed',
-        'job_accepted',
-        'poster'
-      );
-    }
-
-    // Start tracking simulation
-    const startLat = (job.lat !== undefined && job.lat !== 0) ? job.lat + 0.012 : 31.2560 + 0.012; // Start roughly 1.5km away
-    const startLng = (job.lng !== undefined && job.lng !== 0) ? job.lng - 0.012 : 75.7051 - 0.012;
-    setTrackingTaskerPos({ lat: startLat, lng: startLng });
-    setAnimationTick(0);
-
-    // Save initial coordinates to database instantly to prevent poster/tasker mismatch
-    api.updateJob(jobId, {
-      tasker_current_location: `POINT(${startLng} ${startLat})`
-    }).catch(err => console.error("Failed to upload initial tracking position", err));
-
+    // Instantly transition local state and screen for a butter-smooth response
+    setAcceptedJob(optimisticJob);
+    setJobs(prevJobs => prevJobs.map(j => j.id === jobId ? optimisticJob : j));
     pushScreen('tasker_accepted_job', true);
+
+    // 2. Async Execution Phase (Background database updates)
+    try {
+      const { data: success } = await api.acceptJobOffer(jobId, tId);
+      if (!success) {
+        throw new Error('not_available');
+      }
+
+      // Fetch latest job details directly from DB to get the true status
+      const { data: updatedJobs } = await api.fetchJobs();
+      if (updatedJobs) {
+        setJobs(updatedJobs);
+        const latestJob = updatedJobs.find(j => j.id === jobId);
+        if (latestJob) {
+          setAcceptedJob(latestJob);
+        }
+      }
+
+      trackEvent(EVENTS.TASK_ACCEPTANCE, { userId: tId, role, entityId: jobId });
+
+      // Send Notification to Hirer
+      if (targetJob.posterId) {
+        const currentJobInDB = updatedJobs?.find(j => j.id === jobId) || targetJob;
+        const isCrewFullySet = currentJobInDB.peopleNeeded ? (currentJobInDB.v2_status === 'accepted') : true;
+        const actionUrl = isCrewFullySet ? 'crew_confirmed' : 'live_status';
+
+        api.sendNotification(
+          targetJob.posterId,
+          "Job Accepted!",
+          `${tName} has accepted your job and is on their way.`,
+          actionUrl,
+          'job_accepted',
+          'poster',
+          { job_id: jobId }
+        );
+      }
+
+      // Start tracking simulation
+      const startLat = (targetJob.lat !== undefined && targetJob.lat !== 0) ? targetJob.lat + 0.012 : 31.2560 + 0.012; // Start roughly 1.5km away
+      const startLng = (targetJob.lng !== undefined && targetJob.lng !== 0) ? targetJob.lng - 0.012 : 75.7051 - 0.012;
+      setTrackingTaskerPos({ lat: startLat, lng: startLng });
+      setAnimationTick(0);
+
+      // Save initial coordinates to database instantly to prevent poster/tasker mismatch
+      api.updateJob(jobId, {
+        tasker_current_location: `POINT(${startLng} ${startLat})`
+      }).catch(err => console.error("Failed to upload initial tracking position", err));
+
+    } catch (err) {
+      console.warn("Optimistic accept failed, reverting state:", err);
+      if (showToast) {
+        if (err.message === 'not_available') {
+          showToast('This job is no longer available.', 'error');
+        } else {
+          showToast('Could not accept job. Please check your connection.', 'error');
+        }
+      }
+      // Revert state smoothly
+      setAcceptedJob(null);
+      setJobs(originalJobs);
+      pushScreen('tasker_home', true);
+    }
   };
 
   const declineJob = async (jobId) => {
     const tId = userProfile?.id || userId || localStorage.getItem('userId');
-    if (!tId) {
-      setJobs(prevJobs => prevJobs.filter(j => j.id !== jobId));
-      return;
-    }
-    await api.declineJobOffer(jobId, tId);
+    
+    // Optimistic Update
+    const originalJobs = [...jobs];
     setJobs(prevJobs => prevJobs.filter(j => j.id !== jobId));
-    trackEvent(EVENTS.TASK_REJECTION, { userId: tId, role, entityId: jobId });
+
+    if (!tId) return;
+
+    try {
+      await api.declineJobOffer(jobId, tId);
+      trackEvent(EVENTS.TASK_REJECTION, { userId: tId, role, entityId: jobId });
+    } catch (err) {
+      console.warn("Decline job failed on server:", err);
+      // Fail silently for user experience, or keep deleted locally
+    }
   };
 
   const cancelTaskerAssignment = async (jobId) => {
@@ -1330,7 +1435,8 @@ export const AppProvider = ({ children }) => {
           "Your tasker has marked the job as complete. Please review and pay.",
           'rating_screen',
           'job_completed',
-          'poster'
+          'poster',
+          { job_id: jobId }
         );
       }
 
@@ -1470,7 +1576,7 @@ export const AppProvider = ({ children }) => {
       if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
       activeJobIdRef.current = targetJobId;
       
-      // If tasker role, fetch real location every 5 seconds to update map and DB
+      // If tasker role, fetch real location every 20 seconds to update map and DB
       if (role === 'tasker') {
         // Start interval
         trackingIntervalRef.current = setInterval(async () => {
@@ -1478,18 +1584,26 @@ export const AppProvider = ({ children }) => {
             const loc = await getCurrentLocation();
             setTrackingTaskerPos(loc);
             setTrackingLocationError(false); // Success, clear error
-            // Save only to user_locations database table (scales to multiple taskers, avoids redundant heavy job table writes/realtime syncs)
-            await api.upsertUserLocation({
-              user_id: userId,
-              latitude: loc.lat,
-              longitude: loc.lng,
-              updated_at: new Date().toISOString()
-            });
+
+            // Throttling: only update database if tasker has moved > 15m (0.015 km)
+            const lastLoc = lastWrittenLocationRef.current;
+            const distanceKm = lastLoc ? calculateDistance(loc.lat, loc.lng, lastLoc.lat, lastLoc.lng) : 999;
+
+            if (distanceKm >= 0.015) {
+              lastWrittenLocationRef.current = loc;
+              // Save only to user_locations database table (scales to multiple taskers, avoids redundant heavy job table writes/realtime syncs)
+              await api.upsertUserLocation({
+                user_id: userId,
+                latitude: loc.lat,
+                longitude: loc.lng,
+                updated_at: new Date().toISOString()
+              });
+            }
           } catch(err) {
             console.error("Live tracking location failed", err);
             setTrackingLocationError(true); // Failed, set error flag
           }
-        }, 5000);
+        }, 20000);
       } else {
         // For poster view, use the live tasker location from currentPostedJob
         setTrackingTaskerPos(currentPostedJob?.taskerCurrentLocation || { lat: targetJob.lat, lng: targetJob.lng });
@@ -1500,6 +1614,7 @@ export const AppProvider = ({ children }) => {
         trackingIntervalRef.current = null;
       }
       activeJobIdRef.current = null;
+      lastWrittenLocationRef.current = null;
       setTrackingLocationError(false); // Reset error state
     }
   }, [currentScreen, acceptedJob?.id, currentPostedJob?.id, crewTaskers?.length, role, currentPostedJob?.taskerCurrentLocation]);

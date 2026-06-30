@@ -47,42 +47,51 @@ const LiveStatusScreen = () => {
     };
     fetchCrew();
     
-    // Refresh count and job status every 5 seconds (not 1s — avoids test-simulation feel)
-    const timer = setInterval(async () => {
-      fetchCrew();
-      
-      // Also poll job status just in case realtime subscription is delayed/missing
-      if (currentPostedJob?.id && !hasNavigatedRef.current) {
-        try {
-          const { data } = await api.supabase
-            .from('jobs')
-            .select('status, tasker_id, v2_status')
-            .eq('id', currentPostedJob.id)
-            .single();
-
-          if (data && (data.status === 'accepted' || data.v2_status === 'accepted')) {
-            hasNavigatedRef.current = true;
-            const { data: allJobs } = await api.fetchJobs();
-            if (allJobs) {
-              setJobs(allJobs);
-              const updatedJob = allJobs.find(j => j.id === currentPostedJob.id);
-              if (updatedJob) {
-                const { data: crew } = await api.fetchJobCrew(currentPostedJob.id);
-                setCrewTaskers(crew || []);
-                setLiveStatus('crew_set');
-                pushScreen('crew_confirmed', true);
-              }
-            }
+    const handleJobAccepted = async (updatedJobData) => {
+      if (hasNavigatedRef.current) return;
+      hasNavigatedRef.current = true;
+      const { data: allJobs } = await api.fetchJobs();
+      if (allJobs && isMounted) {
+        setJobs(allJobs);
+        const updatedJob = allJobs.find(j => j.id === currentPostedJob.id);
+        if (updatedJob) {
+          const { data: crew } = await api.fetchJobCrew(currentPostedJob.id);
+          if (isMounted) {
+            setCrewTaskers(crew || []);
+            setLiveStatus('crew_set');
+            pushScreen('crew_confirmed', true);
           }
-        } catch (e) {
-          // ignore error
         }
       }
-    }, 5000); // Polling every 5s — avoids simulated/test-like rapid triggering
+    };
+
+    // Focused Supabase Realtime Subscription replacing the 5-second polling loop
+    const channel = api.supabase
+      .channel(`live-status-${currentPostedJob.id}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'job_offers', 
+        filter: `job_id=eq.${currentPostedJob.id}` 
+      }, () => {
+        if (isMounted) fetchCrew();
+      })
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'jobs', 
+        filter: `id=eq.${currentPostedJob.id}` 
+      }, (payload) => {
+        const updatedJob = payload.new;
+        if (updatedJob && (updatedJob.status === 'accepted' || updatedJob.v2_status === 'accepted')) {
+          handleJobAccepted(updatedJob);
+        }
+      })
+      .subscribe();
 
     return () => {
       isMounted = false;
-      clearInterval(timer);
+      api.supabase.removeChannel(channel);
     };
   }, [currentPostedJob]);
   if (!currentPostedJob) return null;

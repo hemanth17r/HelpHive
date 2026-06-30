@@ -20,6 +20,7 @@ const CrewConfirmedScreen = () => {
     setCurrentPostedJob,
     setJobs,
     crewTaskers, 
+    setCrewTaskers,
     otpGenerated, 
     pushScreen, 
     popScreen,
@@ -52,11 +53,13 @@ const CrewConfirmedScreen = () => {
   useEffect(() => {
     if (!currentPostedJob?.id) return;
     
+    let isMounted = true;
     const loadCrew = async () => {
       try {
         const { data } = await api.fetchJobCrew(currentPostedJob.id);
-        if (data) {
+        if (data && isMounted) {
           setLocalCrewTaskers(data);
+          setCrewTaskers(data);
         }
       } catch (err) {
         console.error('[CrewConfirmedScreen] Failed to load crew:', err);
@@ -65,8 +68,23 @@ const CrewConfirmedScreen = () => {
 
     loadCrew();
     
-    const interval = setInterval(loadCrew, 5000);
-    return () => clearInterval(interval);
+    // Focused Supabase Realtime Subscription replacing the 5-second polling loop
+    const channel = api.supabase
+      .channel(`crew-confirmed-${currentPostedJob.id}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'job_offers', 
+        filter: `job_id=eq.${currentPostedJob.id}` 
+      }, () => {
+        if (isMounted) loadCrew();
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      api.supabase.removeChannel(channel);
+    };
   }, [currentPostedJob?.id]);
 
   // Fetch and update live coordinates of all crew taskers from user_locations table
@@ -638,7 +656,8 @@ const CrewConfirmedScreen = () => {
                           `The customer cancelled the task.`,
                           'tasker_home',
                           'job_cancelled',
-                          'tasker'
+                          'tasker',
+                          { job_id: currentPostedJob.id }
                         );
                       });
                     }

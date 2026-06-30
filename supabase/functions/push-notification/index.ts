@@ -33,7 +33,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { user_id, title, body, action_url, type, role } = await req.json();
+    const { user_id, title, body, action_url, type, role, metadata } = await req.json();
 
     if (!user_id || !title || !body) {
       return new Response(
@@ -51,12 +51,23 @@ serve(async (req) => {
         title,
         body,
         action_url: action_url || '/',
-        role: role || null
+        role: role || null,
+        metadata: metadata || {}
       });
 
     if (insertError) {
        console.error("Failed to insert notification into DB:", insertError);
        // We still try to send the push even if logging it failed
+    }
+
+    // Determine if we should send a Web Push notification
+    // Less important notifications (ratings, badges, admin alerts) are in-app only
+    const isLessImportant = type === 'badge_received' || type === 'rating_received' || type === 'admin_alert';
+    if (isLessImportant) {
+      return new Response(
+        JSON.stringify({ message: "In-app notification logged to DB. Web Push skipped for less important update." }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // 2. Fetch all push subscriptions for the user (always send push notifications, ignoring is_online)
@@ -77,7 +88,8 @@ serve(async (req) => {
     const payload = JSON.stringify({
       title,
       body,
-      action_url: action_url || '/'
+      action_url: action_url || '/',
+      metadata: metadata || {}
     });
 
     const sendPromises = subscriptions.map(async (sub) => {
