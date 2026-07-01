@@ -4,7 +4,7 @@ import { AppContext } from '../store/AppContext';
 import { SKILLS } from '../config/constants';
 
 const JobHistoryScreen = () => {
-  const { popScreen, jobHistoryTab, jobs, userProfile, role, pushScreen, setCurrentPostedJob, setAcceptedJob, deleteJob } = useContext(AppContext);
+  const { popScreen, jobHistoryTab, jobs, userProfile, role, pushScreen, setCurrentPostedJob, setAcceptedJob, deleteJob, setEditJobData } = useContext(AppContext);
 
   // Separate jobs based on role
   const userJobs = jobs.filter(j => {
@@ -125,6 +125,26 @@ const JobHistoryScreen = () => {
               
               {activeDropdownId === job.id && (
                 <div className="absolute right-0 mt-1 w-40 bg-white rounded-xl shadow-lg border border-border py-1 z-20 overflow-hidden">
+                  {isExpired && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditJobData({
+                          skillId: job.skillId || job.skill_id,
+                          description: (job.description || '').split('\n[Time:')[0],
+                          peopleNeeded: job.peopleNeeded || job.people_needed,
+                          amount: job.amount,
+                          address: job.address,
+                          isRepost: true
+                        });
+                        pushScreen('post_job');
+                        setActiveDropdownId(null);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-primary hover:bg-orange-50 transition-colors border-b border-gray-100"
+                    >
+                      Repost
+                    </button>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -169,19 +189,20 @@ const JobHistoryScreen = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-light-gray h-full select-none overflow-hidden">
+    <div className="flex-1 flex flex-col bg-white h-full select-none overflow-hidden">
       {/* Header */}
-      <div className="flex items-center px-4 py-4 bg-white border-b border-border shadow-xs shrink-0 z-10 sticky top-0 rounded-b-3xl">
+      <div className="flex items-center px-4 py-4 bg-white shrink-0 z-10 sticky top-0">
         <button
           onClick={popScreen}
           className="p-2 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <span className="text-sm font-black text-dark ml-2">Job History</span>
+        <span className="text-sm font-black text-dark ml-2">Task History</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-10 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full pb-20">
+      <div className="flex-1 overflow-y-auto w-full">
+        <div className="px-4 py-6 space-y-10 max-w-md lg:max-w-2xl lg:px-8 mx-auto pb-20">
         
         {/* Active Section */}
         <div ref={activeRef} className="space-y-4 pt-4 scroll-m-4" id="active-section">
@@ -232,6 +253,7 @@ const JobHistoryScreen = () => {
           </div>
         )}
 
+        </div>
       </div>
     </div>
   );

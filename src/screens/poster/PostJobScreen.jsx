@@ -1,5 +1,5 @@
 import React, { useState, useContext, useRef } from 'react';
-import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar, MapPin, Home, Briefcase, Wifi, Flame, Zap } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar, MapPin, Home, Briefcase, Wifi, Flame, Zap, Check } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
@@ -391,7 +391,7 @@ const PostJobScreen = () => {
               <MapPin className="w-4 h-4 text-orange-500" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Job Location</p>
+              <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Task Location</p>
               <p className="text-xs font-black text-dark line-clamp-1 mt-0.5">
                 {selectedJobLocation.completeAddress?.startsWith('Location at') && selectedJobLocation.landmark 
                   ? selectedJobLocation.landmark 
@@ -473,6 +473,11 @@ const PostJobScreen = () => {
                             : 'bg-gray-50 border-border text-gray-500 hover:bg-orange-50 hover:border-primary/30 hover:text-primary'
                         }`}
                       >
+                        {isSelected && (
+                          <div className="absolute top-1.5 left-1.5 w-3.5 h-3.5 bg-white text-primary rounded-full flex items-center justify-center shadow-xs animate-[scaleIn_150ms_ease-out]">
+                            <Check className="w-2.5 h-2.5 stroke-[4.5]" />
+                          </div>
+                        )}
                         {(skill.isNew || skill.isHighDemand || skill.isUrgent) && (
                           <span className={`absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-xs border transition-all duration-300 flex items-center gap-1 ${
                             isSelected 
@@ -519,6 +524,11 @@ const PostJobScreen = () => {
                             : 'bg-gray-50 border-border text-gray-500 hover:bg-orange-50 hover:border-primary/30 hover:text-primary'
                         }`}
                       >
+                        {isSelected && (
+                          <div className="absolute top-1.5 left-1.5 w-3.5 h-3.5 bg-white text-primary rounded-full flex items-center justify-center shadow-xs animate-[scaleIn_150ms_ease-out]">
+                            <Check className="w-2.5 h-2.5 stroke-[4.5]" />
+                          </div>
+                        )}
                         {(skill.isNew || skill.isHighDemand || skill.isUrgent) && (
                           <span className={`absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-xs border transition-all duration-300 flex items-center gap-1 ${
                             isSelected 
@@ -719,7 +729,7 @@ const PostJobScreen = () => {
               ) : (
                 <>
                   <Send className="w-5 h-5" />
-                  <span>Post Job Now</span>
+                  <span>Post Task Now</span>
                 </>
               )}
             </button>
@@ -817,7 +827,7 @@ const PostJobScreen = () => {
           {/* Modal card: slides up independently on its own composited layer */}
           <div className="relative bg-white rounded-[32px] w-full max-w-sm max-h-[90vh] shadow-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out]" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-border relative flex items-center justify-between shrink-0">
-              <h3 className="font-extrabold text-sm text-dark tracking-wide">{!isAddingNewAddress ? 'Pick the job location' : 'Add a new job location'}</h3>
+              <h3 className="font-extrabold text-sm text-dark tracking-wide">{!isAddingNewAddress ? 'Pick the task location' : 'Add a new task location'}</h3>
               <button onClick={handleClosePopup} className="text-gray-400 hover:text-dark text-xl leading-none">&times;</button>
             </div>
             
@@ -852,7 +862,7 @@ const PostJobScreen = () => {
                     className="w-full py-3 mt-2 rounded-xl border border-dashed border-gray-300 text-gray-500 hover:text-primary hover:border-primary hover:bg-primary/5 text-sm font-bold transition-all flex items-center justify-center space-x-2"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Add a new job location</span>
+                    <span>Add a new task location</span>
                   </button>
                 </div>
               ) : (

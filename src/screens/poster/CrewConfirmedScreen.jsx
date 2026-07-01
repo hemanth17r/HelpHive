@@ -331,7 +331,7 @@ const CrewConfirmedScreen = () => {
         {localCrewTaskers.length > 0 && (
           <div className="bg-gray-50 border border-border rounded-3xl p-5 text-center w-full shadow-xs space-y-3">
             <div className="flex items-center justify-center space-x-2 text-xs font-bold text-dark">
-              <span>Job Starting Progress</span>
+              <span>Task Starting Progress</span>
             </div>
             
             <div className="text-2xl font-black text-green-600 tracking-tight">
@@ -362,7 +362,7 @@ const CrewConfirmedScreen = () => {
               <span>Reveal Start OTP</span>
             </div>
             <p className="text-[10px] text-gray-500 font-semibold leading-normal max-w-[240px] mx-auto">
-              Provide this code to your helper(s) to authorize and start the job.
+              Provide this code to your helper(s) to authorize and start the task.
             </p>
 
             {otpVisible ? (

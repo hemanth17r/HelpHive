@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Zap } from 'lucide-react';
+import { Flame, Zap, Check } from 'lucide-react';
 
 const IconLabel = ({ 
   icon: Icon, 
@@ -25,6 +25,11 @@ const IconLabel = ({
         selected ? activeColor : inactiveColor
       }`}
     >
+      {selected && (
+        <div className="absolute top-1.5 left-1.5 w-3.5 h-3.5 bg-white text-primary rounded-full flex items-center justify-center shadow-xs animate-[scaleIn_150ms_ease-out]">
+          <Check className="w-2.5 h-2.5 stroke-[4.5]" />
+        </div>
+      )}
       {(isNew || isHighDemand || isUrgent) && (
         <span className={`absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-xs border transition-all duration-300 flex items-center gap-1 ${
           selected 

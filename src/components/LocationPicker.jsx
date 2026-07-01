@@ -31,7 +31,6 @@ const LocationPicker = ({
 
   const [currentLat, setCurrentLat] = useState(initialLat);
   const [currentLng, setCurrentLng] = useState(initialLng);
-  const [mapKey, setMapKey] = useState(0); // Incremented to remount/recenter the map
 
   const [resolvedAddressText, setResolvedAddressText] = useState('Fetching address...');
   const [isGeocoding, setIsGeocoding] = useState(false);
@@ -65,7 +64,6 @@ const LocationPicker = ({
     hasAppliedAsyncCenter.current = true;
     setCurrentLat(initialLat);
     setCurrentLng(initialLng);
-    setMapKey(prev => prev + 1);
     handleReverseGeocode(initialLat, initialLng);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLat, initialLng]);
@@ -106,7 +104,6 @@ const LocationPicker = ({
     setSearchQuery(result.displayName);
     setCurrentLat(result.lat);
     setCurrentLng(result.lng);
-    setMapKey(prev => prev + 1); // Force map to recenter
     setShowDropdown(false);
     setResolvedAddressText(result.displayName);
 
@@ -148,7 +145,6 @@ const LocationPicker = ({
       const loc = await getCurrentLocation();
       setCurrentLat(loc.lat);
       setCurrentLng(loc.lng);
-      setMapKey(prev => prev + 1);
       handleReverseGeocode(loc.lat, loc.lng);
 
       // Notify parent so it can persist realLocation for future use
@@ -208,7 +204,6 @@ const LocationPicker = ({
       {/* The Map itself */}
       <div className="w-full h-full flex-1 relative z-10">
         <MapView
-          key={mapKey}
           center={[currentLat, currentLng]}
           zoom={16}
           draggable={true}

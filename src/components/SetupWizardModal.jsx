@@ -84,7 +84,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [mapKey, setMapKey] = useState(0);
+  const hasInitializedRef = useRef(false);
 
   // Profile fields state (Common)
   const [name, setName] = useState('');
@@ -166,9 +166,10 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
     checkGoogleLinked();
   }, []);
 
-  // 2. Pre-fill states from userProfile when available
+  // 2. Pre-fill states from userProfile when available (only once on load)
   useEffect(() => {
-    if (userProfile) {
+    if (userProfile && !hasInitializedRef.current) {
+      hasInitializedRef.current = true;
       // Name
       const cleanName = userProfile.name === 'New User' || userProfile.name === 'Guest User' ? '' : userProfile.name || '';
       setName(cleanName);
@@ -189,7 +190,6 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
           lat: userProfile.serviceAreaLat,
           lng: userProfile.serviceAreaLng
         });
-        setMapKey(prev => prev + 1);
       }
 
       if (userProfile.coverageRadius) {
@@ -376,7 +376,6 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
   const handleSelectResult = (result) => {
     setSearchQuery(result.displayName);
     setServiceAreaLocation({ lat: result.lat, lng: result.lng });
-    setMapKey(prev => prev + 1);
     setShowDropdown(false);
   };
 
@@ -384,7 +383,6 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
     try {
       const loc = await getCurrentLocation();
       setServiceAreaLocation({ lat: loc.lat, lng: loc.lng });
-      setMapKey(prev => prev + 1);
       
       const result = await reverseGeocode(loc.lat, loc.lng);
       if (result) {
@@ -416,7 +414,6 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
       setGeoState('granted');
       setServiceAreaLocation({ lat: loc.lat, lng: loc.lng });
       setAddressDetails(prev => ({ ...prev, lat: loc.lat, lng: loc.lng }));
-      setMapKey(prev => prev + 1);
       showToast('Location permission granted!', 'success');
     } catch (err) {
       showToast(err.message || 'Location access denied.', 'error');
@@ -632,12 +629,9 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
         {/* Header */}
         <div className="px-6 py-5 border-b border-border bg-white shrink-0 flex flex-col space-y-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-black text-dark leading-none">Configure HelpHive</h2>
-              <span className="text-[10px] font-black uppercase text-primary tracking-widest mt-1.5 block">
-                {role === 'tasker' ? 'Helper Setup' : 'Hirer Setup'}
-              </span>
-            </div>
+            <span className="text-[10px] font-black uppercase text-primary tracking-widest">
+              {role === 'tasker' ? 'Helper Setup' : 'Hirer Setup'}
+            </span>
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleRoleSwitch}
@@ -685,11 +679,6 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
           {/* Step 1: Authentication (Common for both flows) */}
           {activeStep === 1 && (
             <div className="space-y-5">
-              <div>
-                <h3 className="text-lg font-black text-dark leading-tight">Welcome to HelpHive</h3>
-                <p className="text-xs font-semibold text-gray-400 mt-1">Please sign in or Create an account to save your configuration.</p>
-              </div>
-
               <div className="space-y-4 pt-1">
                 <button 
                   onClick={handleGoogleLogin}
@@ -756,7 +745,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center text-center p-6 bg-white border border-border rounded-3xl space-y-4 w-full">
-                    <div className="w-12 h-12 bg-green-50 text-green-500 rounded-full flex items-center justify-center animate-bounce">
+                    <div className="w-12 h-12 bg-green-50 text-green-500 rounded-full flex items-center justify-center">
                       <CheckCircle2 className="w-6 h-6" />
                     </div>
                     <div>
@@ -785,7 +774,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
               {activeStep === 2 && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-black text-dark leading-tight">What jobs can you do?</h3>
+                    <h3 className="text-lg font-black text-dark leading-tight">What tasks can you do?</h3>
                     <p className="text-xs font-semibold text-gray-400 mt-1">Select all categories of work you are comfortable doing.</p>
                   </div>
                   
@@ -812,10 +801,15 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                               }}
                               className={`relative flex flex-col items-center justify-center p-4 rounded-2xl border-2 text-center transition-all cursor-pointer h-24 ${
                                 isSelected 
-                                  ? 'border-primary bg-primary/5 text-primary' 
+                                  ? 'border-primary bg-primary/[0.03] text-primary shadow-xs shadow-primary/10' 
                                   : 'border-border bg-white text-dark hover:border-gray-300'
                               }`}
                             >
+                              {isSelected && (
+                                <div className="absolute top-2 left-2 w-3.5 h-3.5 bg-primary text-white rounded-full flex items-center justify-center shadow-xs animate-[scaleIn_150ms_ease-out]">
+                                  <Check className="w-2.5 h-2.5 stroke-[4]" />
+                                </div>
+                              )}
                               {(skill.isNew || skill.isHighDemand || skill.isUrgent) && (
                                 <span className="absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary text-white border border-primary flex items-center gap-1">
                                   {skill.isHighDemand ? (
@@ -856,10 +850,15 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                               }}
                               className={`relative flex flex-col items-center justify-center p-4 rounded-2xl border-2 text-center transition-all cursor-pointer h-24 ${
                                 isSelected 
-                                  ? 'border-primary bg-primary/5 text-primary' 
+                                  ? 'border-primary bg-primary/[0.03] text-primary shadow-xs shadow-primary/10' 
                                   : 'border-border bg-white text-dark hover:border-gray-300'
                               }`}
                             >
+                              {isSelected && (
+                                <div className="absolute top-2 left-2 w-3.5 h-3.5 bg-primary text-white rounded-full flex items-center justify-center shadow-xs animate-[scaleIn_150ms_ease-out]">
+                                  <Check className="w-2.5 h-2.5 stroke-[4]" />
+                                </div>
+                              )}
                               {(skill.isNew || skill.isHighDemand || skill.isUrgent) && (
                                 <span className="absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary text-white border border-primary flex items-center gap-1">
                                   {skill.isHighDemand ? (
@@ -947,7 +946,6 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                     </div>
 
                     <MapView
-                      key={mapKey}
                       center={[serviceAreaLocation.lat, serviceAreaLocation.lng]}
                       zoom={coverageRadius > 10000 ? 10 : coverageRadius > 5000 ? 11 : 12}
                       draggable={true}
@@ -1001,7 +999,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-lg font-black text-dark leading-tight">Payout & Contact</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Configure your personal and direct payment transfer options.</p>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">Complete your personal and direct payment transfer options.</p>
                   </div>
 
                   <div className="space-y-3.5 pt-1">
@@ -1062,7 +1060,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
           {/* Common Step 3: Enable Access (Location & Notification Permissions) */}
           {activeStep === 3 && (
             <div className="space-y-6 py-2 flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center animate-bounce">
+              <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                 <Smartphone className="w-8 h-8" />
               </div>
               <div>
@@ -1112,7 +1110,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                     </div>
                     <div>
                       <p className="text-xs font-bold text-dark">Push Notifications</p>
-                      <p className="text-[10px] font-semibold text-gray-400">Used to send instant job matches and status updates</p>
+                      <p className="text-[10px] font-semibold text-gray-400">Used to send instant task matches and status updates</p>
                     </div>
                   </div>
                   
@@ -1189,7 +1187,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                 <div className="space-y-4 flex flex-col h-full min-h-[380px]">
                   <div>
                     <h3 className="text-lg font-black text-dark leading-tight">Where do you live?</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Set a primary home or business address to post jobs faster.</p>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">Set a primary home or business address to post tasks faster.</p>
                   </div>
 
                   {/* Map picker wrapper */}

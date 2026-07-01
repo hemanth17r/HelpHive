@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { renderToString } from 'react-dom/server';
-import BirdAvatar from './BirdAvatars';
+import BirdAvatar, { getBirdSvgString } from './BirdAvatars';
 
 const MapView = ({ 
   center = [31.2560, 75.7051], 
@@ -33,7 +32,7 @@ const MapView = ({
       className: 'leaflet-custom-pin-orange',
       html: `<div class="bg-primary text-white p-2 rounded-full shadow-lg border-2 border-white flex items-center justify-center scale-100 hover:scale-105 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
       iconSize: [36, 36],
-      iconAnchor: [18, 36]
+      iconAnchor: [18, 18]
     });
 
 
@@ -80,9 +79,11 @@ const MapView = ({
 
     if (coverageRadius && L) {
       coverageCircleRef.current = L.circle(initialCenter, {
-        color: '#ff8a00',
-        fillColor: '#ff8a00',
-        fillOpacity: 0.15,
+        color: '#FF6B35',
+        weight: 1.5,
+        opacity: 0.6,
+        fillColor: '#FF6B35',
+        fillOpacity: 0.08,
         radius: coverageRadius
       }).addTo(map);
       
@@ -115,6 +116,23 @@ const MapView = ({
     };
   }, []);
 
+  // Pan the map dynamically when center/zoom props update
+  useEffect(() => {
+    if (mapInstanceRef.current && center) {
+      const currentCenter = mapInstanceRef.current.getCenter();
+      const [newLat, newLng] = center;
+      if (Math.abs(currentCenter.lat - newLat) > 0.0001 || Math.abs(currentCenter.lng - newLng) > 0.0001) {
+        mapInstanceRef.current.setView(center, zoom || mapInstanceRef.current.getZoom());
+        if (draggableMarkerRef.current) {
+          draggableMarkerRef.current.setLatLng(center);
+        }
+        if (coverageCircleRef.current) {
+          coverageCircleRef.current.setLatLng(center);
+        }
+      }
+    }
+  }, [center, zoom]);
+
   // Update coverage radius dynamically if it changes
   useEffect(() => {
     if (mapInstanceRef.current && window.L && coverageRadius !== null) {
@@ -123,9 +141,11 @@ const MapView = ({
       } else {
         const center = draggableMarkerRef.current ? draggableMarkerRef.current.getLatLng() : mapInstanceRef.current.getCenter();
         coverageCircleRef.current = window.L.circle(center, {
-          color: '#ff8a00',
-          fillColor: '#ff8a00',
-          fillOpacity: 0.15,
+          color: '#FF6B35',
+          weight: 1.5,
+          opacity: 0.6,
+          fillColor: '#FF6B35',
+          fillOpacity: 0.08,
           radius: coverageRadius
         }).addTo(mapInstanceRef.current);
       }
@@ -178,7 +198,7 @@ const MapView = ({
       activeTaskers.forEach(tasker => {
         if (!tasker.location) return;
 
-        const birdSvgString = renderToString(<BirdAvatar birdName={tasker.bird || 'falcon'} size={30} />);
+        const birdSvgString = getBirdSvgString(tasker.bird || 'falcon', 30);
         const taskerIcon = L.divIcon({
           className: 'leaflet-custom-pin-tasker',
           html: `<div class="bg-white text-dark p-0.5 rounded-full shadow-lg border-2 border-primary flex items-center justify-center animate-pulse">${birdSvgString}</div>`,

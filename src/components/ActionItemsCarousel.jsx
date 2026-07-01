@@ -100,7 +100,7 @@ const ActionItemsCarousel = () => {
     job_location: {
       id: 'job_location',
       icon: MapPin,
-      title: 'Add Job Location',
+      title: 'Add Task Location',
       desc: 'Where do you need help?',
       color: 'bg-indigo-50 text-indigo-500 border-indigo-200',
       action: handleJobLocationRequest

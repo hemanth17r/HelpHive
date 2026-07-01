@@ -259,7 +259,7 @@ const TaskerJobDetailsScreen = () => {
             </div>
 
             <p className="text-[10px] text-gray-400 font-semibold leading-normal max-w-[240px] mx-auto pt-1">
-              Please wait here. The job will start once all helpers have joined or the hirer finalized the crew.
+              Please wait here. The task will start once all helpers have joined or the hirer finalized the crew.
             </p>
           </div>
 
@@ -484,7 +484,7 @@ const TaskerJobDetailsScreen = () => {
         <div className="bg-gray-50 border border-border rounded-2xl p-4 space-y-3">
           <div className="flex items-center space-x-2 text-xs font-bold text-dark">
             <ShieldCheck className="w-5 h-5 text-primary shrink-0" />
-            <span>{isVerified ? 'Verification Status' : 'Verify OTP to Start Job'}</span>
+            <span>{isVerified ? 'Verification Status' : 'Verify OTP to Start Task'}</span>
           </div>
           
           {isVerified ? (

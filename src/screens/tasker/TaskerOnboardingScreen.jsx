@@ -34,7 +34,6 @@ const TaskerOnboardingScreen = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [mapKey, setMapKey] = useState(0);
 
   const dropdownRef = useRef(null);
   const searchTimeoutRef = useRef(null);
@@ -45,7 +44,6 @@ const TaskerOnboardingScreen = () => {
       getCurrentLocation()
         .then(loc => {
           setServiceAreaLocation(loc);
-          setMapKey(prev => prev + 1);
           reverseGeocode(loc.lat, loc.lng).then(result => {
             if (result) setSearchQuery(result.displayName);
           });
@@ -97,7 +95,6 @@ const TaskerOnboardingScreen = () => {
   const handleSelectResult = (result) => {
     setSearchQuery(result.displayName);
     setServiceAreaLocation({ lat: result.lat, lng: result.lng });
-    setMapKey(prev => prev + 1); // Force map to recenter
     setShowDropdown(false);
   };
 
@@ -105,7 +102,6 @@ const TaskerOnboardingScreen = () => {
     try {
       const loc = await getCurrentLocation();
       setServiceAreaLocation({ lat: loc.lat, lng: loc.lng });
-      setMapKey(prev => prev + 1);
       
       const result = await reverseGeocode(loc.lat, loc.lng);
       if (result) {
@@ -181,16 +177,16 @@ const TaskerOnboardingScreen = () => {
     const performUpdate = async () => {
       setIsLoading(true);
       try {
-        // Reverse-geocode the pin location to get a human-readable area name
+        // Reverse-geocode the pin location using our cached utility
         let areaName = null;
         try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${serviceAreaLocation.lat}&lon=${serviceAreaLocation.lng}&format=json`
-          );
-          const geo = await res.json();
-          areaName = geo?.address?.suburb || geo?.address?.village || geo?.address?.town ||
-                     geo?.address?.city_district || geo?.address?.city ||
-                     geo?.address?.county || geo?.address?.state || null;
+          const result = await reverseGeocode(serviceAreaLocation.lat, serviceAreaLocation.lng);
+          if (result) {
+            const geo = result.address;
+            areaName = geo?.suburb || geo?.village || geo?.town ||
+                       geo?.city_district || geo?.city ||
+                       geo?.county || geo?.state || result.displayName || null;
+          }
         } catch (geoErr) {
           console.warn('Reverse geocode failed, skipping area name:', geoErr);
         }
@@ -393,7 +389,6 @@ const TaskerOnboardingScreen = () => {
                 </div>
 
                 <MapView
-                  key={mapKey}
                   center={[serviceAreaLocation.lat, serviceAreaLocation.lng]}
                   zoom={coverageRadius > 10000 ? 10 : coverageRadius > 5000 ? 11 : 12}
                   draggable={true}
@@ -424,14 +419,14 @@ const TaskerOnboardingScreen = () => {
                     <button
                       key={level.id}
                       onClick={() => handleCoverageSelect(level.id)}
-                      className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all text-left ${isSelected ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200 bg-white'}`}
+                      className={`flex items-center justify-between p-4 rounded-xl border transition-all text-left ${isSelected ? 'border-primary/50 bg-primary/[0.03] shadow-xs' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
                     >
                       <div>
-                        <div className={`font-bold ${isSelected ? 'text-primary' : 'text-dark'}`}>{level.label}</div>
-                        <div className="text-xs text-gray-400">{level.desc}</div>
+                        <div className="font-bold text-dark">{level.label}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">{level.desc}</div>
                       </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-primary bg-primary' : 'border-gray-300'}`}>
-                        {isSelected && <Check className="w-3 h-3 text-white" />}
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${isSelected ? 'border-primary/50 bg-primary/10' : 'border-gray-300'}`}>
+                        {isSelected && <Check className="w-3 h-3 text-primary" strokeWidth={3} />}
                       </div>
                     </button>
                   );

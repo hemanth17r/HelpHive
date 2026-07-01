@@ -106,10 +106,10 @@ const JobCard = ({ job, onDecline }) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-xs border border-border flex flex-col space-y-3.5 hover:shadow-md transition-shadow">
+    <div className="m3-card rounded-[24px] p-6 flex flex-col space-y-4 hover:border-primary/30 transition-all duration-250">
       {/* Header Info */}
       <div className="flex items-start space-x-3">
-        <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0">
+        <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0">
           <Icon className="w-6 h-6" />
         </div>
         <div className="flex-1 text-left">
@@ -133,7 +133,7 @@ const JobCard = ({ job, onDecline }) => {
       </div>
 
       {/* Details Row */}
-      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-dashed border-border text-[11px] font-bold text-gray-500">
+      <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-dashed border-border-m3 text-[11px] font-bold text-gray-500">
         <div className="flex items-center space-x-1.5">
           <Users className="w-4 h-4 text-gray-400" />
           <span>{job.peopleNeeded} {job.peopleNeeded > 1 ? 'people' : 'person'} needed</span>
@@ -164,7 +164,7 @@ const JobCard = ({ job, onDecline }) => {
           <button
             onClick={() => onDecline(job.id)}
             disabled={isAccepting}
-            className={`w-full flex items-center justify-center space-x-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer ${isAccepting ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`w-full flex items-center justify-center space-x-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 px-5 rounded-full text-xs transition-colors cursor-pointer active-scale ${isAccepting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <X className="w-3.5 h-3.5" />
             <span>Decline</span>
@@ -175,7 +175,7 @@ const JobCard = ({ job, onDecline }) => {
           <button
             onClick={handleAcceptJob}
             disabled={timeLeft === 0 || isAccepting}
-            className={`w-full flex items-center justify-center space-x-1.5 bg-primary hover:bg-primary/95 active:scale-[0.98] text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-xs shadow-primary/30 transition-all cursor-pointer ${timeLeft === 0 || isAccepting ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`w-full flex items-center justify-center space-x-1.5 bg-primary hover:bg-primary/95 text-white font-bold py-2.5 px-5 rounded-full text-xs transition-all cursor-pointer active-scale ${timeLeft === 0 || isAccepting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {isAccepting ? (
               <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

@@ -33,3 +33,17 @@ pending_migrations.sql
 scratch_*.sql
 test_insert.js
 supabase/.temp/
+
+# Agent config
+.gemini/
+
+# Miscellaneous scratch/debug files
+playwright_debug.cjs
+refactor.cjs
+scratch_debug_jobs.js
+test_debug.js
+test_tasker_home.cjs
+screenshot.png
+profile_screen_navigation.png
+notifications_screen_success.png
+namecheap_login_check.png
