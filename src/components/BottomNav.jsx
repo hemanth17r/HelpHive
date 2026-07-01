@@ -1,9 +1,9 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
-import { Home, User, Repeat } from 'lucide-react';
+import { Home, User, Repeat, Clock } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 
 const BottomNav = () => {
-  const { activeTab, setActiveTab, switchRole, role, pushScreen, currentScreen } = useContext(AppContext);
+  const { activeTab, setActiveTab, switchRole, role, pushScreen, currentScreen, jobHistoryTab, setJobHistoryTab } = useContext(AppContext);
   const [isRotating, setIsRotating] = useState(false);
   const [visible, setVisible] = useState(true);
 
@@ -83,39 +83,42 @@ const BottomNav = () => {
 
   return (
     <div 
-      className={`grid grid-cols-3 items-center bg-white border-t border-border shadow-lg shrink-0 w-full transition-all duration-300 ease-in-out origin-bottom rounded-t-3xl ${
+      className={`grid grid-cols-3 items-center bg-white/95 backdrop-blur-lg border-t border-border-m3 shrink-0 w-full transition-all duration-300 ease-in-out origin-bottom ${
         visible 
-          ? 'max-h-20 py-2.5 pb-safe opacity-100 translate-y-0' 
-          : 'max-h-0 py-0 opacity-0 pointer-events-none overflow-hidden border-t-transparent translate-y-full'
+          ? 'py-2.5 opacity-100 translate-y-0 shadow-[0_-2px_10px_rgba(0,0,0,0.02)]' 
+          : 'py-0 opacity-0 pointer-events-none overflow-hidden border-transparent translate-y-full'
       }`}
+      style={{
+        paddingBottom: 'calc(env(safe-area-inset-bottom) + 6px)'
+      }}
     >
       <button
         onClick={handleHomeClick}
-        className={`flex flex-col items-center space-y-1 px-1 py-1.5 rounded-xl transition-all cursor-pointer ${
-          isHomeActive ? 'text-primary' : 'text-gray-400 hover:text-dark'
+        className={`flex flex-col items-center space-y-0.5 py-1 transition-all cursor-pointer ${
+          isHomeActive ? 'text-primary' : 'text-gray-400 hover:text-primary'
         }`}
       >
-        <Home className="w-6 h-6" />
-        <span className="text-[10px] font-bold">Home</span>
+        <Home className="w-5 h-5" />
+        <span className="text-[9px] font-extrabold tracking-wide">Home</span>
       </button>
 
       <button
         onClick={handleProfileClick}
-        className={`flex flex-col items-center space-y-1 px-1 py-1.5 rounded-xl transition-all cursor-pointer justify-center ${
-          isProfileActive ? 'text-primary' : 'text-gray-400 hover:text-dark'
+        className={`flex flex-col items-center space-y-0.5 py-1 transition-all cursor-pointer justify-center ${
+          isProfileActive ? 'text-primary' : 'text-gray-400 hover:text-primary'
         }`}
       >
-        <User className="w-6 h-6" />
-        <span className="text-[10px] font-bold">Profile</span>
+        <User className="w-5 h-5" />
+        <span className="text-[9px] font-extrabold tracking-wide">Profile</span>
       </button>
 
       <button
         onClick={handleSwitchMode}
-        className="flex flex-col items-center space-y-1 px-1 py-1.5 rounded-xl text-gray-400 hover:text-primary transition-all cursor-pointer justify-center"
+        className="flex flex-col items-center space-y-0.5 py-1 text-gray-400 hover:text-primary transition-all cursor-pointer justify-center"
       >
-        <Repeat className={`w-6 h-6 transition-transform duration-300 ${isRotating ? 'rotate-180' : ''}`} />
-        <span className="text-[10px] font-bold">
-          {role === 'tasker' ? 'Switch to Hirer' : 'Switch to Tasker'}
+        <Repeat className={`w-5 h-5 ${isRotating ? 'animate-role-rotate' : ''}`} />
+        <span className="text-[9px] font-extrabold tracking-wide">
+          {role === 'tasker' ? 'Hirer Mode' : 'Tasker Mode'}
         </span>
       </button>
     </div>

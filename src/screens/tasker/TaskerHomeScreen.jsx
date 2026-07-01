@@ -5,7 +5,6 @@ import JobCard from '../../components/JobCard';
 import Tooltip from '../../components/Tooltip';
 import { SKILLS } from '../../config/constants';
 import { getCurrentLocation } from '../../utils/location';
-import ProfileProgressBar from '../../components/ProfileProgressBar';
 import { api } from '../../services/api';
 import SetupWizardModal from '../../components/SetupWizardModal';
 import { useProfileCompletion } from '../../hooks/useProfileCompletion';
@@ -114,57 +113,30 @@ const TaskerHomeScreen = () => {
   }, [visibleJobs, userProfile?.id]);
 
   return (
-    <div className="flex-1 flex flex-col bg-light-gray h-full select-none">
+    <div className="flex-1 flex flex-col bg-white h-full select-none">
       
-      {/* Top sticky block */}
-      <div className="sticky top-0 z-40 bg-white shadow-xs lg:hidden">
-        {/* Header bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center space-x-3">
-            <span 
-              onClick={() => setActiveTab('profile')}
-              className="text-sm font-black text-dark cursor-pointer hover:text-primary transition-colors"
-            >
-              Hi, {userProfile?.name?.split(' ')[0] || 'Tasker'}
-            </span>
-            <div className="text-[9px] font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20 shrink-0 max-w-[120px] truncate" title={userProfile?.serviceAreaName || 'No service area selected'}>
-              {userProfile?.serviceAreaName ? userProfile.serviceAreaName.split(',')[0].trim() : 'No service area selected'}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content Feed */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
-        <div className="px-4 py-4 space-y-4 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full">
-        {/* Start Earning Prominent Button */}
+        <div className="px-4 pt-6 pb-28 space-y-6 max-w-md mx-auto w-full">
+        {/* Start Earning Button */}
         {(!userId || missingItems.length > 0) && (
-          <Tooltip text="Complete configuration to start accepting jobs">
-            <button
-              onClick={() => openOnboardingWizard()}
-              className="w-full bg-primary hover:bg-primary/95 text-white flex flex-row items-center px-5 py-3 md:py-3.5 rounded-2xl shadow-md shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer group relative overflow-hidden text-left"
-            >
-              <div className="absolute -right-4 -top-4 w-16 h-16 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-all"></div>
-              <Briefcase className="w-6 h-6 md:w-7 md:h-7 mr-3.5 shrink-0" />
-              <div className="flex flex-col">
-                <h2 className="text-base md:text-lg font-black leading-tight">Start Earning</h2>
-                <p className="text-[10px] md:text-xs font-semibold text-white/85 mt-0.5">Find local tasks and get paid</p>
-              </div>
-            </button>
-          </Tooltip>
+          <div className="flex justify-center w-full">
+            <Tooltip text="Complete configuration to start accepting jobs">
+              <button
+                onClick={() => openOnboardingWizard()}
+                className="flex items-center justify-center bg-primary hover:bg-[#D94F0A] text-white px-6 py-2.5 rounded-full shadow-md hover:shadow-lg active:scale-[0.98] transition-all cursor-pointer font-bold text-sm tracking-wide"
+              >
+                <Briefcase className="w-4 h-4 mr-1.5 stroke-[2.5]" />
+                <span>Start Earning</span>
+              </button>
+            </Tooltip>
+          </div>
         )}
 
-        {/* Profile completion progress bar */}
-        <ProfileProgressBar />
 
         {/* My Active Tasks Section */}
         {displayActiveTasks.length > 0 && (
           <div className="space-y-3 pb-4">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-[11px] font-extrabold uppercase tracking-widest text-blue-500">
-                My Active Tasks
-              </span>
-            </div>
             {displayActiveTasks.map((job) => {
               const skill = SKILLS.find(s => s.id === job.skillId) || SKILLS[0];
               const Icon = skill.icon;
@@ -178,7 +150,7 @@ const TaskerHomeScreen = () => {
                       pushScreen('tasker_accepted_job');
                     });
                   }}
-                  className="bg-white border border-blue-100 rounded-2xl p-4 shadow-sm relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                  className="glass-card rounded-2xl p-4 relative overflow-hidden cursor-pointer active-scale transition-all duration-300 hover:!border-blue-400/60"
                 >
                   <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>
                   <div className="flex items-start justify-between mb-3">
@@ -218,19 +190,19 @@ const TaskerHomeScreen = () => {
         )}
 
         {!isProfileReady ? (
-          <div className="flex flex-col items-center justify-center text-center space-y-4 py-12 px-6 bg-white rounded-[32px] border border-border shadow-xs my-4">
+          <div className="flex flex-col items-center justify-center text-center space-y-4 py-12 px-6 glass-card rounded-[32px] my-4 max-w-md mx-auto w-full">
             <div className="p-4.5 bg-primary/10 text-primary rounded-full shrink-0">
               <Briefcase className="w-10 h-10 stroke-[2.2]" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-base font-black text-dark tracking-tight">Configure Helper Profile</h3>
+              <h3 className="text-base font-black text-dark tracking-tight">Complete Helper Profile</h3>
               <p className="text-xs font-semibold text-gray-400 max-w-[280px] mx-auto leading-normal">
-                To start getting job notifications and browsing open tasks nearby, please select your skills and define your service range.
+                To start getting task notifications and browsing open tasks nearby, please select your skills and define your service range.
               </p>
             </div>
           </div>
         ) : visibleJobs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 bg-white rounded-3xl p-6 border border-border">
+          <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 glass-card rounded-3xl p-6">
             <div className="p-4 bg-orange-50 rounded-full text-primary">
               <Inbox className="w-10 h-10" />
             </div>
@@ -241,7 +213,7 @@ const TaskerHomeScreen = () => {
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="mt-2 flex items-center space-x-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/15 text-primary disabled:opacity-75 active:scale-[0.98] transition-all rounded-xl text-xs font-bold cursor-pointer"
+              className="mt-2 flex items-center space-x-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/15 text-primary disabled:opacity-75 active-scale transition-all rounded-xl text-xs font-bold cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>{isRefreshing ? 'Refreshing...' : 'Refresh Feed'}</span>
@@ -255,7 +227,7 @@ const TaskerHomeScreen = () => {
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center space-x-2">
                     <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-                      Jobs Matching Your Skills
+                      Tasks Matching Your Skills
                     </span>
                     <button
                       onClick={handleRefresh}

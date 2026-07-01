@@ -35,7 +35,7 @@ const NeedHelpScreen = () => {
   return (
     <div className="flex-1 flex flex-col bg-white h-full relative z-20">
       {/* Header */}
-      <div className="flex items-center px-4 py-4 border-b border-border bg-white sticky top-0 z-10 shrink-0">
+      <div className="flex items-center px-4 py-4 bg-white sticky top-0 z-10 shrink-0">
         <button 
           onClick={popScreen}
           className="p-2 -ml-2 rounded-full hover:bg-gray-100 text-dark transition-colors cursor-pointer"

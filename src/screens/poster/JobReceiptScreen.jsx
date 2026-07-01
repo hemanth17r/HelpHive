@@ -16,7 +16,7 @@ const JobReceiptScreen = () => {
   if (!currentPostedJob) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-white p-6">
-        <p className="text-gray-500 font-bold">Job details not found.</p>
+        <p className="text-gray-500 font-bold">Task details not found.</p>
         <button onClick={() => pushScreen('poster_home')} className="mt-4 text-primary font-bold">Go Home</button>
       </div>
     );
@@ -51,10 +51,10 @@ const JobReceiptScreen = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-light-gray select-none">
+    <div className="flex-1 flex flex-col min-h-0 bg-white select-none">
       
       {/* Top Bar Navigation */}
-      <div className="bg-white px-4 py-4 flex items-center shadow-sm shrink-0 sticky top-0 z-20 rounded-b-3xl">
+      <div className="bg-white px-4 py-4 flex items-center shrink-0 sticky top-0 z-20">
         <Tooltip text="Go Back">
           <button onClick={popScreen} className="p-2 -ml-2 rounded-full hover:bg-gray-100 text-dark transition-colors cursor-pointer">
             <ArrowLeft className="w-5 h-5" />
@@ -70,7 +70,7 @@ const JobReceiptScreen = () => {
           <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center border border-green-200 shadow-xs">
             <CheckCircle2 className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-black text-dark">Job Completed</h2>
+          <h2 className="text-xl font-black text-dark">Task Completed</h2>
           <p className="text-xs font-bold text-gray-400">Thanks for using HelpHive!</p>
         </div>
 

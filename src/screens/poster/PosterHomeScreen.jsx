@@ -1,12 +1,11 @@
 import React, { useContext, useEffect, useState, useMemo } from 'react';
-import { PlusCircle, MapPin, User, Clock, Users, ArrowRight, MoreVertical, RefreshCw } from 'lucide-react';
+import { PlusCircle, Plus, MapPin, User, Clock, Users, ArrowRight, MoreVertical, RefreshCw } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import BirdAvatar from '../../components/BirdAvatars';
 import SetupWizardModal from '../../components/SetupWizardModal';
 import { useProfileCompletion } from '../../hooks/useProfileCompletion';
-import ProfileProgressBar from '../../components/ProfileProgressBar';
 
 const PosterHomeScreen = () => {
   const { 
@@ -132,43 +131,35 @@ const PosterHomeScreen = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-light-gray h-full select-none">
+    <div className="flex-1 flex flex-col bg-white h-full select-none">
       
 
 
       {/* Main Content Feed */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
-        <div className="px-4 pt-6 pb-24 space-y-6 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full">
+        <div className="px-4 pt-6 pb-24 space-y-6 max-w-md mx-auto w-full">
         
-        {/* Post a Job Prominent Button */}
-        <Tooltip text="Create a new task request">
-          <button
-            onClick={handlePostJobClick}
-            className="w-full bg-primary hover:bg-primary/95 text-white flex flex-row items-center px-5 py-3 md:py-3.5 rounded-2xl shadow-md shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer group relative overflow-hidden text-left"
-          >
-            <div className="absolute -right-4 -top-4 w-16 h-16 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-all"></div>
-            <PlusCircle className="w-6 h-6 md:w-7 md:h-7 mr-3.5 shrink-0" />
-            <div className="flex flex-col">
-              <h2 className="text-base md:text-lg font-black leading-tight">Post a Job</h2>
-              <p className="text-[10px] md:text-xs font-semibold text-white/85 mt-0.5">Get local help in seconds</p>
-            </div>
-          </button>
-        </Tooltip>
-
-        {/* Profile completion progress bar */}
-        <ProfileProgressBar />
+        {/* Post a Task Button */}
+        <div className="flex justify-center w-full">
+          <Tooltip text="Create a new task request">
+            <button
+              onClick={handlePostJobClick}
+              className="flex items-center justify-center bg-primary hover:bg-[#D94F0A] text-white px-6 py-2.5 rounded-full shadow-md hover:shadow-lg active:scale-[0.98] transition-all cursor-pointer font-bold text-sm tracking-wide"
+            >
+              <Plus className="w-4 h-4 mr-1.5 stroke-[2.5]" />
+              <span>Post a Task</span>
+            </button>
+          </Tooltip>
+        </div>
 
         {/* My Active Jobs Section */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-              My Active Jobs
-            </span>
+          <div className="flex justify-end px-1">
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-white border border-border text-gray-500 hover:text-primary hover:border-primary/30 hover:bg-orange-50/50 active:scale-[0.98] transition-all cursor-pointer text-[10px] font-black uppercase tracking-wider"
-              title="Refresh jobs list"
+              className="flex items-center space-x-1 text-gray-500 hover:text-primary active:scale-[0.98] transition-all cursor-pointer text-[10px] font-black uppercase tracking-wider"
+              title="Refresh tasks list"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
@@ -179,7 +170,7 @@ const PosterHomeScreen = () => {
             <div className="flex flex-col items-center justify-center text-center space-y-4 py-10 px-6 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-3xl border border-orange-100/50 shadow-xs relative overflow-hidden group">
               <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-orange-100/30 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
               
-              <div className="p-3 bg-orange-500/10 text-orange-500 rounded-full animate-bounce duration-1000">
+              <div className="p-3 bg-orange-500/10 text-orange-500 rounded-full">
                 <PlusCircle className="w-7 h-7" />
               </div>
               
@@ -215,7 +206,7 @@ const PosterHomeScreen = () => {
                   <div 
                     key={job.id} 
                     onClick={() => handleJobClick(job)}
-                    className="bg-white border border-border hover:border-primary/50 rounded-2xl p-4 cursor-pointer active:scale-[0.99] transition-all shadow-2xs hover:shadow-md group"
+                    className="glass-card rounded-2xl p-4 cursor-pointer active-scale transition-all duration-300 hover:!border-primary/45 group"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center space-x-2">

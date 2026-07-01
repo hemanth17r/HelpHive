@@ -75,10 +75,30 @@ export const api = {
     
     let ratedJobsMap = {};
     let authUserId = null;
+    let offers = [];
+    
+    // Parallelize Session and Offers fetching
+    const initPromises = [];
     if (userId) {
-      const sessionRes = await supabase.auth.getSession();
-      authUserId = sessionRes.data?.session?.user?.id;
+      initPromises.push(
+        supabase.auth.getSession().then(res => {
+          authUserId = res.data?.session?.user?.id;
+        })
+      );
     }
+    if (role === 'tasker' && userId) {
+      initPromises.push(
+        supabase
+          .from('job_offers')
+          .select('job_id, status, expires_at, otp_verified')
+          .eq('tasker_id', userId)
+          .in('status', ['pending', 'accepted'])
+          .then(res => {
+            offers = res.data || [];
+          })
+      );
+    }
+    await Promise.all(initPromises);
 
     let query = supabase.from('jobs').select('*, primary_address:user_addresses!jobs_primary_address_id_fkey(*)');
     
@@ -94,15 +114,8 @@ export const api = {
     else if (role === 'tasker') {
       if (!userId) return { data: [], error: null };
       
-      // Get all pending and accepted offers for this tasker
-      const { data: offers } = await supabase
-        .from('job_offers')
-        .select('job_id, status, expires_at, otp_verified')
-        .eq('tasker_id', userId)
-        .in('status', ['pending', 'accepted']);
-        
-      const offerJobIds = offers ? offers.map(o => o.job_id) : [];
-      const acceptedJobIds = offers ? offers.filter(o => o.status === 'accepted').map(o => o.job_id) : [];
+      const offerJobIds = offers.map(o => o.job_id);
+      const acceptedJobIds = offers.filter(o => o.status === 'accepted').map(o => o.job_id);
       
       if (offerJobIds.length > 0) {
         query = query.neq('poster_id', userId).or(`tasker_id.eq.${userId},id.in.(${offerJobIds.join(',')})`);
@@ -111,39 +124,53 @@ export const api = {
       }
       
       const { data, error } = await query;
-      if (data) {
+      if (data && data.length > 0) {
         const posterIds = [...new Set(data.map(j => j.poster_id).filter(Boolean))];
         const taskerIds = [...new Set(data.map(j => j.tasker_id).filter(Boolean))];
         const profileIds = [...new Set([...posterIds, ...taskerIds])];
         
         let profileMap = {};
+        const subPromises = [];
+        
         if (profileIds.length > 0) {
-          const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone, upi_id, rating, tasks_completed').in('id', profileIds);
-          if (profiles) {
-            profiles.forEach(p => { profileMap[p.id] = p; });
-          }
+          subPromises.push(
+            supabase
+              .from('profiles')
+              .select('id, name, bird, phone, upi_id, rating, tasks_completed')
+              .in('id', profileIds)
+              .then(res => {
+                if (res.data) {
+                  res.data.forEach(p => { profileMap[p.id] = p; });
+                }
+              })
+          );
         }
 
-        // Fetch feedbacks only for the returned jobs
-        if (authUserId && data.length > 0) {
+        if (authUserId) {
           const jobIds = data.map(j => j.id);
-          const { data: feedbacks } = await supabase
-            .from('feedbacks')
-            .select('job_id, rating')
-            .eq('giver_id', authUserId)
-            .in('job_id', jobIds);
-          if (feedbacks) {
-            feedbacks.forEach(f => {
-              ratedJobsMap[f.job_id] = f.rating;
-            });
-          }
+          subPromises.push(
+            supabase
+              .from('feedbacks')
+              .select('job_id, rating')
+              .eq('giver_id', authUserId)
+              .in('job_id', jobIds)
+              .then(res => {
+                if (res.data) {
+                  res.data.forEach(f => {
+                    ratedJobsMap[f.job_id] = f.rating;
+                  });
+                }
+              })
+          );
         }
+
+        await Promise.all(subPromises);
 
         const mappedJobs = data.map(j => {
           const coords = parseEWKBPoint(j.location) || { lng: 0, lat: 0 };
           const poster = profileMap[j.poster_id] || {};
           const tasker = profileMap[j.tasker_id] || {};
-          const offer = offers ? offers.find(o => o.job_id === j.id) : null;
+          const offer = offers.find(o => o.job_id === j.id);
           
           let addressObj = null;
           if (j.primary_address) {
@@ -192,37 +219,50 @@ export const api = {
         });
         return { data: mappedJobs, error };
       }
-      return { data, error };
+      return { data: data || [], error };
     }
 
     const { data, error } = await query;
-    if (data) {
+    if (data && data.length > 0) {
       const posterIds = [...new Set(data.map(j => j.poster_id).filter(Boolean))];
       const taskerIds = [...new Set(data.map(j => j.tasker_id).filter(Boolean))];
       const profileIds = [...new Set([...posterIds, ...taskerIds])];
       
       let profileMap = {};
+      const subPromises = [];
       if (profileIds.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('id, name, bird, phone, upi_id, rating, tasks_completed').in('id', profileIds);
-        if (profiles) {
-          profiles.forEach(p => { profileMap[p.id] = p; });
-        }
+        subPromises.push(
+          supabase
+            .from('profiles')
+            .select('id, name, bird, phone, upi_id, rating, tasks_completed')
+            .in('id', profileIds)
+            .then(res => {
+              if (res.data) {
+                res.data.forEach(p => { profileMap[p.id] = p; });
+              }
+            })
+        );
       }
 
-      // Fetch feedbacks only for the returned jobs
-      if (authUserId && data.length > 0) {
+      if (authUserId) {
         const jobIds = data.map(j => j.id);
-        const { data: feedbacks } = await supabase
-          .from('feedbacks')
-          .select('job_id, rating')
-          .eq('giver_id', authUserId)
-          .in('job_id', jobIds);
-        if (feedbacks) {
-          feedbacks.forEach(f => {
-            ratedJobsMap[f.job_id] = f.rating;
-          });
-        }
+        subPromises.push(
+          supabase
+            .from('feedbacks')
+            .select('job_id, rating')
+            .eq('giver_id', authUserId)
+            .in('job_id', jobIds)
+            .then(res => {
+              if (res.data) {
+                res.data.forEach(f => {
+                  ratedJobsMap[f.job_id] = f.rating;
+                });
+              }
+            })
+        );
       }
+
+      await Promise.all(subPromises);
 
       const mappedJobs = data.map(j => {
         const coords = parseEWKBPoint(j.location) || { lng: 0, lat: 0 };
@@ -272,7 +312,7 @@ export const api = {
       });
       return { data: mappedJobs, error };
     }
-    return { data, error };
+    return { data: data || [], error };
   },
 
   postJob: async (jobData) => {
@@ -796,47 +836,11 @@ export const api = {
   // --- V2 Marketplace Metrics ---
   getDemandHotspots: async () => {
     const { data, error } = await supabase.rpc('get_demand_hotspots');
-    if (data && data.length > 0) {
-      const mapped = await Promise.all(data.map(async (item) => {
-        try {
-          const geo = await reverseGeocode(item.lat, item.lng);
-          return {
-            ...item,
-            locationName: geo?.displayName || `Location at ${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`
-          };
-        } catch (err) {
-          console.error("Error reverse geocoding demand hotspot:", err);
-          return {
-            ...item,
-            locationName: `Location at ${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`
-          };
-        }
-      }));
-      return { data: mapped, error };
-    }
     return { data: data || [], error };
   },
 
   getCoverageGaps: async () => {
     const { data, error } = await supabase.rpc('get_coverage_gaps');
-    if (data && data.length > 0) {
-      const mapped = await Promise.all(data.map(async (item) => {
-        try {
-          const geo = await reverseGeocode(item.lat, item.lng);
-          return {
-            ...item,
-            locationName: geo?.displayName || `Location at ${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`
-          };
-        } catch (err) {
-          console.error("Error reverse geocoding coverage gap:", err);
-          return {
-            ...item,
-            locationName: `Location at ${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`
-          };
-        }
-      }));
-      return { data: mapped, error };
-    }
     return { data: data || [], error };
   },
 

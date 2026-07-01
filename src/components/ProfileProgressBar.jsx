@@ -18,13 +18,13 @@ const ProfileProgressBar = () => {
 
   const titleText = role === 'tasker' ? 'Complete Helper Profile' : 'Complete Poster Profile';
   const subtext = role === 'tasker'
-    ? `${completionPercentage}% configured • Set up profile to start getting job notifications`
-    : `${completionPercentage}% configured • Set up profile to start posting jobs`;
+    ? 'Set up profile to start getting task notifications'
+    : 'Set up profile to start posting tasks';
 
   return (
     <button
       onClick={handleClick}
-      className="w-full bg-white border-2 border-border hover:border-primary/40 hover:shadow-md rounded-3xl p-5 transition-all duration-200 text-left active:scale-[0.99] cursor-pointer flex flex-col space-y-3.5 select-none relative overflow-hidden group"
+      className="w-full max-w-md mx-auto flex flex-col bg-white border-2 border-border hover:border-primary/40 hover:shadow-md rounded-3xl p-5 transition-all duration-200 text-left active:scale-[0.99] cursor-pointer space-y-3.5 select-none relative overflow-hidden group"
     >
       <div className="absolute -right-4 -top-4 w-20 h-20 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-all"></div>
       

@@ -24,9 +24,9 @@ const LocationPermissionModal = ({ isOpen, onClose, onAllow, role }) => {
 
   if (!shouldRender) return null;
 
-  const title = role === 'tasker' ? 'Find Nearby Jobs' : 'Get Faster Responses';
+  const title = role === 'tasker' ? 'Find Nearby Tasks' : 'Get Faster Responses';
   const description = role === 'tasker' 
-    ? 'To show you jobs that are close to you, we need your current location.' 
+    ? 'To show you tasks that are close to you, we need your current location.' 
     : 'To accurately calculate the distance for taskers and help you get faster responses, we need your current location.';
 
   const handleClose = () => {

@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useMemo } from 'react';
-import { Star, ShieldAlert, Shield, Lock, Award, Calendar, ArrowLeft, LogOut, LogIn, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2, ChevronDown, ExternalLink, Wifi, Flame, Zap } from 'lucide-react';
+import { Star, ShieldAlert, Shield, Lock, Award, Calendar, ArrowLeft, LogOut, LogIn, Clock, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2, ChevronDown, ExternalLink, Wifi, Flame, Zap } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { SKILLS } from '../config/constants';
 import Tooltip from '../components/Tooltip';
@@ -129,7 +129,7 @@ Issue: `;
     ...userProfile,
     name: userId ? (userProfile?.name || 'New User') : 'Guest User',
     email: userId ? ((userProfile?.email && userProfile.email !== 'Add Email') ? userProfile.email : '') : 'Not Linked (Guest Mode)',
-    phone: userId ? (userProfile?.phone || 'Add Phone') : '',
+    phone: userId ? (userProfile?.phone || 'Add Phone') : 'Not Linked (Guest Mode)',
     skills: userProfile?.skills || [],
     rating: userId ? (userProfile?.rating || 0) : 0,
     tasksCompleted: userId ? (userProfile?.tasksCompleted || 0) : 0,
@@ -193,8 +193,10 @@ Issue: `;
     if (finalName !== profile.name) {
       updates.name = finalName;
     }
-    if (finalPhone !== profile.phone) {
-      updates.phone = finalPhone;
+    const normalizedPhone = finalPhone.replace(/\D/g, '');
+    const normalizedProfilePhone = (profile.phone || '').replace(/\D/g, '');
+    if (normalizedPhone !== normalizedProfilePhone) {
+      updates.phone = normalizedPhone;
     }
     
     if (Object.keys(updates).length > 0) {
@@ -214,10 +216,7 @@ Issue: `;
   const canSave = editedName.trim().length > 0 && isPhoneValidLength;
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50 h-full w-full overflow-y-auto no-scrollbar relative pb-20">
-      {/* Smooth Gradient Background */}
-      <div className="absolute top-0 left-0 right-0 h-72 bg-gradient-to-b from-orange-400 via-orange-300/50 to-gray-50 pointer-events-none z-0"></div>
-
+    <div className="flex-1 flex flex-col bg-white h-full w-full overflow-y-auto no-scrollbar relative pb-20">
       {/* Top Banner Area */}
       <div className="relative h-28 shrink-0 z-10">
         {/* Back Button */}
@@ -233,7 +232,7 @@ Issue: `;
               popScreen();
             }
           }}
-          className="absolute top-4 left-4 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/20 backdrop-blur-xs cursor-pointer"
+          className="absolute top-4 left-4 p-2 rounded-full bg-white hover:bg-gray-100 text-dark border border-border cursor-pointer transition-colors shadow-2xs lg:hidden"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -242,7 +241,7 @@ Issue: `;
       {role === 'poster' ? (
         <div className="space-y-4 px-6 -mt-12 relative z-10 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left pb-10">
           {/* Header Section */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border flex flex-col items-center text-center">
+          <div className="m3-card rounded-[24px] p-6 flex flex-col items-center text-center">
             <Tooltip text="Tap to change avatar" position="top">
               <button 
                 onClick={() => setShowBirdSelector(true)}
@@ -264,7 +263,7 @@ Issue: `;
           </div>
 
           {/* Account Details Card */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border space-y-4">
+          <div className="m3-card rounded-[24px] p-6 space-y-5">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Account Details</h3>
               {!isEditingAccount ? (
@@ -272,7 +271,7 @@ Issue: `;
                   <button 
                     onClick={() => { 
                       setEditedName(profile.name === 'New User' || profile.name === 'Guest User' ? '' : profile.name); 
-                      setEditedPhone(profile.phone === 'Add Phone' ? '' : profile.phone); 
+                      setEditedPhone((profile.phone === 'Add Phone' || profile.phone === 'Not Linked (Guest Mode)') ? '' : profile.phone); 
                       setIsEditingAccount(true); 
                     }} 
                     className="text-gray-400 hover:text-primary transition-colors p-1 hover:bg-gray-50 rounded-lg cursor-pointer"
@@ -327,7 +326,7 @@ Issue: `;
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center space-x-2 opacity-70">
                       <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-                      <div className="flex-1 bg-gray-100/50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 select-none">
+                      <div className="flex-1 bg-gray-100/50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 select-none cursor-not-allowed">
                         {profile.email || '\u00A0'}
                       </div>
                     </div>
@@ -392,14 +391,14 @@ Issue: `;
           <div className="grid grid-cols-2 gap-2">
             <div 
               onClick={() => { setJobHistoryTab('active'); pushScreen('job_history'); }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-blue-200 transition-colors"
+              className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <span className="text-xl font-black text-dark">{activePosterJobs}</span>
               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Active Tasks</span>
             </div>
             <div 
               onClick={() => { setJobHistoryTab('completed'); pushScreen('job_history'); }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-green-200 transition-colors"
+              className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <span className="text-xl font-black text-dark">{completedPosterJobsCount}</span>
               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Completed</span>
@@ -407,7 +406,7 @@ Issue: `;
           </div>
 
           {/* Reputation Section */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border space-y-5">
+          <div className="m3-card rounded-[24px] p-6 space-y-6">
             <div className="flex items-center justify-between pb-1 border-b border-gray-100">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Reputation</h3>
               {showVerifiedLocal && (
@@ -502,126 +501,128 @@ Issue: `;
           </div>
 
           {/* Action Menu */}
-          <div className="bg-white rounded-3xl p-2 shadow-sm border border-border mb-6">
-            <div className="space-y-1">
-              <button onClick={() => switchRole('tasker')} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
+          <div className="m3-card rounded-[24px] p-2">
+            <div className="space-y-0.5">
+              <button onClick={() => switchRole('tasker')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
                 <div className="flex items-center space-x-3">
-                  <Briefcase className="w-4.5 h-4.5 text-primary" />
+                  <Briefcase className="w-4 h-4 text-primary" />
                   <span>Switch to Tasker</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-primary" />
               </button>
 
+              <div style={{ height: '13px' }} />
+
               <button 
                 onClick={() => pushScreen('address_book')} 
-                className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
               >
                 <div className="flex items-center space-x-3">
-                  <MapPin className="w-4.5 h-4.5 text-gray-400" />
+                  <MapPin className="w-4 h-4 text-gray-400" />
                   <span>Address Book</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
-              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
-                  <Star className="w-4.5 h-4.5 text-gray-400" />
+                  <Star className="w-4 h-4 text-gray-400" />
                   <span>About Us</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
-              <div className="px-3 py-1 text-left">
+              <div className="px-3 py-0.5 text-left">
                 <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Need Help?</span>
               </div>
 
-              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
-                  <WhatsAppIcon className="w-4.5 h-4.5 text-green-600 shrink-0" />
+                  <WhatsAppIcon className="w-4 h-4 text-green-600 shrink-0" />
                   <span>WhatsApp Support</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
               {isAdmin && (
                 <>
-                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-xs font-bold text-gray-800 hover:bg-gray-100 p-3 rounded-2xl transition-colors cursor-pointer">
+                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-gray-800 hover:bg-gray-100 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                     <div className="flex items-center space-x-3">
-                      <Shield className="w-4.5 h-4.5 text-gray-600" />
+                      <Shield className="w-4 h-4 text-gray-600" />
                       <span>Admin Dashboard</span>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-300" />
                   </button>
-                  <div className="h-px bg-gray-100 my-2 mx-3"></div>
+                  <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
                 </>
               )}
 
               {userId ? (
-                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-xs font-bold text-red-500 hover:bg-red-50 p-3 rounded-2xl transition-colors cursor-pointer">
+                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-red-500 hover:bg-red-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                   <div className="flex items-center space-x-3">
-                    <LogOut className="w-4.5 h-4.5 text-red-500" />
+                    <LogOut className="w-4 h-4 text-red-500" />
                     <span>Sign Out</span>
                   </div>
                 </button>
               ) : (
-                <button onClick={() => openLoginModal()} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer">
+                <button onClick={() => openLoginModal()} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                   <div className="flex items-center space-x-3">
-                    <LogIn className="w-4.5 h-4.5 text-primary" />
+                    <LogIn className="w-4 h-4 text-primary" />
                     <span>Sign In / Sign Up</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-primary" />
                 </button>
               )}
-            </div>
-          </div>
 
-          {/* Also from ahr card */}
-          <div className="bg-white rounded-3xl p-2 shadow-sm border border-border mt-4">
-            <button 
-              onClick={() => setIsAhrOpen(!isAhrOpen)} 
-              className="w-full flex items-center justify-between text-left text-xs font-bold text-gray-700 hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer"
-            >
-              <div className="flex items-center space-x-1.5">
-                <span>Also from</span>
-                <span 
-                  style={{ fontFamily: "'Satisfy', cursive", fontWeight: 800 }} 
-                  className="text-lg text-primary lowercase select-none"
-                >
-                  ahr
-                </span>
-              </div>
-              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isAhrOpen ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {isAhrOpen && (
-              <div className="mt-1 border-t border-gray-100 pt-1.5 px-3 pb-2 animate-[fadeIn_200ms_ease-in-out]">
-                <a 
-                  href="https://civiclens.tech" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="flex items-center justify-between py-2.5 px-2 rounded-xl text-xs font-bold text-gray-600 hover:text-primary hover:bg-orange-50/50 transition-all"
-                >
-                  <span className="flex items-center space-x-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                    <span>CivicLens</span>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
+
+              {/* Also from ahr dropdown section merged inside card */}
+              <button 
+                onClick={() => setIsAhrOpen(!isAhrOpen)} 
+                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
+              >
+                <div className="flex items-center space-x-1.5">
+                  <span>Also from</span>
+                  <span 
+                    style={{ fontFamily: "'Satisfy', cursive", fontWeight: 800 }} 
+                    className="text-lg text-primary lowercase select-none"
+                  >
+                    ahr
                   </span>
-                  <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
-                </a>
-              </div>
-            )}
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isAhrOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isAhrOpen && (
+                <div className="mt-1 border-t border-gray-100 pt-1.5 px-3 pb-2 animate-[fadeIn_200ms_ease-in-out]">
+                  <a 
+                    href="https://civiclens.tech" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="flex items-center justify-between py-2.5 px-2 rounded-xl text-xs font-bold text-gray-600 hover:text-primary hover:bg-orange-50/50 transition-all"
+                  >
+                    <span className="flex items-center space-x-2">
+                      <img src="/civiclens-icon.png" alt="CivicLens" className="w-4 h-4 object-contain rounded-[4px]" />
+                      <span>CivicLens</span>
+                    </span>
+                    <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ) : (
         /* Tasker Layout */
-        <div className="px-6 -mt-12 relative z-10 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left mb-10">
+        <div className="space-y-4 px-6 -mt-12 relative z-10 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left pb-10">
           {/* Header Section */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border flex flex-col items-center text-center">
+          <div className="m3-card rounded-[24px] p-6 flex flex-col items-center text-center">
             <Tooltip text="Tap to change avatar" position="top">
               <button 
                 onClick={() => setShowBirdSelector(true)}
@@ -643,15 +644,15 @@ Issue: `;
           </div>
 
           {/* Account Details Card */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border space-y-4">
+          <div className="m3-card rounded-[24px] p-6 space-y-5">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Account Details</h3>
               {!isEditingAccount ? (
                 <Tooltip text="Edit account details" position="left">
                   <button 
                     onClick={() => { 
-                      setEditedName(profile.name === 'New User' ? '' : profile.name); 
-                      setEditedPhone(profile.phone === 'Add Phone' ? '' : profile.phone); 
+                      setEditedName(profile.name === 'New User' || profile.name === 'Guest User' ? '' : profile.name); 
+                      setEditedPhone((profile.phone === 'Add Phone' || profile.phone === 'Not Linked (Guest Mode)') ? '' : profile.phone); 
                       setIsEditingAccount(true); 
                     }} 
                     className="text-gray-400 hover:text-primary transition-colors p-1 hover:bg-gray-50 rounded-lg cursor-pointer"
@@ -706,7 +707,7 @@ Issue: `;
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center space-x-2 opacity-70">
                       <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-                      <div className="flex-1 bg-gray-100/50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 select-none">
+                      <div className="flex-1 bg-gray-100/50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 select-none cursor-not-allowed">
                         {profile.email || '\u00A0'}
                       </div>
                     </div>
@@ -771,7 +772,7 @@ Issue: `;
                 setJobHistoryTab('active');
                 pushScreen('job_history');
               }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-blue-200 transition-colors"
+              className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <span className="text-xl font-black text-dark">{activeTaskerJobs}</span>
               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Active Tasks</span>
@@ -781,7 +782,7 @@ Issue: `;
                 setJobHistoryTab('completed');
                 pushScreen('job_history');
               }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-green-200 transition-colors"
+              className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <span className="text-xl font-black text-dark">{completedTaskerJobsCount}</span>
               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Completed</span>
@@ -789,7 +790,7 @@ Issue: `;
           </div>
 
           {/* Reputation Section (Tasker) */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border space-y-5 mt-4">
+          <div className="m3-card rounded-[24px] p-6 space-y-6 mt-4">
             <div className="flex items-center justify-between pb-1 border-b border-gray-100">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Reputation</h3>
               {showVerifiedLocal && (
@@ -858,7 +859,7 @@ Issue: `;
             </div>
 
             <div className="flex justify-between items-center text-xs font-bold text-dark border-t border-gray-100 pt-3">
-              <span className="text-gray-400 font-bold uppercase text-[10px] tracking-wider">Jobs Completed</span>
+              <span className="text-gray-400 font-bold uppercase text-[10px] tracking-wider">Tasks Completed</span>
               <span className="text-base font-black text-dark">{profile.tasksCompleted}</span>
             </div>
 
@@ -884,15 +885,15 @@ Issue: `;
           </div>
 
           {/* Secondary Info (Area) */}
-          <div className="bg-white rounded-2xl p-4 shadow-xs border border-border mt-4 space-y-3">
+          <div className="m3-card rounded-[20px] p-5 mt-4 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Service Scope</h3>
               <Tooltip text="Change service area" position="left">
                 <button
                   onClick={() => pushScreen('tasker_onboarding', false, { editServiceAreaOnly: true })}
-                  className="text-[9px] font-black text-primary uppercase tracking-wider hover:underline cursor-pointer"
+                  className="text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-colors cursor-pointer"
                 >
-                  Change
+                  <Edit2 className="w-4 h-4" />
                 </button>
               </Tooltip>
             </div>
@@ -903,7 +904,7 @@ Issue: `;
           </div>
 
           {/* Skill tags (Tasker Only) */}
-          <div className="bg-white rounded-2xl p-4 shadow-xs border border-border mt-4 space-y-3">
+          <div className="m3-card rounded-[20px] p-5 mt-4 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Your Skills</h3>
               <Tooltip text="Edit skills" position="left">
@@ -936,120 +937,125 @@ Issue: `;
           </div>
 
           {/* Action Menu */}
-          <div className="bg-white rounded-3xl p-2 shadow-xs border border-border mt-4 mb-10">
-            <div className="space-y-1">
-              <button onClick={() => switchRole('poster')} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer border border-primary/20 bg-primary/5 mb-2">
+          <div className="m3-card rounded-[24px] p-2">
+            <div className="space-y-0.5">
+              <button onClick={() => switchRole('poster')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
                 <div className="flex items-center space-x-3">
-                  <PlusCircle className="w-4.5 h-4.5 text-primary" />
+                  <PlusCircle className="w-4 h-4 text-primary" />
                   <span>Switch to Hirer</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-primary" />
               </button>
 
+              <div style={{ height: '13px' }} />
 
-
-              <button onClick={() => pushScreen('tasker_activity')} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <button 
+                onClick={() => pushScreen('tasker_activity')} 
+                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
+              >
                 <div className="flex items-center space-x-3">
-                  <Briefcase className="w-4.5 h-4.5 text-gray-400" />
+                  <Briefcase className="w-4 h-4 text-gray-400" />
                   <span>Earnings</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-black text-orange-500 bg-orange-100 px-2 py-0.5 rounded-md">₹{thisMonthEarnings.toLocaleString('en-IN')}</span>
+                  <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                    ₹{(thisMonthEarnings || 0).toLocaleString('en-IN')}
+                  </span>
                   <ChevronRight className="w-4 h-4 text-gray-300" />
                 </div>
               </button>
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
-              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
-                  <Star className="w-4.5 h-4.5 text-gray-400" />
+                  <Star className="w-4 h-4 text-gray-400" />
                   <span>About Us</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
-              <div className="px-3 py-1 text-left">
+              <div className="px-3 py-0.5 text-left">
                 <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Need Help?</span>
               </div>
 
-              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
-                  <WhatsAppIcon className="w-4.5 h-4.5 text-green-600 shrink-0" />
+                  <WhatsAppIcon className="w-4 h-4 text-green-600 shrink-0" />
                   <span>WhatsApp Support</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
               {isAdmin && (
                 <>
-                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-xs font-bold text-gray-800 hover:bg-gray-100 p-3 rounded-2xl transition-colors cursor-pointer">
+                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-gray-800 hover:bg-gray-100 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                     <div className="flex items-center space-x-3">
-                      <Shield className="w-4.5 h-4.5 text-gray-600" />
+                      <Shield className="w-4 h-4 text-gray-600" />
                       <span>Admin Dashboard</span>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-300" />
                   </button>
-                  <div className="h-px bg-gray-100 my-2 mx-3"></div>
+                  <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
                 </>
               )}
 
               {userId ? (
-                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-xs font-bold text-red-500 hover:bg-red-50 p-3 rounded-2xl transition-colors cursor-pointer">
+                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-red-500 hover:bg-red-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                   <div className="flex items-center space-x-3">
-                    <LogOut className="w-4.5 h-4.5 text-red-500" />
+                    <LogOut className="w-4 h-4 text-red-500" />
                     <span>Sign Out</span>
                   </div>
                 </button>
               ) : (
-                <button onClick={() => setShowLoginModal(true)} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer">
+                <button onClick={() => setShowLoginModal(true)} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                   <div className="flex items-center space-x-3">
-                    <LogIn className="w-4.5 h-4.5 text-primary" />
+                    <LogIn className="w-4 h-4 text-primary" />
                     <span>Sign In / Sign Up</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-primary" />
                 </button>
               )}
-            </div>
-          </div>
 
-          {/* Also from ahr card */}
-          <div className="bg-white rounded-3xl p-2 shadow-sm border border-border mt-4 mb-10">
-            <button 
-              onClick={() => setIsAhrOpen(!isAhrOpen)} 
-              className="w-full flex items-center justify-between text-left text-xs font-bold text-gray-700 hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer"
-            >
-              <div className="flex items-center space-x-1.5">
-                <span>Also from</span>
-                <span 
-                  style={{ fontFamily: "'Satisfy', cursive", fontWeight: 800 }} 
-                  className="text-lg text-primary lowercase select-none"
-                >
-                  ahr
-                </span>
-              </div>
-              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isAhrOpen ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {isAhrOpen && (
-              <div className="mt-1 border-t border-gray-100 pt-1.5 px-3 pb-2 animate-[fadeIn_200ms_ease-in-out]">
-                <a 
-                  href="https://civiclens.tech" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="flex items-center justify-between py-2.5 px-2 rounded-xl text-xs font-bold text-gray-600 hover:text-primary hover:bg-orange-50/50 transition-all"
-                >
-                  <span className="flex items-center space-x-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                    <span>CivicLens</span>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
+
+              {/* Also from ahr dropdown section merged inside card */}
+              <button 
+                onClick={() => setIsAhrOpen(!isAhrOpen)} 
+                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
+              >
+                <div className="flex items-center space-x-1.5">
+                  <span>Also from</span>
+                  <span 
+                    style={{ fontFamily: "'Satisfy', cursive", fontWeight: 800 }} 
+                    className="text-lg text-primary lowercase select-none"
+                  >
+                    ahr
                   </span>
-                  <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
-                </a>
-              </div>
-            )}
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isAhrOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isAhrOpen && (
+                <div className="mt-1 border-t border-gray-100 pt-1.5 px-3 pb-2 animate-[fadeIn_200ms_ease-in-out]">
+                  <a 
+                    href="https://civiclens.tech" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="flex items-center justify-between py-2.5 px-2 rounded-xl text-xs font-bold text-gray-600 hover:text-primary hover:bg-orange-50/50 transition-all"
+                  >
+                    <span className="flex items-center space-x-2">
+                      <img src="/civiclens-icon.png" alt="CivicLens" className="w-4 h-4 object-contain rounded-[4px]" />
+                      <span>CivicLens</span>
+                    </span>
+                    <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1097,7 +1103,7 @@ Issue: `;
             </div>
             
             {/* Body */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 bg-gray-50/50">
+            <div className="flex-1 overflow-y-auto px-6 py-6 bg-white">
               <p className="text-xs font-semibold text-gray-500 mb-4">
                 Select the services you want to offer.
               </p>

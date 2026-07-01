@@ -156,7 +156,7 @@ const TaskerRatingScreen = () => {
         /* Success Screen */
         <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 my-6">
           <div className="w-20 h-20 bg-green-50 text-green-600 rounded-full flex items-center justify-center border border-green-200 shadow-md">
-            <Check className="w-10 h-10 animate-bounce" />
+            <Check className="w-10 h-10" />
           </div>
           <h3 className="text-lg font-black text-dark">Thank You!</h3>
           <p className="text-xs font-semibold text-gray-400 max-w-[200px]">

@@ -167,7 +167,7 @@ const LiveStatusScreen = () => {
         {/* Waiting text */}
         <div className="text-center mt-6">
           <p className="text-xs font-semibold text-gray-400 animate-pulse">
-            Waiting for a Tasker to accept this job...
+            Waiting for a Tasker to accept this task...
           </p>
         </div>
       </div>
@@ -208,7 +208,7 @@ const LiveStatusScreen = () => {
               </div>
               <h3 className="text-lg font-black text-dark">Cancel Broadcast?</h3>
               <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
-                Are you sure you want to cancel this job search? This will expire all pending job offers.
+                Are you sure you want to cancel this task search? This will expire all pending task offers.
               </p>
             </div>
             <div className="flex space-x-3">
@@ -243,7 +243,7 @@ const LiveStatusScreen = () => {
                       .update({ status: 'expired' })
                       .eq('job_id', currentPostedJob.id)
                       .eq('status', 'pending');
-                    showToast('Job broadcast cancelled.', 'info');
+                    showToast('Task broadcast cancelled.', 'info');
                     setShowCancelModal(false);
                     pushScreen('poster_home', true);
                   } catch (err) {

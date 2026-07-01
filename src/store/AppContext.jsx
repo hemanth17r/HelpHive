@@ -1479,9 +1479,11 @@ export const AppProvider = ({ children }) => {
 
     const dbDescription = `${newJobData.description || 'Quick task'}\n[Time: ${expiresAt}]`;
 
-    // Remove old job if reposting
+    // Remove old job if editing (and not reposting)
     if (editJobData) {
-      await deleteJob(editJobData.id);
+      if (editJobData.id && !editJobData.isRepost) {
+        await deleteJob(editJobData.id);
+      }
       setEditJobData(null);
     }
 

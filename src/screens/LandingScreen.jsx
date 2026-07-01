@@ -17,9 +17,6 @@ const LandingScreen = () => {
       
       {/* Hero Section */}
       <div className="flex flex-col items-center text-center mt-6 space-y-2.5">
-        <div className="bg-primary text-white p-4 rounded-3xl shadow-lg shadow-primary/30 relative animate-bounce">
-          <Sparkles className="w-8 h-8" />
-        </div>
         <h1 className="text-4xl font-black text-dark tracking-tight">
           Help<span className="text-primary">Hive</span>
         </h1>
@@ -29,13 +26,13 @@ const LandingScreen = () => {
       </div>
 
       {/* Main Entry Cards */}
-      <div className="flex flex-col space-y-4 my-6 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full">
+      <div className="flex flex-col space-y-4 my-6 max-w-sm lg:max-w-lg mx-auto w-full">
         {/* Hirer Entrance */}
         <button
           onClick={() => selectRole('poster')}
-          className="w-full flex items-center bg-white border border-border hover:border-primary/50 hover:shadow-md rounded-2xl p-5 transition-all duration-200 group cursor-pointer text-left active:scale-[0.98]"
+          className="w-full flex items-center m3-card m3-card-hover rounded-[24px] p-6 group cursor-pointer text-left active-scale"
         >
-          <div className="bg-primary/10 text-primary p-3.5 rounded-xl group-hover:bg-primary group-hover:text-white transition-all duration-250 shrink-0">
+          <div className="bg-primary/10 text-primary p-3.5 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all duration-250 shrink-0">
             <HeartHandshake className="w-7 h-7" />
           </div>
           <div className="ml-4 flex-1">
@@ -52,9 +49,9 @@ const LandingScreen = () => {
         {/* Tasker Entrance */}
         <button
           onClick={() => selectRole('tasker')}
-          className="w-full flex items-center bg-white border border-border hover:border-primary/50 hover:shadow-md rounded-2xl p-5 transition-all duration-200 group cursor-pointer text-left active:scale-[0.98]"
+          className="w-full flex items-center m3-card m3-card-hover rounded-[24px] p-6 group cursor-pointer text-left active-scale"
         >
-          <div className="bg-primary/10 text-primary p-3.5 rounded-xl group-hover:bg-primary group-hover:text-white transition-all duration-250 shrink-0">
+          <div className="bg-primary/10 text-primary p-3.5 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all duration-250 shrink-0">
             <Briefcase className="w-7 h-7" />
           </div>
           <div className="ml-4 flex-1">
@@ -62,7 +59,7 @@ const LandingScreen = () => {
               I Want to Work
             </h2>
             <p className="text-[10px] font-semibold text-gray-400">
-              Find local tasks and start earning.
+              Receive local tasks and start earning.
             </p>
           </div>
           <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors shrink-0" />

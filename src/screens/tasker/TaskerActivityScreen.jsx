@@ -115,7 +115,7 @@ const TaskerActivityScreen = () => {
   return (
     <div className="flex-1 flex flex-col bg-gray-50 h-full select-none overflow-hidden">
       {/* Header */}
-      <div className="flex items-center px-4 py-4 bg-white border-b border-gray-100 shadow-xs shrink-0 z-10 sticky top-0 rounded-b-3xl">
+      <div className="flex items-center px-4 py-4 bg-white shrink-0 z-10 sticky top-0">
         <button
           onClick={popScreen}
           className="p-2 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
@@ -126,7 +126,8 @@ const TaskerActivityScreen = () => {
         <span className="text-sm font-black text-dark ml-2">Earnings</span>
       </div>
 
-      <div id="tasker-activity-scroll-container" className="flex-1 overflow-y-auto px-4 py-6 space-y-8 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full pb-20">
+      <div id="tasker-activity-scroll-container" className="flex-1 overflow-y-auto w-full">
+        <div className="px-4 py-6 space-y-8 max-w-md lg:max-w-2xl lg:px-8 mx-auto pb-20">
 
         {/* ─── Earnings Summary Hero Card ─── */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden" id="earnings-summary-card">
@@ -259,6 +260,7 @@ const TaskerActivityScreen = () => {
         </div>
       </div>
     </div>
+  </div>
   );
 };
 
