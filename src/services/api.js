@@ -187,8 +187,18 @@ export const api = {
             };
           }
 
+          let expiresAt = j.scheduled_for || j.created_at;
+          let cleanDesc = j.description || '';
+          const match = cleanDesc.match(/\s*\[Time: ([^\]]+)\]/);
+          if (match) {
+            expiresAt = match[1];
+            cleanDesc = cleanDesc.replace(/\s*\[Time: [^\]]+\]/, '');
+          }
+
           return {
             ...j,
+            description: cleanDesc,
+            expiresAt: expiresAt,
             posterId: j.poster_id,
             taskerId: j.tasker_id,
             skillId: j.skill_id,
@@ -284,8 +294,18 @@ export const api = {
           };
         }
 
+        let expiresAt = j.scheduled_for || j.created_at;
+        let cleanDesc = j.description || '';
+        const match = cleanDesc.match(/\s*\[Time: ([^\]]+)\]/);
+        if (match) {
+          expiresAt = match[1];
+          cleanDesc = cleanDesc.replace(/\s*\[Time: [^\]]+\]/, '');
+        }
+
         return {
           ...j,
+          description: cleanDesc,
+          expiresAt: expiresAt,
           posterId: j.poster_id,
           taskerId: j.tasker_id,
           skillId: j.skill_id,
@@ -420,21 +440,26 @@ export const api = {
   fetchJobCrew: async (jobId) => {
     const { data, error } = await supabase
       .from('job_offers')
-      .select('tasker_id, otp_verified, profiles(id, name, bird, phone, upi_id, rating, tasks_completed)')
+      .select('tasker_id, otp_verified, profiles(id, name, bird, phone, upi_id, rating, tasks_completed, location)')
       .eq('job_id', jobId)
       .eq('status', 'accepted');
       
     if (data) {
-      return { data: data.map(d => ({
-        id: d.profiles?.id,
-        name: d.profiles?.name,
-        bird: d.profiles?.bird,
-        phone: d.profiles?.phone,
-        upiId: d.profiles?.upi_id,
-        rating: d.profiles?.rating,
-        tasksCompleted: d.profiles?.tasks_completed,
-        otpVerified: d.otp_verified
-      })), error };
+      return { data: data.map(d => {
+        const parsedLoc = d.profiles?.location ? parseEWKBPoint(d.profiles.location) : null;
+        return {
+          id: d.profiles?.id,
+          name: d.profiles?.name,
+          bird: d.profiles?.bird,
+          phone: d.profiles?.phone,
+          upiId: d.profiles?.upi_id,
+          rating: d.profiles?.rating,
+          tasksCompleted: d.profiles?.tasks_completed,
+          otpVerified: d.otp_verified,
+          serviceAreaLat: parsedLoc?.lat || null,
+          serviceAreaLng: parsedLoc?.lng || null
+        };
+      }), error };
     }
     return { data: [], error };
   },

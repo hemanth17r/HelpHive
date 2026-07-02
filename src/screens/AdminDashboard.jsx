@@ -8,7 +8,7 @@ import {
   RefreshCw, ChevronDown, ChevronUp, BarChart3,
   UserCheck, Zap, LogIn, LogOut, Star, Flag,
   PlusCircle, Eye, XCircle, ToggleRight, MapPin, 
-  WifiOff, Frown
+  WifiOff, Frown, HelpCircle
 } from 'lucide-react';
 import { SKILLS } from '../config/constants';
 
@@ -136,10 +136,46 @@ const AdminDashboard = () => {
       if (timeseriesRes.data) setTimeseries(timeseriesRes.data);
       if (eventsRes.data) setRecentEvents(eventsRes.data);
       if (reportsRes.data) setHelpReports(reportsRes.data);
-      if (hotspotsRes.data) setDemandHotspots(hotspotsRes.data);
-      if (gapsRes.data) setCoverageGaps(gapsRes.data);
       if (failedRes.data) setFailedExperiences(failedRes.data);
       if (leaderboardRes.data) setCityLeaderboard(leaderboardRes.data);
+
+      if (hotspotsRes.data) {
+        setDemandHotspots(hotspotsRes.data);
+        // Geocode unresolved hotspots asynchronously
+        hotspotsRes.data.forEach(async (hotspot) => {
+          if (hotspot.lat && hotspot.lng && (!hotspot.locationName || hotspot.locationName.startsWith('Location at') || hotspot.locationName === 'Unknown Location')) {
+            try {
+              const geo = await reverseGeocode(hotspot.lat, hotspot.lng);
+              if (geo && geo.displayName) {
+                setDemandHotspots(prev => 
+                  prev.map(h => h.id === hotspot.id ? { ...h, locationName: geo.displayName } : h)
+                );
+              }
+            } catch (err) {
+              console.error('Failed to geocode hotspot:', err);
+            }
+          }
+        });
+      }
+
+      if (gapsRes.data) {
+        setCoverageGaps(gapsRes.data);
+        // Geocode unresolved gaps asynchronously
+        gapsRes.data.forEach(async (gap) => {
+          if (gap.lat && gap.lng && (!gap.locationName || gap.locationName.startsWith('Location at') || gap.locationName === 'Unknown Location')) {
+            try {
+              const geo = await reverseGeocode(gap.lat, gap.lng);
+              if (geo && geo.displayName) {
+                setCoverageGaps(prev => 
+                  prev.map(g => g.id === gap.id ? { ...g, locationName: geo.displayName } : g)
+                );
+              }
+            } catch (err) {
+              console.error('Failed to geocode gap:', err);
+            }
+          }
+        });
+      }
     } catch (e) {
       console.error('Dashboard data fetch error:', e);
     }
@@ -304,11 +340,11 @@ const AdminDashboard = () => {
   const displayedEvents = showAllEvents ? recentEvents : recentEvents.slice(0, 15);
 
   return (
-    <div className="flex-1 flex flex-col pb-20">
+    <div className="flex-1 flex flex-col pb-20 bg-gray-50/30">
       
       {/* Header */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-4 py-5 sm:px-6">
-        <div className="flex items-center justify-between mb-1">
+      <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-4 py-5 sm:px-6 shrink-0">
+        <div className="max-w-5xl mx-auto w-full flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
             <button 
               onClick={popScreen}
@@ -336,512 +372,540 @@ const AdminDashboard = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        
-        {/* Core Platform Metrics */}
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard 
-            icon={Users} 
-            label="Total Taskers" 
-            value={stats?.total_taskers ?? '—'} 
-            sub={`${stats?.users_today ?? 0} active today`}
-            color="blue"
-          />
-          <StatCard 
-            icon={Users} 
-            label="Total Hirers" 
-            value={stats?.total_hirers ?? '—'} 
-            sub="Joined & Active"
-            color="purple"
-          />
-        </div>
-
-        {/* Top Cities Leaderboard */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-3.5">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-orange-500" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-dark">Top Cities Leaderboard</h3>
-            </div>
-            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-              India
-            </span>
-          </div>
-
-          {cityLeaderboard.length === 0 ? (
-            <p className="text-xs text-gray-400 font-semibold py-4 text-center">No city data available yet</p>
-          ) : (
-            <div className="space-y-3.5">
-              {cityLeaderboard.map((item, index) => {
-                const maxVal = cityLeaderboard[0]?.total_count || 1;
-                const percentage = ((item.total_count / maxVal) * 100).toFixed(0);
-                
-                // Rank styling
-                const ranks = [
-                  { badge: 'bg-amber-100 text-amber-700 border-amber-200', label: '🏆' },
-                  { badge: 'bg-slate-100 text-slate-700 border-slate-200', label: '🥈' },
-                  { badge: 'bg-orange-100 text-orange-700 border-orange-200', label: '🥉' }
-                ];
-                const defaultRank = { badge: 'bg-gray-50 text-gray-500 border-gray-100', label: `#${index + 1}` };
-                const rankInfo = ranks[index] || defaultRank;
-
-                return (
-                  <div key={item.city_name} className="space-y-1.5 group">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className={`w-6 h-6 rounded-lg border flex items-center justify-center text-[10px] font-black shrink-0 ${rankInfo.badge}`}>
-                          {rankInfo.label}
-                        </span>
-                        <span className="text-xs font-bold text-dark truncate group-hover:text-primary transition-colors">
-                          {item.city_name}
-                        </span>
-                      </div>
-                      <div className="text-[11px] font-extrabold text-gray-500 text-right shrink-0">
-                        {item.total_count} <span className="text-[9px] text-gray-400 font-bold">({item.hirer_count}H, {item.tasker_count}T)</span>
-                      </div>
-                    </div>
-                    <div className="h-2 bg-gray-50 rounded-full overflow-hidden relative border border-gray-100/50">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          index === 0 ? 'bg-amber-500' :
-                          index === 1 ? 'bg-slate-400' :
-                          index === 2 ? 'bg-orange-400' : 'bg-primary'
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Job Pipeline Metrics */}
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard 
-            icon={Briefcase} 
-            label="Total Jobs" 
-            value={stats?.total_jobs ?? '—'} 
-            sub={`${stats?.jobs_today ?? 0} today`}
-            color="orange"
-          />
-          <StatCard 
-            icon={Zap} 
-            label="Active Jobs" 
-            value={stats?.active_jobs ?? '—'} 
-            sub="open & accepted"
-            color="blue"
-          />
-        </div>
-
-        {/* Actionable Pipeline */}
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard 
-            icon={TrendingUp} 
-            label="Fill Rate" 
-            value={`${fillRate}%`} 
-            sub="accepted / posted"
-            color="green"
-          />
-          <StatCard 
-            icon={CheckCircle} 
-            label="Completion" 
-            value={`${completionRate}%`} 
-            sub="completed / filled"
-            color="emerald"
-          />
-        </div>
-
-        {/* Platform Health Q&A */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs space-y-3.5">
-          <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Platform Health Q&A</h3>
-          
-          <div className="space-y-3">
-            {/* Q1 */}
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
-                <Users className="w-4 h-4" />
+      <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="max-w-5xl mx-auto w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Left Column (2/3 width on desktop) */}
+            <div className="lg:col-span-2 space-y-6">
+              
+              {/* Core Platform Metrics */}
+              <div className="grid grid-cols-2 gap-4">
+                <StatCard 
+                  icon={Users} 
+                  label="Total Accounts" 
+                  value={stats?.total_accounts ?? '—'} 
+                  sub="Registered profiles"
+                  color="indigo"
+                />
+                <StatCard 
+                  icon={HelpCircle} 
+                  label="Explorers (Drop-off)" 
+                  value={stats?.explorer_drop_off ?? '—'} 
+                  sub="Incomplete onboarding"
+                  color="gray"
+                />
+                <StatCard 
+                  icon={Users} 
+                  label="Serious Taskers" 
+                  value={stats?.total_taskers ?? '—'} 
+                  sub={`${stats?.users_today ?? 0} active today`}
+                  color="blue"
+                />
+                <StatCard 
+                  icon={Users} 
+                  label="Serious Hirers" 
+                  value={stats?.total_hirers ?? '—'} 
+                  sub="Onboarded & Active"
+                  color="purple"
+                />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-dark">Are people showing up?</p>
-                <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                  <span className="text-blue-600 font-bold">{stats?.signups_today ?? 0}</span> new signups today • <span className="text-blue-600 font-bold">{stats?.logins_today ?? 0}</span> sign-ins today
-                </p>
+
+              {/* Job Pipeline Metrics */}
+              <div className="grid grid-cols-2 gap-4">
+                <StatCard 
+                  icon={Briefcase} 
+                  label="Total Jobs" 
+                  value={stats?.total_jobs ?? '—'} 
+                  sub={`${stats?.jobs_today ?? 0} today`}
+                  color="orange"
+                />
+                <StatCard 
+                  icon={Zap} 
+                  label="Active Jobs" 
+                  value={stats?.active_jobs ?? '—'} 
+                  sub="open & accepted"
+                  color="blue"
+                />
               </div>
-            </div>
 
-            {/* Q2 */}
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 mt-0.5">
-                <Briefcase className="w-4 h-4" />
+              {/* Actionable Pipeline */}
+              <div className="grid grid-cols-2 gap-4">
+                <StatCard 
+                  icon={TrendingUp} 
+                  label="Fill Rate" 
+                  value={`${fillRate}%`} 
+                  sub="accepted / posted"
+                  color="green"
+                />
+                <StatCard 
+                  icon={CheckCircle} 
+                  label="Completion" 
+                  value={`${completionRate}%`} 
+                  sub="completed / filled"
+                  color="emerald"
+                />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-dark">Are jobs getting posted?</p>
-                <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                  <span className="text-orange-600 font-bold">{stats?.jobs_today ?? 0}</span> new tasks created today
-                </p>
-              </div>
-            </div>
 
-            {/* Q3 */}
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center shrink-0 mt-0.5">
-                <CheckCircle className="w-4 h-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-dark">Are jobs getting done?</p>
-                <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                  <span className="text-green-600 font-bold">{stats?.acceptances_today ?? 0}</span> tasks accepted today • <span className="text-emerald-600 font-bold">{stats?.completions_today ?? 0}</span> completed today
-                </p>
-              </div>
-            </div>
-
-            {/* Q4 */}
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0 mt-0.5">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-dark">Is anything broken?</p>
-                <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                  <span className={stats?.cancellations_today > 0 ? "text-red-500 font-bold" : "text-gray-500 font-semibold"}>
-                    {stats?.cancellations_today ?? 0} cancellations today
-                  </span>
-                  {' '}•{' '}
-                  <span className={stats?.reports_today > 0 ? "text-red-500 font-bold" : "text-gray-500 font-semibold"}>
-                    {stats?.reports_today ?? 0} reports/help tickets submitted today
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Job Status Breakdown */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
-          <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-3">Job Pipeline</h3>
-          <div className="flex items-center gap-2">
-            <PipelineItem label="Open" value={stats?.open_jobs ?? 0} color="bg-blue-500" />
-            <div className="text-gray-300">→</div>
-            <PipelineItem label="Accepted" value={stats?.accepted_jobs ?? 0} color="bg-orange-500" />
-            <div className="text-gray-300">→</div>
-            <PipelineItem label="Completed" value={stats?.completed_jobs ?? 0} color="bg-emerald-500" />
-            {(stats?.expired_jobs > 0) && (
-              <>
-                <div className="text-gray-300 ml-2">|</div>
-                <PipelineItem label="Expired" value={stats?.expired_jobs ?? 0} color="bg-gray-400" />
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Activity Chart */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-gray-400" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Activity</h3>
-            </div>
-            <div className="flex gap-1">
-              {[7, 14, 30].map(d => (
-                <button
-                  key={d}
-                  onClick={() => setActiveTimeRange(d)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
-                    activeTimeRange === d 
-                      ? 'bg-dark text-white' 
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  {d}d
-                </button>
-              ))}
-            </div>
-          </div>
-          <MiniBarChart data={chartData} height={100} />
-          <div className="flex justify-between mt-2 px-1">
-            <span className="text-[10px] text-gray-400 font-semibold">
-              {chartData[0]?.label || ''}
-            </span>
-            <span className="text-[10px] text-gray-400 font-semibold">
-              {chartData[chartData.length - 1]?.label || ''}
-            </span>
-          </div>
-        </div>
-
-        {/* Event Breakdown */}
-        {eventCounts.length > 0 && (() => {
-          const maxCount = Math.max(...eventCounts.map(e => parseInt(e.event_count)), 1);
-          return (
-            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
-              <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-3">Event Breakdown (30d)</h3>
-              <div className="space-y-2">
-                {eventCounts.map(ec => {
-                  const Icon = EVENT_ICONS[ec.event_type] || Activity;
-                  const colorClass = EVENT_COLORS[ec.event_type] || 'text-gray-500 bg-gray-50';
-                  const barWidth = (parseInt(ec.event_count) / maxCount * 100);
-                  return (
-                    <div key={ec.event_type} className="flex items-center gap-3">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}>
-                        <Icon className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-dark truncate">{ec.event_type.replace(/_/g, ' ')}</span>
-                          <span className="text-xs font-black text-gray-600 ml-2">{ec.event_count}</span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-orange-400 rounded-full transition-all duration-500"
-                            style={{ width: `${barWidth}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* V2 Metric: Demand Hotspots */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-orange-500" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-orange-500">Demand Hotspots</h3>
-            </div>
-          </div>
-          {demandHotspots.length === 0 ? (
-            <p className="text-xs text-gray-400 font-semibold py-4 text-center">No active hotspots</p>
-          ) : (
-            <div className="space-y-3">
-              {demandHotspots.map(hotspot => {
-                const skill = SKILLS.find(s => s.id === hotspot.categoryId);
-                return (
-                  <div key={hotspot.id} className="border border-orange-100 rounded-xl p-3 bg-orange-50/30">
-                    <div className="flex justify-between items-start mb-1">
-                      <h4 className="text-sm font-black text-dark">{hotspot.locationName || hotspot.label}</h4>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                        hotspot.urgency === 'high' ? 'bg-red-100 text-red-600' : 
-                        hotspot.urgency === 'medium' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
-                      }`}>
-                        {hotspot.urgency.toUpperCase()}
-                      </span>
-                    </div>
-                    <p className="text-[10px] font-bold text-gray-500 mb-2">{skill ? skill.label : hotspot.categoryId}</p>
-                    <div className="flex justify-between text-xs">
-                      <span className="font-semibold"><span className="font-black text-dark">{hotspot.waitlistCount}</span> Waitlisted</span>
-                      <span className="font-semibold text-red-500"><span className="font-black text-red-600">{hotspot.supplyDeficit}</span> Missing Taskers</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* V2 Metric: Coverage Gaps */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <WifiOff className="w-4 h-4 text-red-500" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-red-500">Coverage Gaps</h3>
-            </div>
-          </div>
-          {coverageGaps.length === 0 ? (
-            <p className="text-xs text-gray-400 font-semibold py-4 text-center">No coverage gaps detected</p>
-          ) : (
-            <div className="space-y-3">
-              {coverageGaps.map(gap => {
-                const skill = SKILLS.find(s => s.id === gap.categoryId);
-                return (
-                  <div key={gap.id} className="border border-red-100 rounded-xl p-3 bg-red-50/30 flex justify-between items-center">
-                    <div>
-                      <h4 className="text-sm font-black text-dark">{gap.locationName || gap.label}</h4>
-                      <p className="text-[10px] font-bold text-gray-500">{skill ? skill.label : gap.categoryId}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-black text-red-500">{gap.missingSupply} needed</div>
-                      <div className="text-[10px] font-semibold text-gray-500">Vol: {gap.demandVolume}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* V2 Metric: Failed First Experiences */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Frown className="w-4 h-4 text-purple-500" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-purple-500">Failed First Experiences</h3>
-            </div>
-          </div>
-          {failedExperiences.length === 0 ? (
-            <p className="text-xs text-gray-400 font-semibold py-4 text-center">No failures tracking</p>
-          ) : (
-            <div className="space-y-2">
-              {failedExperiences.map(failed => (
-                <div key={failed.id} className="flex justify-between items-center border border-gray-100 rounded-lg p-2 bg-gray-50">
+              {/* Activity Chart */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                      <Frown className="w-3 h-3" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-dark">{failed.reason.replace(/_/g, ' ')}</div>
-                      <div className="text-[10px] font-semibold text-gray-500">
-                        {failed.userName || 'Unknown User'} {failed.userPhone ? `(${failed.userPhone})` : ''} | Role: <span className="uppercase">{failed.role}</span> | {timeAgo(failed.date)}
-                      </div>
-                    </div>
+                    <BarChart3 className="w-4 h-4 text-gray-400" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Activity</h3>
+                  </div>
+                  <div className="flex gap-1">
+                    {[7, 14, 30].map(d => (
+                      <button
+                        key={d}
+                        onClick={() => setActiveTimeRange(d)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                          activeTimeRange === d 
+                            ? 'bg-dark text-white' 
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                      >
+                        {d}d
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <MiniBarChart data={chartData} height={120} />
+                <div className="flex justify-between mt-2 px-1">
+                  <span className="text-[10px] text-gray-400 font-semibold">
+                    {chartData[0]?.label || ''}
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-semibold">
+                    {chartData[chartData.length - 1]?.label || ''}
+                  </span>
+                </div>
+              </div>
 
-        {/* Recent Activity Feed */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-gray-400" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Recent Activity</h3>
-            </div>
-            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-              {stats?.total_events ?? 0} total
-            </span>
-          </div>
-          
-          {displayedEvents.length === 0 ? (
-            <div className="text-center py-8">
-              <Activity className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-xs font-semibold text-gray-400">No events yet</p>
-              <p className="text-[10px] text-gray-400 mt-1">Events will appear as users interact with the platform</p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {displayedEvents.map(event => {
-                const Icon = EVENT_ICONS[event.event_type] || Activity;
-                const colorClass = EVENT_COLORS[event.event_type] || 'text-gray-500 bg-gray-50';
-                return (
-                  <div key={event.id} className="flex items-center gap-3 py-2 px-2 rounded-xl hover:bg-gray-50 transition-colors">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-dark">{event.event_type.replace(/_/g, ' ')}</span>
-                        {event.active_role && (
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                            event.active_role === 'tasker' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
-                          }`}>
-                            {event.active_role}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-gray-500 font-medium mt-0.5 truncate">
-                        {event.user_name || 'Anonymous'} {event.user_phone ? `(${event.user_phone})` : ''}
-                      </p>
-                    </div>
-                    <span className="text-[10px] text-gray-400 font-semibold whitespace-nowrap shrink-0">
-                      {timeAgo(event.created_at)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          
-          {recentEvents.length > 15 && (
-            <button 
-              onClick={() => setShowAllEvents(!showAllEvents)}
-              className="w-full mt-2 py-2 text-xs font-bold text-orange-600 hover:bg-orange-50 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1"
-            >
-              {showAllEvents ? (
-                <>Show Less <ChevronUp className="w-3 h-3" /></>
-              ) : (
-                <>Show All ({recentEvents.length}) <ChevronDown className="w-3 h-3" /></>
-              )}
-            </button>
-          )}
-        </div>
-
-        {/* Help Reports Section */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Flag className="w-4 h-4 text-red-500" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-red-500">User Help Reports</h3>
-            </div>
-            <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-              {helpReports.filter(r => r.status === 'pending').length} pending
-            </span>
-          </div>
-
-          {helpReports.length === 0 ? (
-            <div className="text-center py-6">
-              <CheckCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-xs font-semibold text-gray-400">No help reports!</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {helpReports.slice(0, 10).map(report => (
-                <div key={report.id} className="border border-gray-100 rounded-xl p-3">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                          report.status === 'pending' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
-                        }`}>
-                          {report.status.toUpperCase()}
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-semibold">{timeAgo(report.created_at)}</span>
-                      </div>
-                      <p className="text-xs font-medium text-dark">{report.description}</p>
-                      {report.user_id && (
-                        <p className="text-[10px] text-gray-500 mt-1 font-semibold truncate">User ID: {report.user_id}</p>
-                      )}
-                    </div>
-                  </div>
-                  {report.status === 'pending' && (
-                    <button
-                      onClick={() => handleResolveReport(report.id)}
-                      className="text-[10px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer w-full mt-2 flex items-center justify-center gap-1.5"
-                    >
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      Mark as Resolved
-                    </button>
+              {/* Job Status Breakdown */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
+                <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-4">Job Pipeline</h3>
+                <div className="flex items-center gap-2">
+                  <PipelineItem label="Open" value={stats?.open_jobs ?? 0} color="bg-blue-500" />
+                  <div className="text-gray-300">→</div>
+                  <PipelineItem label="Accepted" value={stats?.accepted_jobs ?? 0} color="bg-orange-500" />
+                  <div className="text-gray-300">→</div>
+                  <PipelineItem label="Completed" value={stats?.completed_jobs ?? 0} color="bg-emerald-500" />
+                  {(stats?.expired_jobs > 0) && (
+                    <>
+                      <div className="text-gray-300 ml-2">|</div>
+                      <PipelineItem label="Expired" value={stats?.expired_jobs ?? 0} color="bg-gray-400" />
+                    </>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
 
-        {/* System Info */}
-        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-          <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-2">System</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="text-[10px] text-gray-500 font-medium">
-              <span className="text-gray-400">Events tracked:</span> {stats?.total_events ?? 0}
+              {/* Event Breakdown */}
+              {eventCounts.length > 0 && (() => {
+                const maxCount = Math.max(...eventCounts.map(e => parseInt(e.event_count)), 1);
+                return (
+                  <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-4">Event Breakdown (30d)</h3>
+                    <div className="space-y-3">
+                      {eventCounts.map(ec => {
+                        const Icon = EVENT_ICONS[ec.event_type] || Activity;
+                        const colorClass = EVENT_COLORS[ec.event_type] || 'text-gray-500 bg-gray-50';
+                        const barWidth = (parseInt(ec.event_count) / maxCount * 100);
+                        return (
+                          <div key={ec.event_type} className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}>
+                              <Icon className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-bold text-dark truncate">{ec.event_type.replace(/_/g, ' ')}</span>
+                                <span className="text-xs font-black text-gray-600 ml-2">{ec.event_count}</span>
+                              </div>
+                              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-orange-400 rounded-full transition-all duration-500"
+                                  style={{ width: `${barWidth}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
             </div>
-            <div className="text-[10px] text-gray-500 font-medium">
-              <span className="text-gray-400">Events today:</span> {stats?.events_today ?? 0}
+
+            {/* Right Column (1/3 width on desktop) */}
+            <div className="space-y-6">
+              
+              {/* Top Cities Leaderboard */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-orange-500" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-dark">Top Cities</h3>
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                    India
+                  </span>
+                </div>
+
+                {cityLeaderboard.length === 0 ? (
+                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No city data available yet</p>
+                ) : (
+                  <div className="space-y-3.5">
+                    {cityLeaderboard.map((item, index) => {
+                      const maxVal = cityLeaderboard[0]?.total_count || 1;
+                      const percentage = ((item.total_count / maxVal) * 100).toFixed(0);
+                      
+                      // Rank styling
+                      const ranks = [
+                        { badge: 'bg-amber-100 text-amber-700 border-amber-200', label: '🏆' },
+                        { badge: 'bg-slate-100 text-slate-700 border-slate-200', label: '🥈' },
+                        { badge: 'bg-orange-100 text-orange-700 border-orange-200', label: '🥉' }
+                      ];
+                      const defaultRank = { badge: 'bg-gray-50 text-gray-500 border-gray-100', label: `#${index + 1}` };
+                      const rankInfo = ranks[index] || defaultRank;
+
+                      return (
+                        <div key={item.city_name} className="space-y-1.5 group">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className={`w-6 h-6 rounded-lg border flex items-center justify-center text-[10px] font-black shrink-0 ${rankInfo.badge}`}>
+                                {rankInfo.label}
+                              </span>
+                              <span className="text-xs font-bold text-dark truncate group-hover:text-primary transition-colors">
+                                {item.city_name}
+                              </span>
+                            </div>
+                            <div className="text-[11px] font-extrabold text-gray-500 text-right shrink-0">
+                              {item.total_count} <span className="text-[9px] text-gray-400 font-bold">({item.hirer_count}H, {item.tasker_count}T)</span>
+                            </div>
+                          </div>
+                          <div className="h-2 bg-gray-50 rounded-full overflow-hidden relative border border-gray-100/50">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                index === 0 ? 'bg-amber-500' :
+                                index === 1 ? 'bg-slate-400' :
+                                index === 2 ? 'bg-orange-400' : 'bg-primary'
+                              }`}
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Platform Health Q&A */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs space-y-4">
+                <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Platform Health Q&A</h3>
+                
+                <div className="space-y-4">
+                  {/* Q1 */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-dark">Are people showing up?</p>
+                      <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
+                        <span className="text-blue-600 font-bold">{stats?.signups_today ?? 0}</span> new signups today • <span className="text-blue-600 font-bold">{stats?.logins_today ?? 0}</span> sign-ins today
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Q2 */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-dark">Are jobs getting posted?</p>
+                      <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
+                        <span className="text-orange-600 font-bold">{stats?.jobs_today ?? 0}</span> new tasks created today
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Q3 */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-dark">Are jobs getting done?</p>
+                      <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
+                        <span className="text-green-600 font-bold">{stats?.acceptances_today ?? 0}</span> tasks accepted today • <span className="text-emerald-600 font-bold">{stats?.completions_today ?? 0}</span> completed today
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Q4 */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <AlertTriangle className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-dark">Is anything broken?</p>
+                      <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
+                        <span className={stats?.cancellations_today > 0 ? "text-red-500 font-bold" : "text-gray-500 font-semibold"}>
+                          {stats?.cancellations_today ?? 0} cancellations today
+                        </span>
+                        {' '}•{' '}
+                        <span className={stats?.reports_today > 0 ? "text-red-500 font-bold" : "text-gray-500 font-semibold"}>
+                          {stats?.reports_today ?? 0} reports/help tickets today
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* V2 Metric: Demand Hotspots */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-orange-500" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-orange-500">Demand Hotspots</h3>
+                  </div>
+                </div>
+                {demandHotspots.length === 0 ? (
+                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No active hotspots</p>
+                ) : (
+                  <div className="space-y-3.5">
+                    {demandHotspots.map(hotspot => {
+                      const skill = SKILLS.find(s => s.id === hotspot.categoryId);
+                      return (
+                        <div key={hotspot.id} className="border border-orange-100 rounded-xl p-3 bg-orange-50/30">
+                          <div className="flex justify-between items-start mb-1">
+                            <h4 className="text-sm font-black text-dark">{hotspot.locationName || hotspot.label}</h4>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                              hotspot.urgency === 'high' ? 'bg-red-100 text-red-600' : 
+                              hotspot.urgency === 'medium' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
+                            }`}>
+                              {hotspot.urgency.toUpperCase()}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-bold text-gray-500 mb-2">{skill ? skill.label : hotspot.categoryId}</p>
+                          <div className="flex justify-between text-xs">
+                            <span className="font-semibold"><span className="font-black text-dark">{hotspot.waitlistCount}</span> Waitlisted</span>
+                            <span className="font-semibold text-red-500"><span className="font-black text-red-600">{hotspot.supplyDeficit}</span> Missing</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* V2 Metric: Coverage Gaps */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <WifiOff className="w-4 h-4 text-red-500" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-red-500">Coverage Gaps</h3>
+                  </div>
+                </div>
+                {coverageGaps.length === 0 ? (
+                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No coverage gaps detected</p>
+                ) : (
+                  <div className="space-y-3.5">
+                    {coverageGaps.map(gap => {
+                      const skill = SKILLS.find(s => s.id === gap.categoryId);
+                      return (
+                        <div key={gap.id} className="border border-red-100 rounded-xl p-3 bg-red-50/30 flex justify-between items-center">
+                          <div>
+                            <h4 className="text-sm font-black text-dark">{gap.locationName || gap.label}</h4>
+                            <p className="text-[10px] font-bold text-gray-500">{skill ? skill.label : gap.categoryId}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs font-black text-red-500">{gap.missingSupply} needed</div>
+                            <div className="text-[10px] font-semibold text-gray-500">Vol: {gap.demandVolume}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* V2 Metric: Failed First Experiences */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Frown className="w-4 h-4 text-purple-500" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-purple-500">Failed First Experiences</h3>
+                  </div>
+                </div>
+                {failedExperiences.length === 0 ? (
+                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No failures tracking</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {failedExperiences.map(failed => (
+                      <div key={failed.id} className="flex justify-between items-center border border-gray-100 rounded-lg p-2.5 bg-gray-50">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                            <Frown className="w-3 h-3" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-dark">{failed.reason.replace(/_/g, ' ')}</div>
+                            <div className="text-[10px] font-semibold text-gray-500">
+                              {failed.userName || 'Unknown User'} {failed.userPhone ? `(${failed.userPhone})` : ''} | <span className="uppercase">{failed.role}</span> | {timeAgo(failed.date)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Recent Activity Feed */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-gray-400" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Recent Activity</h3>
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                    {stats?.total_events ?? 0} total
+                  </span>
+                </div>
+                
+                {displayedEvents.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Activity className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-gray-400">No events yet</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Events will appear as users interact</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {displayedEvents.map(event => {
+                      const Icon = EVENT_ICONS[event.event_type] || Activity;
+                      const colorClass = EVENT_COLORS[event.event_type] || 'text-gray-500 bg-gray-50';
+                      return (
+                        <div key={event.id} className="flex items-center gap-3 py-2 px-2 rounded-xl hover:bg-gray-50 transition-colors">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-dark">{event.event_type.replace(/_/g, ' ')}</span>
+                              {event.active_role && (
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                                  event.active_role === 'tasker' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
+                                }`}>
+                                  {event.active_role}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-500 font-medium mt-0.5 truncate">
+                              {event.user_name || 'Anonymous'} {event.user_phone ? `(${event.user_phone})` : ''}
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-semibold whitespace-nowrap shrink-0">
+                            {timeAgo(event.created_at)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                
+                {recentEvents.length > 15 && (
+                  <button 
+                    onClick={() => setShowAllEvents(!showAllEvents)}
+                    className="w-full mt-3 py-2 text-xs font-bold text-orange-600 hover:bg-orange-50 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    {showAllEvents ? (
+                      <>Show Less <ChevronUp className="w-3 h-3" /></>
+                    ) : (
+                      <>Show All ({recentEvents.length}) <ChevronDown className="w-3 h-3" /></>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Help Reports Section */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Flag className="w-4 h-4 text-red-500" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-red-500">Help Reports</h3>
+                  </div>
+                  <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
+                    {helpReports.filter(r => r.status === 'pending').length} pending
+                  </span>
+                </div>
+
+                {helpReports.length === 0 ? (
+                  <div className="text-center py-6">
+                    <CheckCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-gray-400">No help reports!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3.5">
+                    {helpReports.slice(0, 10).map(report => (
+                      <div key={report.id} className="border border-gray-100 rounded-xl p-3">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                report.status === 'pending' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
+                              }`}>
+                                {report.status.toUpperCase()}
+                              </span>
+                              <span className="text-[10px] text-gray-400 font-semibold">{timeAgo(report.created_at)}</span>
+                            </div>
+                            <p className="text-xs font-medium text-dark">{report.description}</p>
+                            {report.user_id && (
+                              <p className="text-[10px] text-gray-500 mt-1 font-semibold truncate">User ID: {report.user_id}</p>
+                            )}
+                          </div>
+                        </div>
+                        {report.status === 'pending' && (
+                          <button
+                            onClick={() => handleResolveReport(report.id)}
+                            className="text-[10px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer w-full mt-2 flex items-center justify-center gap-1.5"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Mark as Resolved
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* System Info */}
+              <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-3">System</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-[10px] text-gray-500 font-medium">
+                    <span className="text-gray-400">Events:</span> {stats?.total_events ?? 0}
+                  </div>
+                  <div className="text-[10px] text-gray-500 font-medium">
+                    <span className="text-gray-400">Today:</span> {stats?.events_today ?? 0}
+                  </div>
+                  <div className="text-[10px] text-gray-500 font-medium">
+                    <span className="text-gray-400">Active users:</span> {stats?.users_today ?? 0}
+                  </div>
+                  <div className="text-[10px] text-gray-500 font-medium">
+                    <span className="text-gray-400">Jobs today:</span> {stats?.jobs_today ?? 0}
+                  </div>
+                </div>
+              </div>
+
             </div>
-            <div className="text-[10px] text-gray-500 font-medium">
-              <span className="text-gray-400">Active users today:</span> {stats?.users_today ?? 0}
-            </div>
-            <div className="text-[10px] text-gray-500 font-medium">
-              <span className="text-gray-400">Jobs today:</span> {stats?.jobs_today ?? 0}
-            </div>
+
           </div>
         </div>
-
       </div>
     </div>
   );

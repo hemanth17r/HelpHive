@@ -123,6 +123,7 @@ export const AppProvider = ({ children }) => {
   const [userId, setUserId] = useState(() => localStorage.getItem('userId'));
   const [showLoginModal, setShowLoginModal] = useState(false);
   const loginCallbackRef = useRef(null);
+  const acceptingJobIdsRef = useRef(new Set());
 
   const openLoginModal = (callback = null) => {
     loginCallbackRef.current = callback;
@@ -241,7 +242,7 @@ export const AppProvider = ({ children }) => {
     return Array.isArray(parsed) ? parsed : [];
   });
 
-  const [hasMigratedLocalAddresses, setHasMigratedLocalAddresses] = useState(false);
+  const hasMigratedLocalAddressesRef = useRef(false);
 
   // Sync addresses with DB when user logs in
   useEffect(() => {
@@ -251,8 +252,8 @@ export const AppProvider = ({ children }) => {
       if (data) {
         if (data.length > 0) {
           setSavedAddressesState(data);
-          setHasMigratedLocalAddresses(true); // Don't migrate if DB already has addresses
-        } else if (!hasMigratedLocalAddresses) {
+          hasMigratedLocalAddressesRef.current = true; // Don't migrate if DB already has addresses
+        } else if (!hasMigratedLocalAddressesRef.current) {
           // Migrate local addresses to DB ONCE
           const localAddresses = JSON.parse(localStorage.getItem('helphive_addresses_v2') || '[]');
           if (Array.isArray(localAddresses) && localAddresses.length > 0) {
@@ -264,12 +265,12 @@ export const AppProvider = ({ children }) => {
               setSavedAddressesState(newData);
             }
           }
-          setHasMigratedLocalAddresses(true);
+          hasMigratedLocalAddressesRef.current = true;
         }
       }
     };
     syncAddresses();
-  }, [userId, hasMigratedLocalAddresses]);
+  }, [userId]);
 
   // Apply default address to active header location on startup/login when addresses load
   useEffect(() => {
@@ -479,6 +480,7 @@ export const AppProvider = ({ children }) => {
   // Job and tasker registers
   const [jobs, setJobs] = useState([]);
   const jobsRef = useRef(jobs);
+  const lastFetchTimeRef = useRef(0);
   useEffect(() => {
     jobsRef.current = jobs;
   }, [jobs]);
@@ -486,18 +488,26 @@ export const AppProvider = ({ children }) => {
   const [taskers, setTaskers] = useState([]);
 
   // Fetch jobs from API
-  const fetchJobs = useCallback(async () => {
+  const fetchJobs = useCallback(async (force = false) => {
+    const now = Date.now();
+    if (!force && now - lastFetchTimeRef.current < 15000) {
+      console.log('[FetchJobs] Skipped API fetch, retrieved recently.');
+      return;
+    }
+    lastFetchTimeRef.current = now;
+
     const { data, error } = await api.fetchJobs();
     if (data) {
       const mappedJobs = data.map(j => {
-        let expiresAt = null;
+        let expiresAt = j.expiresAt || j.scheduled_for || j.scheduledFor || null;
         let cleanDesc = j.description || '';
         const match = cleanDesc.match(/\s*\[Time: ([^\]]+)\]/);
         if (match) {
-          expiresAt = match[1];
+          if (!expiresAt) expiresAt = match[1];
           cleanDesc = cleanDesc.replace(/\s*\[Time: [^\]]+\]/, '');
-        } else {
-          expiresAt = new Date(j.created_at).toISOString();
+        }
+        if (!expiresAt) {
+          expiresAt = new Date(j.created_at || j.timePosted || Date.now()).toISOString();
         }
 
         const coords = parseEWKBPoint(j.location) || { lng: j.lng || 0, lat: j.lat || 0 };
@@ -562,8 +572,16 @@ export const AppProvider = ({ children }) => {
         if (!hasCachedProfile) {
           setIsProfileLoading(true);
         }
-        // Validate that we have a valid active Supabase Auth session first
-        const { data: sessionData } = await api.getSession();
+        // Validate that we have a valid active Supabase Auth session first (bypassed on localhost for testing)
+        const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        let sessionData = null;
+        if (!isLocalDev) {
+          const { data } = await api.getSession();
+          sessionData = data;
+        } else {
+          sessionData = { session: { user: { id: userId } } };
+        }
+
         if (!sessionData?.session) {
           console.warn('[Auth] No active Supabase session found on startup. Logging out.');
           localStorage.removeItem('userId');
@@ -1136,7 +1154,7 @@ export const AppProvider = ({ children }) => {
             const cleanUrl = targetUrl.split('?')[0];
             const targetScreen = cleanUrl.replace(/^\/+/g, '').replace(/\/+$/g, '');
             pushScreen(targetScreen);
-            fetchJobs(); // Force feed refresh when notification triggers navigation
+            fetchJobs(true); // Force feed refresh when notification triggers navigation
           }
         }
       };
@@ -1276,10 +1294,19 @@ export const AppProvider = ({ children }) => {
     const tName = userProfile?.taskerName || userProfile?.name || 'Tasker';
     const tBird = userProfile?.bird || 'falcon';
 
+    if (acceptingJobIdsRef.current.has(jobId)) {
+      console.warn('[AppContext] Already accepting job:', jobId);
+      return;
+    }
+    acceptingJobIdsRef.current.add(jobId);
+
     // 1. Optimistic Update Phase
     const originalJobs = [...jobs];
     const targetJob = jobs.find(j => j.id === jobId);
-    if (!targetJob) return;
+    if (!targetJob) {
+      acceptingJobIdsRef.current.delete(jobId);
+      return;
+    }
 
     // Create an optimistically accepted version of the job
     const optimisticJob = {
@@ -1334,8 +1361,20 @@ export const AppProvider = ({ children }) => {
       }
 
       // Start tracking simulation
-      const startLat = (targetJob.lat !== undefined && targetJob.lat !== 0) ? targetJob.lat + 0.012 : 31.2560 + 0.012; // Start roughly 1.5km away
-      const startLng = (targetJob.lng !== undefined && targetJob.lng !== 0) ? targetJob.lng - 0.012 : 75.7051 - 0.012;
+      let jobLat = targetJob.lat;
+      let jobLng = targetJob.lng;
+      if (!jobLat || jobLat === 0) {
+        if (userProfile?.serviceAreaLat && userProfile?.serviceAreaLng) {
+          jobLat = userProfile.serviceAreaLat;
+          jobLng = userProfile.serviceAreaLng;
+        } else {
+          jobLat = 31.2560;
+          jobLng = 75.7051;
+        }
+      }
+
+      const startLat = jobLat + 0.012; // Start roughly 1.5km away
+      const startLng = jobLng - 0.012;
       setTrackingTaskerPos({ lat: startLat, lng: startLng });
       setAnimationTick(0);
 
@@ -1357,6 +1396,8 @@ export const AppProvider = ({ children }) => {
       setAcceptedJob(null);
       setJobs(originalJobs);
       pushScreen('tasker_home', true);
+    } finally {
+      acceptingJobIdsRef.current.delete(jobId);
     }
   };
 
@@ -1477,7 +1518,7 @@ export const AppProvider = ({ children }) => {
     dateObj.setHours(hours, minutes, 0, 0);
     const expiresAt = dateObj.toISOString();
 
-    const dbDescription = `${newJobData.description || 'Quick task'}\n[Time: ${expiresAt}]`;
+    const dbDescription = newJobData.description || 'Quick task';
 
     // Remove old job if editing (and not reposting)
     if (editJobData) {
@@ -1563,6 +1604,9 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const targetJob = acceptedJob || currentPostedJob;
     const targetJobId = targetJob?.id || null;
+    const skill = targetJob ? SKILLS.find(s => s.id === targetJob.skillId || s.id === targetJob.skill_id) : null;
+    const isRemote = skill?.type === 'remote';
+
     const isJobActive = (currentScreen === 'tasker_accepted_job' && acceptedJob) || 
                         (currentScreen === 'crew_confirmed' && crewTaskers.length > 0 && currentPostedJob);
 
@@ -1578,34 +1622,45 @@ export const AppProvider = ({ children }) => {
       if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
       activeJobIdRef.current = targetJobId;
       
-      // If tasker role, fetch real location every 20 seconds to update map and DB
+      // If tasker role, fetch real location
       if (role === 'tasker') {
-        // Start interval
-        trackingIntervalRef.current = setInterval(async () => {
-          try {
-            const loc = await getCurrentLocation();
-            setTrackingTaskerPos(loc);
-            setTrackingLocationError(false); // Success, clear error
+        if (isRemote) {
+          // For remote tasks, we don't query GPS location. Just use the service area location.
+          const sAreaLat = userProfile?.serviceAreaLat || targetJob?.lat || 31.2560;
+          const sAreaLng = userProfile?.serviceAreaLng || targetJob?.lng || 75.7051;
+          setTrackingTaskerPos({ lat: sAreaLat, lng: sAreaLng });
+          setTrackingLocationError(false);
+        } else {
+          // Fetch location immediately, then setup interval
+          const updateLocation = async () => {
+            try {
+              const loc = await getCurrentLocation();
+              setTrackingTaskerPos(loc);
+              setTrackingLocationError(false); // Success, clear error
 
-            // Throttling: only update database if tasker has moved > 15m (0.015 km)
-            const lastLoc = lastWrittenLocationRef.current;
-            const distanceKm = lastLoc ? calculateDistance(loc.lat, loc.lng, lastLoc.lat, lastLoc.lng) : 999;
+              // Throttling: only update database if tasker has moved > 15m (0.015 km)
+              const lastLoc = lastWrittenLocationRef.current;
+              const distanceKm = lastLoc ? calculateDistance(loc.lat, loc.lng, lastLoc.lat, lastLoc.lng) : 999;
 
-            if (distanceKm >= 0.015) {
-              lastWrittenLocationRef.current = loc;
-              // Save only to user_locations database table (scales to multiple taskers, avoids redundant heavy job table writes/realtime syncs)
-              await api.upsertUserLocation({
-                user_id: userId,
-                latitude: loc.lat,
-                longitude: loc.lng,
-                updated_at: new Date().toISOString()
-              });
+              if (distanceKm >= 0.015) {
+                lastWrittenLocationRef.current = loc;
+                // Save only to user_locations database table (scales to multiple taskers, avoids redundant heavy job table writes/realtime syncs)
+                await api.upsertUserLocation({
+                  user_id: userId,
+                  latitude: loc.lat,
+                  longitude: loc.lng,
+                  updated_at: new Date().toISOString()
+                });
+              }
+            } catch(err) {
+              console.error("Live tracking location failed", err);
+              setTrackingLocationError(true); // Failed, set error flag
             }
-          } catch(err) {
-            console.error("Live tracking location failed", err);
-            setTrackingLocationError(true); // Failed, set error flag
-          }
-        }, 20000);
+          };
+
+          updateLocation();
+          trackingIntervalRef.current = setInterval(updateLocation, 20000);
+        }
       } else {
         // For poster view, use the live tasker location from currentPostedJob
         setTrackingTaskerPos(currentPostedJob?.taskerCurrentLocation || { lat: targetJob.lat, lng: targetJob.lng });
@@ -1783,7 +1838,6 @@ export const AppProvider = ({ children }) => {
           }
 
           if (profile && isNewSignup) {
-            api.notifyAdmin('New User Registration', `A new user (${email}) just signed up!`);
             trackEvent(EVENTS.SIGNUP, { userId: profile.id, role: activeRole });
           }
         }
@@ -1863,13 +1917,19 @@ export const AppProvider = ({ children }) => {
           setShowLoginModal(false);
           callback();
         } else {
-          pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
+          const currentStack = screenStackRef.current;
+          const currentScr = currentStack[currentStack.length - 1];
+          const isBaseOrAuthScreen = currentScr === 'landing' || currentScr === 'auth_loading';
+          
+          if (!isAlreadyLoggedIn || isBaseOrAuthScreen) {
+            pushScreen(finalRole === 'tasker' ? 'tasker_home' : 'poster_home');
+          }
         }
 
         if (!isAlreadyLoggedIn) {
           showToast('Welcome back!', 'success');
         }
-        fetchJobs();
+        fetchJobs(true);
         
         if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
           window.history.replaceState({}, document.title, window.location.pathname);

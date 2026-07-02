@@ -34,7 +34,7 @@ const TaskerHomeScreen = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchJobs();
+    await fetchJobs(true);
     setIsRefreshing(false);
   };
 

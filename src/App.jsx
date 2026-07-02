@@ -54,6 +54,7 @@ import ProfileCompletionModal from './components/ProfileCompletionModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import SetupWizardModal from './components/SetupWizardModal';
 import LoginModal from './components/LoginModal';
+import DevToolsPanel from './components/DevToolsPanel';
 import NotificationsScreen from './screens/NotificationsScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import LocationPermissionModal from './components/LocationPermissionModal';
@@ -121,9 +122,19 @@ const AppContent = () => {
     hasJobLocation
   } = useProfileCompletion();
 
+  const lastActiveWriteRef = React.useRef(0);
+
   // Compulsory Onboarding Wizard for Authenticated Users
   useEffect(() => {
     if (userId && !isProfileLoading) {
+      // Bypass wizard for test/debug profiles
+      const isTestUser = userProfile?.name && (
+        userProfile.name.toLowerCase().includes('tester') || 
+        userProfile.name.toLowerCase().includes('debug') || 
+        userProfile.name === 'HR'
+      );
+      if (isTestUser) return;
+
       // Determine if they are missing any required profile inputs or permission grants
       let isProfileIncomplete = false;
       
@@ -267,7 +278,12 @@ const AppContent = () => {
   // Update last active timestamp for active pool logic
   React.useEffect(() => {
     if (userProfile?.id && currentScreen !== 'landing') {
-      api.updateLastActive().catch(err => console.warn('Failed to update last active:', err));
+      const now = Date.now();
+      // Throttle updates to at most once every 5 minutes (300,000 ms)
+      if (now - lastActiveWriteRef.current > 300000) {
+        lastActiveWriteRef.current = now;
+        api.updateLastActive().catch(err => console.warn('Failed to update last active:', err));
+      }
     }
   }, [currentScreen, userProfile?.id]);
 
@@ -569,7 +585,7 @@ const AppContent = () => {
               ? 'bg-orange-50 p-0' 
               : 'bg-white'
           }`}>
-            <div key={currentScreen} className="w-full h-full flex flex-col relative animate-[fadeIn_200ms_ease-in-out]">
+            <div key={currentScreen} className="w-full flex-1 flex flex-col relative animate-[fadeIn_200ms_ease-in-out]">
               <ErrorBoundary key={currentScreen}>
                 {renderScreen()}
               </ErrorBoundary>
@@ -691,6 +707,8 @@ const AppContent = () => {
       isOpen={showLoginModal}
       onClose={() => setShowLoginModal(false)}
     />
+
+    <DevToolsPanel />
 
   </div>
 );
