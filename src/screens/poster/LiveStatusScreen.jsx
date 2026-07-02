@@ -67,7 +67,7 @@ const LiveStatusScreen = () => {
 
     // Focused Supabase Realtime Subscription replacing the 5-second polling loop
     const channel = api.supabase
-      .channel(`live-status-${currentPostedJob.id}`)
+      .channel(`live-status-${currentPostedJob.id}-${Math.random().toString(36).substring(2, 10)}`)
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 

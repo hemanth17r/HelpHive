@@ -361,45 +361,49 @@ const PostJobScreen = () => {
   const isPostDisabled = !selectedSkillId || amount === '' || isNaN(parsedAmount) || parsedAmount < 0 || !time || isLoading;
 
   return (
-    <div className="flex-1 flex flex-col justify-between bg-white px-6 py-8 overflow-hidden select-none">
+    <div className="flex-1 flex flex-col justify-between bg-white px-6 pt-3 pb-8 lg:pt-4 lg:px-8 overflow-hidden select-none">
       
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 shrink-0">
-        <button
-          onClick={() => {
-            if (maturityInfo && !maturityInfo.isActive) {
-              setSelectedSkillId('');
-            } else {
-              popScreen();
-            }
-          }}
-          className="p-2.5 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">
-          Post a Job
-        </span>
-        <div className="w-10"></div>
+      <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full mb-3 shrink-0">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => {
+              if (maturityInfo && !maturityInfo.isActive) {
+                setSelectedSkillId('');
+              } else {
+                popScreen();
+              }
+            }}
+            className="p-2.5 -ml-2 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">
+            Post a Job
+          </span>
+          <div className="w-10"></div>
+        </div>
       </div>
 
       {/* Selected Location Banner */}
       {selectedJobLocation && (
-        <div className="mx-6 lg:mx-8 mb-6 px-4 py-3 bg-orange-50 border border-orange-100 rounded-xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform" onClick={() => setShowAddressPopup(true)}>
-          <div className="flex items-center space-x-3 mr-4">
-            <div className="p-2 bg-white rounded-lg shadow-sm shrink-0">
-              <MapPin className="w-4 h-4 text-orange-500" />
+        <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full mb-3 shrink-0">
+          <div className="px-4 py-3 bg-orange-50 border border-orange-100 rounded-xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform" onClick={() => setShowAddressPopup(true)}>
+            <div className="flex items-center space-x-3 mr-4">
+              <div className="p-2 bg-white rounded-lg shadow-sm shrink-0">
+                <MapPin className="w-4 h-4 text-orange-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Task Location</p>
+                <p className="text-xs font-black text-dark line-clamp-1 mt-0.5">
+                  {selectedJobLocation.completeAddress?.startsWith('Location at') && selectedJobLocation.landmark 
+                    ? selectedJobLocation.landmark 
+                    : selectedJobLocation.completeAddress}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Task Location</p>
-              <p className="text-xs font-black text-dark line-clamp-1 mt-0.5">
-                {selectedJobLocation.completeAddress?.startsWith('Location at') && selectedJobLocation.landmark 
-                  ? selectedJobLocation.landmark 
-                  : selectedJobLocation.completeAddress}
-              </p>
-            </div>
+            <button className="text-[10px] font-bold text-orange-600 bg-white px-2 py-1 rounded-md shadow-sm border border-orange-100 shrink-0">Change</button>
           </div>
-          <button className="text-[10px] font-bold text-orange-600 bg-white px-2 py-1 rounded-md shadow-sm border border-orange-100 shrink-0">Change</button>
         </div>
       )}
 
@@ -441,7 +445,10 @@ const PostJobScreen = () => {
         </div>
       ) : (
         <>
-          <div className="flex-1 space-y-8 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left overflow-y-auto pb-4 pr-1">
+          {/* Full width scrollable wrapper to ensure empty space scrolling works */}
+          <div className="flex-1 overflow-y-auto w-full pb-4 pr-1">
+            {/* Centered inner form content */}
+            <div className="space-y-8 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left pt-2">
             
             {/* Category Section */}
             <div className="space-y-6">
@@ -454,8 +461,8 @@ const PostJobScreen = () => {
               {/* Physical & On-site Section */}
               <div className="space-y-2.5">
                 <div className="flex items-center space-x-1.5 px-1">
+                  <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
                   <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
-                  <MapPin className="w-3 h-3 text-primary" />
                     On-site & Physical Services
                   </span>
                 </div>
@@ -505,8 +512,8 @@ const PostJobScreen = () => {
               {/* Online & Remote Section */}
               <div className="space-y-2.5">
                 <div className="flex items-center space-x-1.5 px-1">
+                  <Wifi className="w-3.5 h-3.5 text-primary shrink-0" />
                   <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
-                  <Wifi className="w-3 h-3 text-primary" />
                     Online & Remote Services
                   </span>
                 </div>
@@ -712,8 +719,9 @@ const PostJobScreen = () => {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Button footer */}
+        {/* Button footer */}
           <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-4 border-t border-border bg-white mt-4 shrink-0">
             <button
               onClick={handlePost}

@@ -32,7 +32,7 @@ const PosterHomeScreen = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchJobs();
+    await fetchJobs(true);
     setIsRefreshing(false);
   };
 
@@ -74,7 +74,7 @@ const PosterHomeScreen = () => {
     "Need someone to pick up urgent medicines and deliver to my parents - ₹150",
     "Need 2 people to help shift heavy furniture during house moving - ₹500",
     "Need someone to stand in queue for a hospital OPD token early morning - ₹250",
-    "Need someone to walk my dog around the neighborhood park for an hour - ₹200"
+    "Need 3 helpers to distribute snacks and water bottles at a community event - ₹200 each"
   ];
 
   const [exampleIndex, setExampleIndex] = useState(0);

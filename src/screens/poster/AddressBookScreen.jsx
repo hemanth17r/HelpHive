@@ -87,11 +87,21 @@ const AddressBookScreen = () => {
                       </button>
                       
                       {activeMenuId === address.id && (
-                        <div className="absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-lg border border-border overflow-hidden z-30 animate-[fadeIn_150ms_ease-out]">
-                          <button onClick={(e) => handleEdit(e, address)} className="w-full text-left px-4 py-3 text-xs font-bold text-dark hover:bg-gray-50 cursor-pointer">Edit</button>
-                          <button onClick={(e) => handleSetDefault(e, address)} className="w-full text-left px-4 py-3 text-xs font-bold text-dark hover:bg-gray-50 cursor-pointer">Set as Default</button>
-                          <button onClick={(e) => handleDelete(e, address.id)} className="w-full text-left px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-50 cursor-pointer">Delete</button>
-                        </div>
+                        <>
+                          {/* Click-away backdrop */}
+                          <div 
+                            className="fixed inset-0 z-20 cursor-default" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuId(null);
+                            }}
+                          />
+                          <div className="absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-lg border border-border overflow-hidden z-30 animate-[fadeIn_150ms_ease-out]">
+                            <button onClick={(e) => handleEdit(e, address)} className="w-full text-left px-4 py-3 text-xs font-bold text-dark hover:bg-gray-50 cursor-pointer">Edit</button>
+                            <button onClick={(e) => handleSetDefault(e, address)} className="w-full text-left px-4 py-3 text-xs font-bold text-dark hover:bg-gray-50 cursor-pointer">Set as Default</button>
+                            <button onClick={(e) => handleDelete(e, address.id)} className="w-full text-left px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-50 cursor-pointer">Delete</button>
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>

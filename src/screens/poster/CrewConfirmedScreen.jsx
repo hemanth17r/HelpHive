@@ -70,7 +70,7 @@ const CrewConfirmedScreen = () => {
     
     // Focused Supabase Realtime Subscription replacing the 5-second polling loop
     const channel = api.supabase
-      .channel(`crew-confirmed-${currentPostedJob.id}`)
+      .channel(`crew-confirmed-${currentPostedJob.id}-${Math.random().toString(36).substring(2, 10)}`)
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
@@ -88,30 +88,56 @@ const CrewConfirmedScreen = () => {
   }, [currentPostedJob?.id]);
 
   // Fetch and update live coordinates of all crew taskers from user_locations table
+  const crewIdsString = localCrewTaskers.map(t => t.id).filter(Boolean).join(',');
+
   useEffect(() => {
-    if (localCrewTaskers.length === 0) return;
+    if (!crewIdsString) return;
+    const ids = crewIdsString.split(',');
     
     const fetchLocations = async () => {
       try {
-        const ids = localCrewTaskers.map(t => t.id).filter(Boolean);
-        if (ids.length === 0) return;
         const { data, error } = await api.fetchUserLocations(ids);
         if (data) {
           const locs = {};
           data.forEach(loc => {
             locs[loc.user_id] = { lat: loc.latitude, lng: loc.longitude };
           });
-          setCrewLocations(locs);
+          setCrewLocations(prev => ({ ...prev, ...locs }));
         }
       } catch (err) {
         console.error('[CrewConfirmedScreen] Failed to fetch tasker locations:', err);
       }
     };
 
+    // Initial fetch
     fetchLocations();
-    const interval = setInterval(fetchLocations, 5000);
-    return () => clearInterval(interval);
-  }, [localCrewTaskers]);
+
+    // Setup Supabase Real-time listener for user_locations changes (very resource efficient)
+    const channel = api.supabase
+      .channel(`crew-locations-${currentPostedJob.id}-${Math.random().toString(36).substring(2, 10)}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'user_locations'
+      }, (payload) => {
+        const newLoc = payload.new;
+        if (newLoc && ids.includes(newLoc.user_id)) {
+          setCrewLocations(prev => ({
+            ...prev,
+            [newLoc.user_id]: { lat: newLoc.latitude, lng: newLoc.longitude }
+          }));
+        }
+      })
+      .subscribe();
+
+    // Slow safety polling loop (20 seconds fallback)
+    const interval = setInterval(fetchLocations, 20000);
+    
+    return () => {
+      api.supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [crewIdsString]);
 
   // Real-time synchronization redirect loop
   useEffect(() => {
@@ -251,29 +277,47 @@ const CrewConfirmedScreen = () => {
       {/* Main Content scrollable container */}
       <div className="flex-1 space-y-4.5 my-4 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left">
         
-        {/* Real-time Tracking Map */}
-        {!isRemote && (
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
-              <span>Live Location</span>
-              <span className="text-primary animate-pulse uppercase tracking-wider">
-                Active
-              </span>
-            </div>
+        {/* Connection / Real-time Tracking Map */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
+            <span>{isRemote ? 'Remote Connection' : 'Live Location'}</span>
+            <span className="text-primary animate-pulse uppercase tracking-wider">
+              Active
+            </span>
+          </div>
 
-            <MapView 
-              jobLocation={{ lat: currentPostedJob?.lat || 31.2560, lng: currentPostedJob?.lng || 75.7051 }}
-              taskers={localCrewTaskers.map(tasker => ({
+          <MapView 
+            jobLocation={{ lat: currentPostedJob?.lat || 31.2560, lng: currentPostedJob?.lng || 75.7051 }}
+            taskers={localCrewTaskers.map(tasker => {
+              const jobLat = currentPostedJob?.lat || 31.2560;
+              const jobLng = currentPostedJob?.lng || 75.7051;
+              const isJobInPunjab = Math.abs(jobLat - 31.2560) < 0.5 && Math.abs(jobLng - 75.7051) < 0.5;
+
+              let loc = crewLocations[tasker.id] || null;
+              
+              // If real-time location is Punjab default but job is not in Punjab (meaning a drift/reset default)
+              const isLocPunjabDefault = loc && Math.abs(loc.lat - 31.2560) < 0.001 && Math.abs(loc.lng - 75.7051) < 0.001;
+              const isDriftingToPunjab = !isJobInPunjab && isLocPunjabDefault;
+
+              if (!loc || isDriftingToPunjab || isRemote) {
+                if (tasker.serviceAreaLat && tasker.serviceAreaLng) {
+                  loc = { lat: tasker.serviceAreaLat, lng: tasker.serviceAreaLng };
+                } else {
+                  loc = { lat: jobLat + 0.012, lng: jobLng - 0.012 };
+                }
+              }
+
+              return {
                 id: tasker.id,
                 bird: tasker.bird || 'falcon',
-                location: crewLocations[tasker.id] || null
-              })).filter(t => t.location !== null)}
-              taskerLocation={trackingTaskerPos}
-              taskerBirdName={localCrewTaskers[0]?.bird || 'falcon'}
-              height="180px"
-            />
-          </div>
-        )}
+                location: loc
+              };
+            })}
+            taskerLocation={null}
+            taskerBirdName={localCrewTaskers[0]?.bird || 'falcon'}
+            height="180px"
+          />
+        </div>
 
         {/* Crew List Card */}
         {isLoadingCrew && localCrewTaskers.length === 0 && (

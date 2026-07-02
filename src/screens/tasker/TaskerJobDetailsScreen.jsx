@@ -57,7 +57,7 @@ const TaskerJobDetailsScreen = () => {
     
     // Focused Supabase Realtime Subscription replacing the 5-second polling loop
     const channel = api.supabase
-      .channel(`tasker-job-crew-${acceptedJob.id}`)
+      .channel(`tasker-job-crew-${acceptedJob.id}-${Math.random().toString(36).substring(2, 10)}`)
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
@@ -105,6 +105,26 @@ const TaskerJobDetailsScreen = () => {
   const skill = SKILLS.find(s => s.id === acceptedJob.skillId || s.id === acceptedJob.skill_id);
   const Icon = skill ? skill.icon : SKILLS[SKILLS.length - 1].icon;
   const isRemote = skill?.type === 'remote';
+
+  const getResolvedTaskerLocation = () => {
+    const jobLat = acceptedJob.lat || 31.2560;
+    const jobLng = acceptedJob.lng || 75.7051;
+    const isJobInPunjab = Math.abs(jobLat - 31.2560) < 0.5 && Math.abs(jobLng - 75.7051) < 0.5;
+    
+    let loc = trackingTaskerPos;
+    
+    // Check if trackingTaskerPos is drifting to Punjab default when job is elsewhere
+    const isLocPunjabDefault = loc && Math.abs(loc.lat - 31.2560) < 0.001 && Math.abs(loc.lng - 75.7051) < 0.001;
+    const isDriftingToPunjab = !isJobInPunjab && isLocPunjabDefault;
+
+    if (!loc || isDriftingToPunjab || isRemote) {
+      if (userProfile?.serviceAreaLat && userProfile?.serviceAreaLng) {
+        return { lat: userProfile.serviceAreaLat, lng: userProfile.serviceAreaLng };
+      }
+      return { lat: jobLat + 0.012, lng: jobLng - 0.012 };
+    }
+    return loc;
+  };
 
   const handleVerifyOtp = async () => {
     if (!otp || otp.length !== 4) {
@@ -442,12 +462,12 @@ const TaskerJobDetailsScreen = () => {
           </div>
         </div>
 
-        {/* Live Map with moving marker */}
-        {!isRemote && (
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
-              <span>Live Location</span>
-              {trackingLocationError ? (
+        {/* Connection / Live Map */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
+            <span>{isRemote ? 'Remote Connection' : 'Live Location'}</span>
+            {!isRemote && (
+              trackingLocationError ? (
                 <span className="text-red-500 font-extrabold uppercase flex items-center space-x-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
                   <span>Error</span>
@@ -456,29 +476,29 @@ const TaskerJobDetailsScreen = () => {
                 <span className="text-primary animate-pulse font-extrabold uppercase">
                   Active
                 </span>
-              )}
-            </div>
-            
-            {trackingLocationError && (
-              <div className="flex items-start space-x-2.5 bg-orange-50 border border-orange-100 rounded-2xl p-3.5 animate-scale-up">
-                <ShieldAlert className="w-4.5 h-4.5 text-orange-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-black text-orange-700">Location sharing is paused</p>
-                  <p className="text-[10px] font-semibold text-orange-600 mt-0.5 leading-normal">
-                    Please enable location access/GPS in your browser or device settings so the customer knows you are on your way.
-                  </p>
-                </div>
-              </div>
+              )
             )}
-            
-            <MapView 
-              jobLocation={{ lat: acceptedJob.lat || 31.2560, lng: acceptedJob.lng || 75.7051 }}
-              taskerLocation={trackingTaskerPos}
-              taskerBirdName={userProfile?.bird || 'falcon'}
-              height="180px"
-            />
           </div>
-        )}
+          
+          {!isRemote && trackingLocationError && (
+            <div className="flex items-start space-x-2.5 bg-orange-50 border border-orange-100 rounded-2xl p-3.5 animate-scale-up">
+              <ShieldAlert className="w-4.5 h-4.5 text-orange-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-black text-orange-700">Location sharing is paused</p>
+                <p className="text-[10px] font-semibold text-orange-600 mt-0.5 leading-normal">
+                  Please enable location access/GPS in your browser or device settings so the customer knows you are on your way.
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <MapView 
+            jobLocation={{ lat: acceptedJob.lat || 31.2560, lng: acceptedJob.lng || 75.7051 }}
+            taskerLocation={getResolvedTaskerLocation()}
+            taskerBirdName={userProfile?.bird || 'falcon'}
+            height="180px"
+          />
+        </div>
 
         {/* Verification System / Start Task */}
         <div className="bg-gray-50 border border-border rounded-2xl p-4 space-y-3">

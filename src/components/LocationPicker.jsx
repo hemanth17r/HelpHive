@@ -167,7 +167,7 @@ const LocationPicker = ({
     <div className="flex flex-col relative w-full h-full rounded-2xl overflow-hidden shadow-inner">
 
       {/* Floating Search Bar */}
-      <div className="absolute top-2 left-2 right-2 z-20" ref={dropdownRef}>
+      <div className="absolute top-2 left-2 right-12 z-20" ref={dropdownRef}>
         <div className="relative shadow-lg rounded-xl">
           <input
             type="text"
@@ -213,21 +213,18 @@ const LocationPicker = ({
         />
       </div>
 
-      {/* GPS Button — labeled pill so it's clearly discoverable.
-          This is the ONLY place that triggers a browser GPS permission dialog. */}
+      {/* GPS Button — placed in the bottom right corner as a circular button */}
       <button
         onClick={handleUseCurrentLocation}
         disabled={isLocating}
-        className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-1.5 px-4 py-2 bg-white rounded-full shadow-lg border border-gray-100 text-gray-600 hover:text-primary hover:border-primary/30 hover:shadow-xl active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none"
+        className="absolute bottom-3 right-3 z-20 w-9 h-9 flex items-center justify-center bg-white rounded-full shadow-lg border border-gray-100 text-gray-600 hover:text-primary hover:border-primary/30 hover:shadow-xl active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none"
+        title="Use my current location"
         aria-label="Use my current location"
       >
         {isLocating
-          ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary shrink-0" />
-          : <Navigation className="w-3.5 h-3.5 shrink-0" />
+          ? <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+          : <Navigation className="w-4 h-4 text-gray-600 shrink-0" />
         }
-        <span className="text-[11px] font-bold">
-          {isLocating ? 'Locating...' : 'Use my location'}
-        </span>
       </button>
     </div>
   );

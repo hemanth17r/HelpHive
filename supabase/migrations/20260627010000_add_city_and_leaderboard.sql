@@ -45,7 +45,8 @@ BEGIN
   WITH city_taskers AS (
     SELECT COALESCE(p.city, 'Unknown') as city, COUNT(DISTINCT p.id) as count
     FROM public.profiles p
-    WHERE p.role = 'tasker' OR (p.skills IS NOT NULL AND cardinality(p.skills) > 0) OR p.upi_id IS NOT NULL
+    WHERE (p.role = 'tasker' OR (p.skills IS NOT NULL AND cardinality(p.skills) > 0) OR p.upi_id IS NOT NULL)
+      AND p.location IS NOT NULL
     GROUP BY COALESCE(p.city, 'Unknown')
   ),
   city_hirers AS (
