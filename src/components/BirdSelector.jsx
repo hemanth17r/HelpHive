@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BirdAvatar, { BIRD_LIST } from './BirdAvatars';
-import { X } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 
 const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
   const [animatingBird, setAnimatingBird] = useState(null);
@@ -23,18 +23,25 @@ const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
     }
   }, [isOpen, shouldRender]);
 
-  if (!shouldRender) return null;
+  const selectTimeoutRef = React.useRef(null);
 
   const handleSelect = (birdId) => {
     setAnimatingBird(birdId);
     onSelectBird(birdId);
 
     // Close after 300ms
-    setTimeout(() => {
+    if (selectTimeoutRef.current) clearTimeout(selectTimeoutRef.current);
+    selectTimeoutRef.current = setTimeout(() => {
       setAnimatingBird(null);
       onClose();
     }, 300);
   };
+
+  useEffect(() => {
+    return () => {
+      if (selectTimeoutRef.current) clearTimeout(selectTimeoutRef.current);
+    };
+  }, []);
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -42,10 +49,12 @@ const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
     }
   };
 
+  if (!shouldRender) return null;
+
   return (
     <div
       onClick={handleBackdropClick}
-      className={`fixed inset-0 z-[999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs ${
+      className={`fixed inset-0 z-[999] flex items-end sm:items-center justify-center bg-black/50 ${
         isAnimatingOut ? 'modal-backdrop-close' : 'modal-backdrop-open'
       }`}
     >
@@ -86,29 +95,31 @@ const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
               <button
                 key={bird.id}
                 onClick={() => handleSelect(bird.id)}
-                className="flex flex-col items-center p-3 rounded-2xl border-2 transition-all duration-200 cursor-pointer focus:outline-none"
+                className={`relative flex flex-col items-center p-3.5 rounded-2xl border-2 transition-all duration-200 cursor-pointer focus:outline-none ${
+                  isSelected 
+                    ? 'shadow-md shadow-primary/5' 
+                    : 'hover:border-gray-300 hover:bg-gray-50/50'
+                }`}
                 style={{
-                  borderColor: isSelected ? '#FF6B35' : '#F0F0F0',
-                  backgroundColor: isSelected ? '#FFF3ED' : '#FAFAFA',
-                  transform: isAnimating ? 'scale(1.1)' : 'scale(1)',
+                  borderColor: isSelected ? 'var(--color-primary)' : '#E2E8F0',
+                  backgroundColor: isSelected ? 'rgba(242, 100, 25, 0.04)' : '#FFFFFF',
+                  transform: isAnimating ? 'scale(1.06)' : 'scale(1)',
                   transition: 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1), border-color 150ms ease, background-color 150ms ease'
                 }}
               >
-                <div
-                  className="rounded-full overflow-hidden mb-1.5"
-                  style={{
-                    border: isSelected ? '3px solid #FF6B35' : '3px solid transparent',
-                    transition: 'border-color 150ms ease'
-                  }}
-                >
+                {/* Avatar container with background highlight rather than border */}
+                <div className={`rounded-full p-1.5 mb-2 transition-colors duration-200 ${
+                  isSelected ? 'bg-primary/10' : 'bg-gray-50'
+                }`}>
                   <BirdAvatar birdName={bird.id} size={56} />
                 </div>
+
                 <span className="text-[10px] font-black text-dark leading-tight">
                   {bird.name}
                 </span>
                 <span
                   className="text-[8px] font-bold uppercase tracking-wider mt-0.5"
-                  style={{ color: isSelected ? '#FF6B35' : '#9CA3AF' }}
+                  style={{ color: isSelected ? 'var(--color-primary)' : '#9CA3AF' }}
                 >
                   {bird.trait}
                 </span>

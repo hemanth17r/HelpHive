@@ -13,7 +13,16 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.js',
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'maskable-icon-512x512.png'],
+      workbox: {
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module',
+      },
+      includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'maskable-icon-512x512.png', 'notification-badge.png'],
       manifest: {
         name: 'HelpHive',
         short_name: 'HelpHive',
@@ -50,6 +59,9 @@ export default defineConfig({
       }
     })
   ],
+  server: {
+    port: 3000
+  },
   css: {
     postcss: {}
   }

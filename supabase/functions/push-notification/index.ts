@@ -2,14 +2,18 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webPush from "https://esm.sh/web-push@3.6.7";
 
-// Hardcoded for MVP. In production, these should be loaded from Deno.env.get("VAPID_PRIVATE_KEY")
-const VAPID_PUBLIC_KEY = 'BIg-I-5TEqEy_5_YtXu3ZTlaM5kXhLEsYgJw6SC2mwfOkdNHwHSyrJ39PQVSklB4EFYEsLsorB_iSKiTo3zZYCA';
-const VAPID_PRIVATE_KEY = '1Oe5DBV2HJ3rcjeI7cIKquExyn-MiRUNOU1zj7mZFyc';
+// VAPID keys for Web Push. In production, these must be loaded from environment variables.
+const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") || 'BIg-I-5TEqEy_5_YtXu3ZTlaM5kXhLEsYgJw6SC2mwfOkdNHwHSyrJ39PQVSklB4EFYEsLsorB_iSKiTo3zZYCA';
+const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
+
+if (!VAPID_PRIVATE_KEY) {
+  console.warn("WARNING: VAPID_PRIVATE_KEY is not defined in the environment variables. Web Push notifications will fail to send.");
+}
 
 webPush.setVapidDetails(
   'mailto:support@helphive.com',
   VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY
+  VAPID_PRIVATE_KEY || ''
 );
 
 serve(async (req) => {
@@ -29,7 +33,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { user_id, title, body, action_url } = await req.json();
+    const { user_id, title, body, action_url, type, role, metadata } = await req.json();
 
     if (!user_id || !title || !body) {
       return new Response(
@@ -38,7 +42,35 @@ serve(async (req) => {
       );
     }
 
-    // 1. Fetch all push subscriptions for the user
+    // 1. Insert notification into the DB FIRST, so internal notifications always work
+    const { error: insertError } = await supabaseClient
+      .from('notifications')
+      .insert({
+        user_id,
+        type: type || 'push',
+        title,
+        body,
+        action_url: action_url || '/',
+        role: role || null,
+        metadata: metadata || {}
+      });
+
+    if (insertError) {
+       console.error("Failed to insert notification into DB:", insertError);
+       // We still try to send the push even if logging it failed
+    }
+
+    // Determine if we should send a Web Push notification
+    // Less important notifications (ratings, badges, admin alerts) are in-app only
+    const isLessImportant = type === 'badge_received' || type === 'rating_received' || type === 'admin_alert';
+    if (isLessImportant) {
+      return new Response(
+        JSON.stringify({ message: "In-app notification logged to DB. Web Push skipped for less important update." }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 2. Fetch all push subscriptions for the user (always send push notifications, ignoring is_online)
     const { data: subscriptions, error } = await supabaseClient
       .from('push_subscriptions')
       .select('*')
@@ -47,32 +79,17 @@ serve(async (req) => {
     if (error) throw error;
     if (!subscriptions || subscriptions.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No push subscriptions found for user." }),
+        JSON.stringify({ message: "Notification logged to DB. No push subscriptions found for user." }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // 2. Insert notification into the DB
-    const { error: insertError } = await supabaseClient
-      .from('notifications')
-      .insert({
-        user_id,
-        type: 'push',
-        title,
-        body,
-        action_url: action_url || '/'
-      });
-
-    if (insertError) {
-       console.error("Failed to insert notification into DB:", insertError);
-       // We still try to send the push even if logging it failed
-    }
-
-    // 3. Send Web Push to all devices
+    // 4. Send Web Push to all devices
     const payload = JSON.stringify({
       title,
       body,
-      action_url: action_url || '/'
+      action_url: action_url || '/',
+      metadata: metadata || {}
     });
 
     const sendPromises = subscriptions.map(async (sub) => {

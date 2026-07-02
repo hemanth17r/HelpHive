@@ -1,279 +1,235 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { ArrowLeft, Home, Briefcase, MapPin, User, Phone, Edit2, CheckCircle2 } from 'lucide-react';
-import Tooltip from '../../components/Tooltip';
+import { ArrowLeft, Home, Briefcase, MapPin } from 'lucide-react';
+import LocationPicker from '../../components/LocationPicker';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
 
+// Geographic center of India — used only as a last resort when we have zero
+// location context. Far better than a city-specific hardcoded default.
+const INDIA_CENTER = { lat: 20.5937, lng: 78.9629 };
+
+/**
+ * Silently resolves the best initial map center without triggering any
+ * browser permission dialog.
+ *
+ * Priority:
+ *  1. realLocation  — already-captured GPS coords (e.g. from tasker side or
+ *                     a previous explicit grant this session)
+ *  2. savedAddresses default — the user's own pinned address; most relevant
+ *  3. Permissions API silent check — if permission is already 'granted',
+ *     fetch coords silently (no prompt, no popup)
+ *  4. INDIA_CENTER — geographic center; far less jarring than a specific city
+ */
+async function resolveSilentCenter(realLocation, savedAddresses) {
+  // 1. Already have GPS coords in session
+  if (realLocation?.lat && realLocation?.lng) {
+    return { lat: realLocation.lat, lng: realLocation.lng };
+  }
+
+  // 2. User has a pinned default address
+  if (Array.isArray(savedAddresses) && savedAddresses.length > 0) {
+    const defaultAddr = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+    if (defaultAddr?.lat && defaultAddr?.lng) {
+      return { lat: defaultAddr.lat, lng: defaultAddr.lng };
+    }
+  }
+
+  // 3. Silently use GPS only if permission is already granted (no popup)
+  if (navigator.geolocation && navigator.permissions?.query) {
+    try {
+      const perm = await navigator.permissions.query({ name: 'geolocation' });
+      if (perm.state === 'granted') {
+        const coords = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            err => reject(err),
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+          );
+        });
+        return coords;
+      }
+    } catch {
+      // Permissions API or GPS unavailable — fall through to default
+    }
+  }
+
+  // 4. Last resort — geographic center of India
+  return INDIA_CENTER;
+}
+
 const AddEditAddressScreen = () => {
-  const { popScreen, savedAddresses, setSavedAddresses, userProfile, setUserProfile } = useContext(AppContext);
+  const {
+    popScreen,
+    addSavedAddress,
+    updateSavedAddress,
+    editAddressData,
+    setEditAddressData,
+    userProfile,
+    realLocation,
+    savedAddresses = [],
+    setRealLocation
+  } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
 
-  const [contactMode, setContactMode] = useState('myself'); // 'myself' | 'someone_else'
-  const [addressType, setAddressType] = useState('Home'); // 'Home' | 'Work' | 'Other'
+  const isEdit = !!editAddressData;
 
-  // Form states
-  const [city, setCity] = useState('Jalandhar');
-  const [area, setArea] = useState('LPU');
-  const [completeAddress, setCompleteAddress] = useState('');
-  const [landmark, setLandmark] = useState('');
-  const [receiverName, setReceiverName] = useState('');
-  const [receiverPhone, setReceiverPhone] = useState('');
+  const [addressType, setAddressType] = useState(isEdit ? editAddressData.type : 'Home');
+  const [completeAddress, setCompleteAddress] = useState(isEdit ? editAddressData.completeAddress : '');
+  const [landmark, setLandmark] = useState(isEdit ? (editAddressData.landmark || '') : '');
 
-  const [editedName, setEditedName] = useState('');
-  const [editedPhone, setEditedPhone] = useState('');
-  
+  // For edit mode, start at the saved coords. For add mode, start with the
+  // best available fallback while the async resolver runs in the background.
+  const editCoords = isEdit
+    ? { lat: editAddressData.lat, lng: editAddressData.lng }
+    : null;
+
+  const [lat, setLat] = useState(editCoords?.lat ?? (realLocation?.lat ?? INDIA_CENTER.lat));
+  const [lng, setLng] = useState(editCoords?.lng ?? (realLocation?.lng ?? INDIA_CENTER.lng));
+
+  // On mount in "add" mode: silently resolve the best center without any popup.
+  // We run this only once. If the silent check yields a better position than
+  // the initial render value, we update the map center via the key-based
+  // remount in LocationPicker (by updating lat/lng, which are passed as
+  // initialLat/initialLng props).
   useEffect(() => {
-    if (userProfile && !editedName && !editedPhone) {
-      setEditedName(userProfile.name === 'New User' ? '' : userProfile.name);
-      setEditedPhone(userProfile.phone === 'Add Phone' ? '' : userProfile.phone);
-    }
-  }, [userProfile]);
+    if (isEdit) return; // Edit mode already has precise coords — nothing to do
 
-  const formatPhone = (value) => {
-    if (!value) return value;
-    const phoneNumber = value.replace(/[^\d]/g, '');
-    const phoneNumberLength = phoneNumber.length;
-    if (phoneNumberLength < 4) return phoneNumber;
-    if (phoneNumberLength < 7) {
-      return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3)}`;
-    }
-    return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    let cancelled = false;
+    resolveSilentCenter(realLocation, savedAddresses).then(coords => {
+      if (cancelled) return;
+      setLat(coords.lat);
+      setLng(coords.lng);
+    });
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount only
+
+  const handleLocationChange = (loc) => {
+    setCompleteAddress(loc.completeAddress);
+    setLat(loc.lat);
+    setLng(loc.lng);
   };
 
-  const handlePhoneChange = (e) => {
-    const formattedPhoneNumber = formatPhone(e.target.value);
-    setEditedPhone(formattedPhoneNumber);
-  };
-
-  const handleReceiverPhoneChange = (e) => {
-    const formattedPhoneNumber = formatPhone(e.target.value);
-    setReceiverPhone(formattedPhoneNumber);
+  // Called by LocationPicker when the user explicitly taps the GPS button and
+  // we get real coordinates back. Store them in AppContext so they can be
+  // reused for map centering elsewhere in the session.
+  const handleLocationGranted = (coords) => {
+    setRealLocation(coords);
   };
 
   const handleSave = () => {
-    if (!area || !completeAddress) {
-      showToast('Area and complete address are required', 'error');
+    if (!completeAddress || completeAddress === 'Fetching address...') {
+      showToast('Please wait for the location to resolve.', 'error');
       return;
     }
 
-
-    let contactName = '';
-    let contactPhone = '';
-
-    if (contactMode === 'myself') {
-      contactName = editedName.trim() || 'New User';
-      contactPhone = editedPhone.trim() || 'Add Phone';
-      
-      const updates = {};
-      if (contactName !== userProfile?.name) updates.name = contactName;
-      if (contactPhone !== userProfile?.phone) updates.phone = contactPhone;
-      
-      if (Object.keys(updates).length > 0) {
-        setUserProfile({ ...userProfile, ...updates });
-      }
-    } else {
-      contactName = receiverName.trim();
-      contactPhone = receiverPhone.trim();
-    }
-
-    if (!contactName || !contactPhone) {
-      showToast('Contact details are required', 'error');
+    if (!landmark.trim()) {
+      showToast('Please enter a landmark.', 'error');
       return;
     }
+
+    const contactName = userProfile?.name && userProfile.name !== 'New User' ? userProfile.name : 'Poster';
+    const contactPhone = userProfile?.phone && userProfile.phone !== 'Add Phone' ? userProfile.phone : '';
 
     const newAddress = {
-      id: Date.now().toString(),
       type: addressType,
-      city,
-      area,
       completeAddress,
-      landmark,
+      landmark: landmark.trim(),
       contactName,
       contactPhone,
-      isDefault: savedAddresses.length === 0, // make default if it's the first one
-      lat: 17.3850,
-      lng: 78.4867
+      lat,
+      lng
     };
 
-    setSavedAddresses([...savedAddresses, newAddress]);
-    showToast('Address saved successfully!', 'success');
+    if (isEdit) {
+      updateSavedAddress(editAddressData.id, newAddress);
+      showToast('Location updated successfully!', 'success');
+    } else {
+      addSavedAddress(newAddress);
+      showToast('Location saved successfully!', 'success');
+    }
+
+    setEditAddressData(null);
     popScreen();
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-white h-full relative z-20">
+    <div className="flex-1 flex flex-col bg-white h-full relative z-20 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center px-4 py-4 border-b border-border bg-white sticky top-0 z-10 shrink-0">
-        <button 
-          onClick={popScreen}
+      <div className="flex items-center px-4 py-4 bg-white shrink-0 z-30 relative">
+        <button
+          onClick={() => { setEditAddressData(null); popScreen(); }}
           className="p-2 -ml-2 rounded-full hover:bg-gray-100 text-dark transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-lg font-black text-dark ml-2">Add New Address</h2>
+        <h2 className="text-lg font-black text-dark ml-2">{isEdit ? 'Edit Location' : 'Pin Location'}</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6 pb-28 space-y-8">
-        
-        {/* Address Details */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-black text-dark tracking-wide">ADDRESS DETAILS</h3>
-          
-          <div className="space-y-3">
-            <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">City</label>
-              <input 
-                type="text" 
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                placeholder="E.g. Hyderabad"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Area / Street *</label>
-              <input 
-                type="text" 
-                value={area}
-                onChange={(e) => setArea(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                placeholder="E.g. Kukatpally, KPHB Phase 3"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Complete Address *</label>
-              <textarea 
-                value={completeAddress}
-                onChange={(e) => setCompleteAddress(e.target.value)}
-                rows={3}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors resize-none"
-                placeholder="House No, Building Name, Floor"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Landmark (Optional)</label>
-              <input 
-                type="text" 
-                value={landmark}
-                onChange={(e) => setLandmark(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                placeholder="Near which famous place?"
-              />
-            </div>
-          </div>
+      {/* Main Map Container */}
+      <div className="flex-1 relative w-full bg-gray-100 flex flex-col min-h-0">
+        <div className="flex-1 w-full relative">
+          <LocationPicker
+            initialLat={lat}
+            initialLng={lng}
+            onLocationChange={handleLocationChange}
+            onLocationGranted={handleLocationGranted}
+          />
         </div>
-
-        {/* Contact Details */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-black text-dark tracking-wide">CONTACT DETAILS</h3>
-          
-          <div className="flex bg-gray-100 p-1 rounded-xl">
-            <button 
-              onClick={() => setContactMode('myself')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${contactMode === 'myself' ? 'bg-white shadow-sm text-dark' : 'text-gray-500 hover:text-dark'}`}
-            >
-              For Myself
-            </button>
-            <button 
-              onClick={() => setContactMode('someone_else')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${contactMode === 'someone_else' ? 'bg-white shadow-sm text-dark' : 'text-gray-500 hover:text-dark'}`}
-            >
-              Someone Else
-            </button>
-          </div>
-
-          {contactMode === 'myself' ? (
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
-                <input
-                  type="text"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                  placeholder="Enter full name"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Phone Number</label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="tel"
-                    value={editedPhone}
-                    onChange={handlePhoneChange}
-                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark transition-colors focus:outline-none focus:border-primary focus:bg-white"
-                    placeholder="123-456-7890"
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Receiver Name</label>
-                <input 
-                  type="text" 
-                  value={receiverName}
-                  onChange={(e) => setReceiverName(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                  placeholder="Enter name"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Receiver Phone</label>
-                <div className="flex items-center space-x-2">
-                  <input 
-                    type="tel" 
-                    value={receiverPhone}
-                    onChange={handleReceiverPhoneChange}
-                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark transition-colors focus:outline-none focus:border-primary focus:bg-white"
-                    placeholder="123-456-7890"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Address Type */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-black text-dark tracking-wide">SAVE ADDRESS AS</h3>
-          
-          <div className="flex space-x-3">
-            <button 
-              onClick={() => setAddressType('Home')}
-              className={`flex-1 flex flex-col items-center justify-center p-3 rounded-xl border cursor-pointer transition-all ${addressType === 'Home' ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
-            >
-              <Home className="w-5 h-5 mb-1.5" />
-              <span className="text-xs font-bold">Home</span>
-            </button>
-            <button 
-              onClick={() => setAddressType('Work')}
-              className={`flex-1 flex flex-col items-center justify-center p-3 rounded-xl border cursor-pointer transition-all ${addressType === 'Work' ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
-            >
-              <Briefcase className="w-5 h-5 mb-1.5" />
-              <span className="text-xs font-bold">Work</span>
-            </button>
-            <button 
-              onClick={() => setAddressType('Other')}
-              className={`flex-1 flex flex-col items-center justify-center p-3 rounded-xl border cursor-pointer transition-all ${addressType === 'Other' ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
-            >
-              <MapPin className="w-5 h-5 mb-1.5" />
-              <span className="text-xs font-bold">Other</span>
-            </button>
-          </div>
-        </div>
-
       </div>
 
-      {/* Sticky Bottom CTA */}
-      <div className="absolute bottom-6 left-0 right-0 px-6 z-20">
-        <button 
-          onClick={handleSave}
-          className="w-full flex items-center justify-center bg-primary hover:bg-primary/95 text-white py-4 rounded-2xl shadow-lg font-black tracking-wide cursor-pointer active:scale-[0.99] transition-all"
-        >
-          Save Address
-        </button>
+      {/* Bottom Panel */}
+      <div className="bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.08)] z-30 pt-4 px-5 pb-5 shrink-0 relative">
+        <div className="max-w-2xl mx-auto w-full flex flex-col space-y-4">
+          {/* Landmark Input */}
+          <div>
+            <label className="text-[10px] font-black text-gray-400 tracking-widest uppercase mb-1.5 block">Nearest Landmark</label>
+            <input
+              type="text"
+              value={landmark}
+              onChange={(e) => setLandmark(e.target.value)}
+              placeholder="e.g. Near Metro Station, Beside Mall"
+              className="w-full px-4 py-3 border border-border rounded-xl text-sm font-semibold text-dark placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+            />
+          </div>
+
+          {/* Address Type Selector */}
+          <div>
+            <h3 className="text-[10px] font-black text-gray-400 tracking-widest uppercase mb-2 text-center">Save Location As</h3>
+            <div className="flex space-x-2 max-w-sm mx-auto w-full">
+              <button
+                onClick={() => setAddressType('Home')}
+                className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all ${addressType === 'Home' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+              >
+                <Home className="w-4 h-4 mr-1.5" />
+                <span className="text-xs font-bold">Home</span>
+              </button>
+              <button
+                onClick={() => setAddressType('Work')}
+                className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all ${addressType === 'Work' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+              >
+                <Briefcase className="w-4 h-4 mr-1.5" />
+                <span className="text-xs font-bold">Work</span>
+              </button>
+              <button
+                onClick={() => setAddressType('Other')}
+                className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all ${addressType === 'Other' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+              >
+                <MapPin className="w-4 h-4 mr-1.5" />
+                <span className="text-xs font-bold">Other</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <button
+            onClick={handleSave}
+            className="w-full flex items-center justify-center bg-primary hover:bg-primary/95 text-white py-3.5 rounded-xl shadow-lg shadow-primary/20 font-black tracking-wide cursor-pointer active:scale-[0.99] transition-all text-sm"
+          >
+            Confirm Location
+          </button>
+        </div>
       </div>
     </div>
   );

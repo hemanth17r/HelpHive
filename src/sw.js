@@ -19,7 +19,7 @@ self.addEventListener('push', function (event) {
       const options = {
         body: data.body || 'You have a new update.',
         icon: '/pwa-192x192.png',
-        badge: '/maskable-icon-512x512.png',
+        badge: '/notification-badge.png',
         data: data, // contains action_url or other metadata
         vibrate: [100, 50, 100],
       };
@@ -27,6 +27,21 @@ self.addEventListener('push', function (event) {
       event.waitUntil(self.registration.showNotification(title, options));
     } catch (err) {
       console.error('Error parsing push data', err);
+      // Fallback: If push payload is not JSON, try to display it as raw text
+      let bodyText = 'You have a new update.';
+      try {
+        bodyText = event.data.text() || bodyText;
+      } catch (e) {
+        // Ignore errors reading raw text and use the default bodyText fallback
+      }
+      
+      event.waitUntil(
+        self.registration.showNotification('New Update', {
+          body: bodyText,
+          icon: '/pwa-192x192.png',
+          badge: '/notification-badge.png',
+        })
+      );
     }
   }
 });
@@ -35,7 +50,16 @@ self.addEventListener('push', function (event) {
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   
-  const actionUrl = event.notification.data?.action_url || '/';
+  let actionUrl = event.notification.data?.action_url || '/';
+  const jobId = event.notification.data?.metadata?.job_id || event.notification.data?.metadata?.jobId;
+  
+  if (jobId) {
+    actionUrl += (actionUrl.includes('?') ? '&' : '?') + 'jobId=' + jobId;
+  }
+
+  if (actionUrl && !actionUrl.startsWith('/') && !actionUrl.startsWith('http')) {
+    actionUrl = '/' + actionUrl;
+  }
 
   // This looks to see if the current window is already open and
   // focuses if it is
@@ -45,7 +69,11 @@ self.addEventListener('notificationclick', function (event) {
         if (client.url.includes(self.registration.scope) && 'focus' in client) {
           client.focus();
           // Optionally send a message to the client to navigate to actionUrl
-          client.postMessage({ type: 'NAVIGATE', url: actionUrl });
+          client.postMessage({ 
+            type: 'NAVIGATE', 
+            url: actionUrl, 
+            metadata: event.notification.data?.metadata 
+          });
           return;
         }
       }

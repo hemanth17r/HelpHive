@@ -1,0 +1,38 @@
+# robots.txt for HelpHive
+# https://www.robotstxt.org/robotstxt.html
+
+# Allow all search engine and AI crawlers to discover HelpHive
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+# Explicitly allow major AI Overview and LLM search agents
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CohereBot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+Sitemap: https://helphive.me/sitemap.xml

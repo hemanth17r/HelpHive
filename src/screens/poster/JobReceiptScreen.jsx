@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { ArrowLeft, CheckCircle2, Receipt, MapPin, Users, Calendar, HelpCircle, FileText, Star } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
-import { SKILLS } from '../../data/mockData';
+import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 
 const WhatsAppIcon = ({ className }) => (
@@ -16,7 +16,7 @@ const JobReceiptScreen = () => {
   if (!currentPostedJob) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-white p-6">
-        <p className="text-gray-500 font-bold">Job details not found.</p>
+        <p className="text-gray-500 font-bold">Task details not found.</p>
         <button onClick={() => pushScreen('poster_home')} className="mt-4 text-primary font-bold">Go Home</button>
       </div>
     );
@@ -51,10 +51,10 @@ const JobReceiptScreen = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-light-gray select-none">
+    <div className="flex-1 flex flex-col min-h-0 bg-white select-none">
       
       {/* Top Bar Navigation */}
-      <div className="bg-white px-4 py-4 flex items-center shadow-sm shrink-0 sticky top-0 z-20 rounded-b-3xl">
+      <div className="bg-white px-4 py-4 flex items-center shrink-0 sticky top-0 z-20">
         <Tooltip text="Go Back">
           <button onClick={popScreen} className="p-2 -ml-2 rounded-full hover:bg-gray-100 text-dark transition-colors cursor-pointer">
             <ArrowLeft className="w-5 h-5" />
@@ -70,7 +70,7 @@ const JobReceiptScreen = () => {
           <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center border border-green-200 shadow-xs">
             <CheckCircle2 className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-black text-dark">Job Completed</h2>
+          <h2 className="text-xl font-black text-dark">Task Completed</h2>
           <p className="text-xs font-bold text-gray-400">Thanks for using HelpHive!</p>
         </div>
 
@@ -95,6 +95,16 @@ const JobReceiptScreen = () => {
               <p className="text-xs font-bold text-dark leading-relaxed">
                 {currentPostedJob.description}
               </p>
+              {currentPostedJob.address?.completeAddress && (
+                <div className="flex items-start mt-1.5 space-x-1">
+                  <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+                  <span className="text-xs font-bold text-gray-500 leading-snug">
+                    {currentPostedJob.address.completeAddress?.startsWith('Location at') && currentPostedJob.address.landmark 
+                      ? currentPostedJob.address.landmark 
+                      : currentPostedJob.address.completeAddress}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -143,10 +153,14 @@ const JobReceiptScreen = () => {
            <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-3 mb-3">
              Bill Summary
            </h3>
-           <div className="flex items-center justify-between mt-2">
-             <span className="text-sm font-extrabold text-dark">Total Amount</span>
-             <span className="text-xl font-black text-primary">₹{currentPostedJob.amount}</span>
-           </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs font-bold text-gray-500">Amount Per Helper</span>
+              <span className="text-sm font-black text-dark">₹{currentPostedJob.amount || 0}</span>
+            </div>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+              <span className="text-sm font-extrabold text-dark">Total Amount</span>
+              <span className="text-xl font-black text-primary">₹{(currentPostedJob.amount || 0) * (currentPostedJob.peopleNeeded || 1)}</span>
+            </div>
            <div className="mt-4 pt-3 border-t border-dashed border-gray-200 flex items-center justify-between">
              <div className="inline-flex items-center space-x-1.5 text-[10px] font-black tracking-widest text-green-600 bg-green-50 px-2.5 py-1 rounded-full uppercase border border-green-200">
                 <CheckCircle2 className="w-3 h-3" />
@@ -181,10 +195,18 @@ const JobReceiptScreen = () => {
             </h3>
             <div className="flex flex-col py-1 space-y-2">
               <div className="flex items-center space-x-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star key={star} className="w-5 h-5 fill-primary text-primary" />
-                ))}
-                <span className="text-xs font-black text-dark ml-2">5.0</span>
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const ratingVal = currentPostedJob.myRatingToReceiver || 5;
+                  return (
+                    <Star 
+                      key={star} 
+                      className={`w-5 h-5 ${star <= ratingVal ? 'fill-primary text-primary' : 'text-gray-200'}`} 
+                    />
+                  );
+                })}
+                <span className="text-xs font-black text-dark ml-2">
+                  {currentPostedJob.myRatingToReceiver ? currentPostedJob.myRatingToReceiver.toFixed(1) : '5.0'}
+                </span>
               </div>
               <p className="text-xs font-semibold text-gray-500">
                 You rated the {role === 'poster' ? 'tasker' : 'hirer'} for this job.

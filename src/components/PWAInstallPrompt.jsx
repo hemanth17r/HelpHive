@@ -1,57 +1,116 @@
 import React, { useState, useEffect } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, X, Share } from 'lucide-react';
 
 const PWAInstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    // Check if the user dismissed recently
+    const shouldShow = () => {
+      const dismissedTime = localStorage.getItem('pwa_install_dismissed');
+      if (!dismissedTime) return true;
+      
+      // If it's the old 'true' string (never show again), let's clear it so they see it again for testing
+      if (dismissedTime === 'true') {
+        localStorage.removeItem('pwa_install_dismissed');
+        return true;
+      }
+      
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+      return (Date.now() - parseInt(dismissedTime, 10)) > sevenDays;
+    };
+
+    // Check if app is already installed (standalone mode)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    
+    if (isStandalone) {
+      return; // Already installed, don't show prompt
+    }
+
+    // Detect iOS/iPadOS devices (including desktop Safari on modern iPads)
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || 
+      (navigator.maxTouchPoints > 1 && /macintosh|mac os x/i.test(userAgent));
+    
+    if (isIOSDevice && shouldShow()) {
+      setIsIOS(true);
+      setShowPrompt(true);
+    }
+
+    // 1. Check if the event was already captured globally by index.html script
+    if (window.deferredPrompt && !isIOSDevice) {
+      setDeferredPrompt(window.deferredPrompt);
+      if (shouldShow()) {
+        setShowPrompt(true);
+      }
+    }
+
+    // 2. Standard handler for beforeinstallprompt
     const handleBeforeInstallPrompt = (e) => {
       // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
       // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
+      window.deferredPrompt = e;
       
-      // Check if user already dismissed recently
-      const hasDismissed = localStorage.getItem('pwa_install_dismissed');
-      if (!hasDismissed) {
+      if (shouldShow() && !isIOSDevice) {
         setShowPrompt(true);
       }
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    // 3. Custom event handler if the global script caught it and dispatched it
+    const handleGlobalPromptAvailable = (e) => {
+      const promptEvent = e.detail || window.deferredPrompt;
+      if (promptEvent) {
+        setDeferredPrompt(promptEvent);
+        if (shouldShow() && !isIOSDevice) {
+          setShowPrompt(true);
+        }
+      }
+    };
 
-    window.addEventListener('appinstalled', () => {
+    const handleAppInstalled = () => {
       // Clear the deferredPrompt so it can be garbage collected
       setDeferredPrompt(null);
+      window.deferredPrompt = null;
       setShowPrompt(false);
       console.log('PWA was installed');
-    });
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('pwa-prompt-available', handleGlobalPromptAvailable);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-prompt-available', handleGlobalPromptAvailable);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
+    const promptEvent = deferredPrompt || window.deferredPrompt;
+    if (!promptEvent) return;
     
     // Show the install prompt
-    deferredPrompt.prompt();
+    promptEvent.prompt();
     
     // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
+    const { outcome } = await promptEvent.userChoice;
     console.log(`User response to the install prompt: ${outcome}`);
     
     // We've used the prompt, and can't use it again, throw it away
     setDeferredPrompt(null);
+    window.deferredPrompt = null;
     setShowPrompt(false);
   };
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    // Don't show again for a while
-    localStorage.setItem('pwa_install_dismissed', 'true');
+    // Don't show again for 7 days
+    localStorage.setItem('pwa_install_dismissed', Date.now().toString());
   };
 
   if (!showPrompt) return null;
@@ -72,12 +131,25 @@ const PWAInstallPrompt = () => {
           <X size={20} />
         </button>
       </div>
-      <button 
-        onClick={handleInstallClick}
-        className="w-full bg-[#FF6B35] hover:bg-[#e85a25] text-white font-medium py-2 px-4 rounded-lg transition-colors"
-      >
-        Install App
-      </button>
+      
+      {isIOS ? (
+        <div className="bg-orange-50 text-orange-800 text-sm p-3 rounded-lg flex flex-col gap-2">
+          <p className="font-semibold">To install on iOS:</p>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>
+              Tap the Share button <Share size={14} className="inline-block align-middle mx-1" /> in Safari
+            </li>
+            <li>Scroll down and select <strong>"Add to Home Screen"</strong></li>
+          </ol>
+        </div>
+      ) : (
+        <button 
+          onClick={handleInstallClick}
+          className="w-full bg-[#FF6B35] hover:bg-[#e85a25] text-white font-medium py-2 px-4 rounded-lg transition-colors"
+        >
+          Install App
+        </button>
+      )}
     </div>
   );
 };

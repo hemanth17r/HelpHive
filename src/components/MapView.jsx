@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { renderToString } from 'react-dom/server';
-import BirdAvatar from './BirdAvatars';
+import BirdAvatar, { getBirdSvgString } from './BirdAvatars';
 
 const MapView = ({ 
   center = [31.2560, 75.7051], 
@@ -10,18 +9,18 @@ const MapView = ({
   jobLocation = null, // { lat, lng }
   taskerLocation = null, // { lat, lng }
   taskerBirdName = 'falcon',
-  height = '300px'
+  taskers = null, // Array of { id, bird, location: { lat, lng } }
+  height = '300px',
+  resolvedAddressText = 'Location pinned on map',
+  showAddressBanner = false,
+  coverageRadius = null // new prop for coverage circle
 }) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const draggableMarkerRef = useRef(null);
-  const taskerMarkerRef = useRef(null);
-  const routeLineRef = useRef(null);
-
-  // Address simulation based on coordinates offset
-  const [resolvedAddress, setResolvedAddress] = useState('Fetching address...');
-
-
+  const taskersMarkersRef = useRef({}); // maps taskerId -> Leaflet marker
+  const routeLinesRef = useRef({}); // maps taskerId -> Leaflet polyline
+  const coverageCircleRef = useRef(null);
 
   useEffect(() => {
     if (!window.L || !mapContainerRef.current) return;
@@ -33,7 +32,7 @@ const MapView = ({
       className: 'leaflet-custom-pin-orange',
       html: `<div class="bg-primary text-white p-2 rounded-full shadow-lg border-2 border-white flex items-center justify-center scale-100 hover:scale-105 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
       iconSize: [36, 36],
-      iconAnchor: [18, 36]
+      iconAnchor: [18, 18]
     });
 
 
@@ -58,8 +57,6 @@ const MapView = ({
 
     // Flow 1: Draggable Mode (Job Posting)
     if (draggable) {
-      setResolvedAddress('Location pinned on map');
-
       const marker = L.marker(initialCenter, {
         draggable: true,
         icon: orangeIcon
@@ -67,14 +64,33 @@ const MapView = ({
 
       draggableMarkerRef.current = marker;
 
-      // Handle drag ends with debounce simulation
+      // Handle drag ends
       marker.on('dragend', () => {
         const position = marker.getLatLng();
-        setResolvedAddress('Location pinned on map');
+        if (coverageCircleRef.current) {
+          coverageCircleRef.current.setLatLng(position);
+        }
         if (typeof onDragEnd === 'function') {
           onDragEnd({ lat: parseFloat(position.lat.toFixed(5)), lng: parseFloat(position.lng.toFixed(5)) });
         }
+
       });
+    }
+
+    if (coverageRadius && L) {
+      coverageCircleRef.current = L.circle(initialCenter, {
+        color: '#FF6B35',
+        weight: 1.5,
+        opacity: 0.6,
+        fillColor: '#FF6B35',
+        fillOpacity: 0.08,
+        radius: coverageRadius
+      }).addTo(map);
+      
+      // Auto-fit bounds to circle if not draggable, else just show it
+      if (!draggable) {
+        map.fitBounds(coverageCircleRef.current.getBounds());
+      }
     }
 
     // Flow 2: Live Tracking Mode (Job Destination Pin)
@@ -83,8 +99,16 @@ const MapView = ({
       L.marker([jobLocation.lat, jobLocation.lng], { icon: orangeIcon }).addTo(map);
     }
 
+    // Handle container resize issues for modals (e.g. animation delays)
+    const resizeTimer = setTimeout(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    }, 250);
+
     // Clean up Leaflet on unmount to prevent container errors
     return () => {
+      clearTimeout(resizeTimer);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -92,62 +116,152 @@ const MapView = ({
     };
   }, []);
 
-  // Update Tasker Marker and Route Polyline dynamically when position prop updates
+  // Pan the map dynamically when center/zoom props update
   useEffect(() => {
-    if (!draggable && mapInstanceRef.current && jobLocation && taskerLocation) {
+    if (mapInstanceRef.current && center) {
+      const currentCenter = mapInstanceRef.current.getCenter();
+      const [newLat, newLng] = center;
+      if (Math.abs(currentCenter.lat - newLat) > 0.0001 || Math.abs(currentCenter.lng - newLng) > 0.0001) {
+        mapInstanceRef.current.setView(center, zoom || mapInstanceRef.current.getZoom());
+        if (draggableMarkerRef.current) {
+          draggableMarkerRef.current.setLatLng(center);
+        }
+        if (coverageCircleRef.current) {
+          coverageCircleRef.current.setLatLng(center);
+        }
+      }
+    }
+  }, [center, zoom]);
+
+  // Update coverage radius dynamically if it changes
+  useEffect(() => {
+    if (mapInstanceRef.current && window.L && coverageRadius !== null) {
+      if (coverageCircleRef.current) {
+        coverageCircleRef.current.setRadius(coverageRadius);
+      } else {
+        const center = draggableMarkerRef.current ? draggableMarkerRef.current.getLatLng() : mapInstanceRef.current.getCenter();
+        coverageCircleRef.current = window.L.circle(center, {
+          color: '#FF6B35',
+          weight: 1.5,
+          opacity: 0.6,
+          fillColor: '#FF6B35',
+          fillOpacity: 0.08,
+          radius: coverageRadius
+        }).addTo(mapInstanceRef.current);
+      }
+      
+      // Optionally fit bounds when radius changes during draggable mode
+      if (coverageCircleRef.current) {
+         mapInstanceRef.current.fitBounds(coverageCircleRef.current.getBounds(), { animate: true, padding: [20, 20] });
+      }
+    } else if (coverageCircleRef.current && mapInstanceRef.current) {
+      mapInstanceRef.current.removeLayer(coverageCircleRef.current);
+      coverageCircleRef.current = null;
+    }
+  }, [coverageRadius]);
+
+  // Update Taskers Markers and Route Polylines dynamically when position props update
+  useEffect(() => {
+    if (!draggable && mapInstanceRef.current && jobLocation) {
       const L = window.L;
       if (!L) return;
 
-      const birdSvgString = renderToString(<BirdAvatar birdName={taskerBirdName} size={30} />);
-      const taskerIcon = L.divIcon({
-        className: 'leaflet-custom-pin-tasker',
-        html: `<div class="bg-white text-dark p-0.5 rounded-full shadow-lg border-2 border-primary flex items-center justify-center animate-pulse">${birdSvgString}</div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
-      });
-
-      // Update or Create Marker
-      if (taskerMarkerRef.current) {
-        taskerMarkerRef.current.setLatLng([taskerLocation.lat, taskerLocation.lng]);
-        taskerMarkerRef.current.setIcon(taskerIcon);
-      } else {
-        taskerMarkerRef.current = L.marker([taskerLocation.lat, taskerLocation.lng], { icon: taskerIcon }).addTo(mapInstanceRef.current);
+      // 1. Resolve taskers list (convert legacy single tasker to list if no array is provided)
+      let activeTaskers = [];
+      if (taskers && Array.isArray(taskers) && taskers.length > 0) {
+        activeTaskers = taskers;
+      } else if (taskerLocation) {
+        activeTaskers = [{
+          id: 'legacy-tasker',
+          bird: taskerBirdName,
+          location: taskerLocation
+        }];
       }
 
-      // Update or Create Polyline
-      if (routeLineRef.current) {
-        routeLineRef.current.setLatLngs([
-          [taskerLocation.lat, taskerLocation.lng], 
-          [jobLocation.lat, jobLocation.lng]
-        ]);
-      } else {
-        routeLineRef.current = L.polyline(
-          [[taskerLocation.lat, taskerLocation.lng], [jobLocation.lat, jobLocation.lng]], 
-          { color: '#2D2D2D', weight: 4, dashArray: '8, 8', opacity: 0.8 }
-        ).addTo(mapInstanceRef.current);
-        
-        // Fit Bounds to fit both pins comfortably when first created
-        const bounds = L.latLngBounds([[taskerLocation.lat, taskerLocation.lng], [jobLocation.lat, jobLocation.lng]]);
+      const activeTaskerIds = new Set(activeTaskers.map(t => t.id).filter(Boolean));
+
+      // 2. Remove markers and polylines of taskers that are no longer active
+      Object.keys(taskersMarkersRef.current).forEach(id => {
+        if (!activeTaskerIds.has(id)) {
+          if (taskersMarkersRef.current[id]) {
+            mapInstanceRef.current.removeLayer(taskersMarkersRef.current[id]);
+            delete taskersMarkersRef.current[id];
+          }
+          if (routeLinesRef.current[id]) {
+            mapInstanceRef.current.removeLayer(routeLinesRef.current[id]);
+            delete routeLinesRef.current[id];
+          }
+        }
+      });
+
+      // 3. Render or update markers & polylines for active taskers
+      activeTaskers.forEach(tasker => {
+        if (!tasker.location) return;
+
+        const birdSvgString = getBirdSvgString(tasker.bird || 'falcon', 30);
+        const taskerIcon = L.divIcon({
+          className: 'leaflet-custom-pin-tasker',
+          html: `<div class="bg-white text-dark p-0.5 rounded-full shadow-lg border-2 border-primary flex items-center justify-center animate-pulse">${birdSvgString}</div>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18]
+        });
+
+        const latLng = [tasker.location.lat, tasker.location.lng];
+
+        // Update or Create Marker
+        if (taskersMarkersRef.current[tasker.id]) {
+          taskersMarkersRef.current[tasker.id].setLatLng(latLng);
+          taskersMarkersRef.current[tasker.id].setIcon(taskerIcon);
+        } else {
+          taskersMarkersRef.current[tasker.id] = L.marker(latLng, { icon: taskerIcon }).addTo(mapInstanceRef.current);
+        }
+
+        // Update or Create Polyline
+        const routeCoords = [latLng, [jobLocation.lat, jobLocation.lng]];
+        if (routeLinesRef.current[tasker.id]) {
+          routeLinesRef.current[tasker.id].setLatLngs(routeCoords);
+        } else {
+          routeLinesRef.current[tasker.id] = L.polyline(
+            routeCoords,
+            { color: '#2D2D2D', weight: 4, dashArray: '8, 8', opacity: 0.8 }
+          ).addTo(mapInstanceRef.current);
+        }
+      });
+
+      // 4. Adjust bounds to fit all markers
+      if (activeTaskers.length > 0) {
+        const boundsPoints = [[jobLocation.lat, jobLocation.lng]];
+        activeTaskers.forEach(t => {
+          if (t.location) {
+            boundsPoints.push([t.location.lat, t.location.lng]);
+          }
+        });
+        const bounds = L.latLngBounds(boundsPoints);
         mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40] });
       }
     }
-  }, [taskerLocation, jobLocation, draggable, taskerBirdName]);
+  }, [taskers, taskerLocation, jobLocation, draggable, taskerBirdName]);
 
   return (
-    <div className="w-full flex flex-col space-y-2 select-none">
+    <div className={`w-full flex flex-col space-y-2 select-none ${height === '100%' ? 'h-full flex-1' : ''}`}>
       <div 
-        ref={mapContainerRef} 
-        style={{ height, width: '100%' }} 
-        className="rounded-2xl overflow-hidden shadow-inner border border-border z-10"
-      />
-      {draggable && (
+        style={{ height: height === '100%' ? 'auto' : height, width: '100%' }} 
+        className={`relative w-full ${height === '100%' ? 'flex-1 min-h-0' : ''}`}
+      >
+        <div 
+          ref={mapContainerRef} 
+          className="rounded-2xl overflow-hidden shadow-inner border border-border z-10 w-full h-full"
+        />
+
+      </div>
+      {draggable && showAddressBanner && (
         <div className="bg-orange-50 border border-primary/10 rounded-xl px-3.5 py-2 flex items-center space-x-2.5">
           <div className="p-1 bg-white rounded-md border border-primary/5 text-primary shrink-0 animate-pulse">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
           </div>
           <div className="text-[10px] font-bold text-dark truncate">
             <span className="text-gray-400 block font-black uppercase text-[8px] leading-none mb-0.5">Resolved Address</span>
-            {resolvedAddress}
+            {resolvedAddressText}
           </div>
         </div>
       )}

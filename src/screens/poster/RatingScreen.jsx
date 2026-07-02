@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Star, Send, Check, Flag, Award, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
@@ -12,23 +12,49 @@ const RatingScreen = () => {
   const { showToast } = useContext(ToastContext);
   
   // Track ratings and badges per tasker
+  // Track ratings and badges per tasker
   const [ratings, setRatings] = useState({});
   const [badges, setBadges] = useState({});
+  const [localCrew, setLocalCrew] = useState([]);
 
+  useEffect(() => {
+    let isMounted = true;
+    if (currentPostedJob?.id) {
+      api.fetchJobCrew(currentPostedJob.id).then(({ data }) => {
+        if (data && isMounted) setLocalCrew(data);
+      });
+    } else if (crewTaskers && crewTaskers.length > 0) {
+      setLocalCrew(crewTaskers);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [crewTaskers, currentPostedJob]);
 
-  // Report state
   const [reportingTaskerId, setReportingTaskerId] = useState(null);
   const [reportReason, setReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
 
   // The actual crew taskers
-  const taskersList = crewTaskers;
+  const taskersList = localCrew;
 
   const taskerBadges = [
     { id: 'reliable', label: 'Reliable Helper', icon: Check, color: 'green' },
     { id: 'on_time', label: 'On Time', icon: Award, color: 'blue' },
     { id: 'professional', label: 'Professional', icon: Star, color: 'purple' }
   ];
+
+  const getBadgeStyle = (color, isSelected) => {
+    if (!isSelected) return 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50';
+    switch (color) {
+      case 'green': return 'bg-green-50 border-green-300 text-green-700 shadow-xs';
+      case 'blue': return 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs';
+      case 'purple': return 'bg-purple-50 border-purple-300 text-purple-700 shadow-xs';
+      default: return 'bg-gray-50 border-gray-300 text-gray-700 shadow-xs';
+    }
+  };
 
   const reportReasons = [
     'Did not show up',
@@ -48,52 +74,100 @@ const RatingScreen = () => {
     });
   };
 
-  const handleSubmit = () => {
-    // Mark job as rated in global state so it doesn't prompt again
-    if (currentPostedJob) {
-      setJobs(prev => prev.map(j => j.id === currentPostedJob.id ? { ...j, hasBeenRated: true } : j));
-      setCurrentPostedJob(prev => prev ? { ...prev, hasBeenRated: true } : null);
-    }
-    
-    // Log ratings and badges, and send badge notifications
-    let badgeGiven = false;
-    taskersList.forEach(tasker => {
-      const star = ratings[tasker.id] || 5;
-      const badge = badges[tasker.id];
-      trackEvent(EVENTS.RATING_SUBMITTED, { userId: userProfile?.id, role, entityId: tasker.id, metadata: { rating: star } });
-      if (badge) {
-        badgeGiven = true;
-        const badgeObj = taskerBadges.find(b => b.id === badge);
-        trackEvent(EVENTS.BADGE_SENT, { userId: userProfile?.id, role, entityId: tasker.id, metadata: { badge_type: badge } });
-        showToast(`🏅 ${tasker.name} will receive your "${badgeObj?.label}" badge!`, 'success');
-
-        // Send notification to the Tasker
-        api.sendNotification(
-          tasker.id,
-          "New Badge Earned! 🏅",
-          `You received the "${badgeObj?.label}" badge for your recent task!`,
-          'my_profile'
-        );
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      // Mark job as rated in global state so it doesn't prompt again
+      if (currentPostedJob) {
+        setJobs(prev => prev.map(j => j.id === currentPostedJob.id ? { ...j, hasBeenRated: true } : j));
+        setCurrentPostedJob(prev => prev ? { ...prev, hasBeenRated: true } : null);
       }
-    });
+      
+      // Log ratings and badges, and send badge notifications
+      let badgeGiven = false;
+      const promises = taskersList.map(async (tasker) => {
+        const star = ratings[tasker.id] || 5;
+        const badge = badges[tasker.id] || null;
 
-    if (!badgeGiven) {
-      showToast('Rating submitted!', 'success');
+        // Persist rating in database with correct arguments
+        const { error: dbError } = await api.submitUserRating(currentPostedJob.id, 'poster', tasker.id, star, badge, userProfile?.id);
+        if (dbError) {
+          console.error("Failed to submit rating in DB:", dbError);
+          showToast(`Failed to submit rating for ${tasker.name}: ${dbError.message || dbError}`, 'error');
+          throw dbError;
+        }
+
+        trackEvent(EVENTS.RATING_SUBMITTED, { userId: userProfile?.id, role, entityId: tasker.id, metadata: { rating: star } });
+        if (badge) {
+          badgeGiven = true;
+          const badgeObj = taskerBadges.find(b => b.id === badge);
+          trackEvent(EVENTS.BADGE_SENT, { userId: userProfile?.id, role, entityId: tasker.id, metadata: { badge_type: badge } });
+          showToast(`🏅 ${tasker.name} will receive your "${badgeObj?.label}" badge!`, 'success');
+
+          // Send notification to the Tasker
+          await api.sendNotification(
+            tasker.id,
+            "New Badge Earned! 🏅",
+            `You received a ${star}-star rating and the "${badgeObj?.label}" badge for your recent task!`,
+            'my_profile',
+            'badge_received',
+            'tasker'
+          );
+        } else {
+          // Send rating-only notification to the Tasker
+          await api.sendNotification(
+            tasker.id,
+            "Task Rated!",
+            `You received a ${star}-star rating for your recent task.`,
+            'tasker_activity',
+            'rating_received',
+            'tasker'
+          );
+        }
+      });
+      await Promise.all(promises);
+
+      if (!badgeGiven) {
+        showToast('Rating submitted!', 'success');
+      }
+
+      pushScreen('poster_home');
+    } catch (err) {
+      console.error("Error submitting rating:", err);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    pushScreen('job_receipt');
   };
 
-  const handleReportSubmit = () => {
+  const handleReportSubmit = async () => {
     if (!reportReason) {
       showToast('Please select a reason', 'error');
       return;
     }
-    showToast('Report submitted for moderation', 'success');
-    trackEvent(EVENTS.REPORT_SUBMITTED, { userId: userProfile?.id, role, entityId: reportingTaskerId, metadata: { reason: reportReason } });
-    setReportingTaskerId(null);
-    setReportReason('');
-    setReportDetails('');
+    setIsReporting(true);
+    try {
+      const { error } = await api.submitUserReport(
+        reportingTaskerId,
+        currentPostedJob?.id,
+        reportReason,
+        reportDetails,
+        userProfile?.id
+      );
+      if (error) {
+        showToast(`Failed to submit report: ${error.message || error}`, 'error');
+      } else {
+        showToast('Report submitted for moderation', 'success');
+        trackEvent(EVENTS.REPORT_SUBMITTED, { userId: userProfile?.id, role, entityId: reportingTaskerId, metadata: { reason: reportReason } });
+        setReportingTaskerId(null);
+        setReportReason('');
+        setReportDetails('');
+      }
+    } catch (err) {
+      console.error("Failed to submit report:", err);
+      showToast('Failed to submit report.', 'error');
+    } finally {
+      setIsReporting(false);
+    }
   };
 
   const reportingTasker = taskersList.find(t => t.id === reportingTaskerId);
@@ -161,9 +235,13 @@ const RatingScreen = () => {
             </button>
             <button
               onClick={handleReportSubmit}
-              className="flex-1 py-3 text-xs font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-md cursor-pointer"
+              disabled={isReporting}
+              className="flex-1 flex justify-center items-center gap-2 py-3 text-xs font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-md cursor-pointer transition-all active:scale-[0.98] disabled:opacity-70"
             >
-              Submit Report
+              {isReporting ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : null}
+              <span>{isReporting ? 'Submitting...' : 'Submit Report'}</span>
             </button>
           </div>
         </div>
@@ -219,11 +297,7 @@ const RatingScreen = () => {
                         <button
                           key={badge.id}
                           onClick={() => handleBadgeChange(tasker.id, badge.id)}
-                          className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
-                            isSelected
-                              ? `bg-${badge.color}-50 border-${badge.color}-300 text-${badge.color}-700 shadow-xs`
-                              : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-                          }`}
+                          className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${getBadgeStyle(badge.color, isSelected)}`}
                         >
                           <Icon className="w-3.5 h-3.5" />
                           <span>{badge.label}</span>
@@ -254,10 +328,15 @@ const RatingScreen = () => {
           <Tooltip text="Submit helper feedback">
             <button
               onClick={handleSubmit}
-              className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer"
+              disabled={isSubmitting}
+              className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-70"
             >
-              <Send className="w-5 h-5" />
-              <span>Submit Feedback</span>
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+              <span>{isSubmitting ? 'Submitting...' : 'Submit Feedback'}</span>
             </button>
           </Tooltip>
         </div>

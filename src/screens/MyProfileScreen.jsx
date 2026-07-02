@@ -1,12 +1,14 @@
-import React, { useContext, useState, useEffect } from 'react';
-import { Star, ShieldAlert, Award, Calendar, ArrowLeft, LogOut, User, Phone, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2 } from 'lucide-react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
+import { Star, ShieldAlert, Shield, Lock, Award, Calendar, ArrowLeft, LogOut, LogIn, Clock, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2, ChevronDown, ExternalLink, Wifi, Flame, Zap } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
-import { SKILLS } from '../data/mockData';
+import { SKILLS } from '../config/constants';
 import Tooltip from '../components/Tooltip';
 import BirdAvatar from '../components/BirdAvatars';
 import BirdSelector from '../components/BirdSelector';
 import IconLabel from '../components/IconLabel';
 import { ToastContext } from '../store/ToastContext';
+import LoginModal from '../components/LoginModal';
+import { useProfileCompletion } from '../hooks/useProfileCompletion';
 
 const WhatsAppIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -14,9 +16,25 @@ const WhatsAppIcon = ({ className }) => (
   </svg>
 );
 
+const BADGE_LABELS = {
+  paid_promptly: 'Paid Promptly',
+  clear_instructions: 'Clear Instructions',
+  easy_to_work: 'Easy to Work With',
+  reliable: 'Reliable Helper',
+  on_time: 'On Time',
+  professional: 'Professional'
+};
+
 const MyProfileScreen = () => {
-  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs } = useContext(AppContext);
+  const { userProfile, userId, userLocation, resetApp, selectedBird, setSelectedBird, role, setUserProfile, pushScreen, popScreen, setActiveTab, switchRole, setJobHistoryTab, setTaskerActivityScrollTarget, jobs, isAdmin, refreshProfile, screenStack, openLoginModal } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
+  const { completionPercentage, missingItems, missingWizardItems } = useProfileCompletion();
+
+  useEffect(() => {
+    if (refreshProfile) {
+      refreshProfile();
+    }
+  }, []);
 
   const handleWhatsAppSupport = () => {
     const uId = userProfile?.id || userId || 'N/A';
@@ -35,33 +53,55 @@ Issue: `;
     window.open(whatsappUrl, '_blank');
   };
   const [showBirdSelector, setShowBirdSelector] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedPhone, setEditedPhone] = useState('');
   const [isEditingSkills, setIsEditingSkills] = useState(false);
   const [editedSkills, setEditedSkills] = useState([]);
-
+  const [isSavingSkills, setIsSavingSkills] = useState(false);
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
+  const [isAhrOpen, setIsAhrOpen] = useState(false);
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   
   // Hirer (Poster) Stats
-  const posterJobs = jobs?.filter(j => j?.posterId === userId || j?.posterId === userProfile?.id) || [];
-  const activePosterJobs = posterJobs.filter(j => ['open', 'in_progress', 'active'].includes(j?.status)).length;
-  const completedPosterJobsCount = posterJobs.filter(j => j?.status === 'completed').length;
-  const draftPosterJobs = posterJobs.filter(j => j?.status === 'draft').length;
-  const unfulfilledPosterJobs = posterJobs.filter(j => ['unfulfilled', 'expired'].includes(j?.status)).length;
+  const posterJobs = useMemo(() => {
+    return jobs?.filter(j => j?.posterId === userId || j?.posterId === userProfile?.id) || [];
+  }, [jobs, userId, userProfile?.id]);
+
+  const activePosterJobs = useMemo(() => {
+    return posterJobs.filter(j => ['open', 'in_progress', 'active'].includes(j?.status)).length;
+  }, [posterJobs]);
+
+  const completedPosterJobsCount = useMemo(() => {
+    return posterJobs.filter(j => j?.status === 'completed').length;
+  }, [posterJobs]);
 
   // Tasker Stats
-  const taskerJobs = jobs?.filter(j => j?.taskerId === userId || j?.taskerId === userProfile?.id || j?.taskerName === userProfile?.name) || [];
-  const activeTaskerJobs = taskerJobs.filter(j => ['active', 'in_progress'].includes(j?.status)).length;
-  const completedJobs = taskerJobs.filter(j => j?.status === 'completed');
-  const completedTaskerJobsCount = completedJobs.length;
+  const taskerJobs = useMemo(() => {
+    return jobs?.filter(j => j?.isAcceptedByMe || j?.taskerId === userId || j?.taskerId === userProfile?.id || j?.taskerName === userProfile?.name) || [];
+  }, [jobs, userId, userProfile?.id, userProfile?.name]);
 
-  const thisMonthEarnings = completedJobs.filter(j => {
-    if (!j.timePosted) return false;
-    const jobDate = new Date(j.timePosted);
-    return jobDate.getMonth() === currentMonth && jobDate.getFullYear() === currentYear;
-  }).reduce((sum, job) => sum + (job.amount || 0), 0);
+  const activeTaskerJobs = useMemo(() => {
+    return taskerJobs.filter(j => ['active', 'in_progress'].includes(j?.status)).length;
+  }, [taskerJobs]);
+
+  const completedJobs = useMemo(() => {
+    return taskerJobs.filter(j => j?.status === 'completed');
+  }, [taskerJobs]);
+
+  const completedTaskerJobsCount = useMemo(() => {
+    return completedJobs.length;
+  }, [completedJobs]);
+
+  const thisMonthEarnings = useMemo(() => {
+    return completedJobs.filter(j => {
+      if (!j.timePosted) return false;
+      const jobDate = new Date(j.timePosted);
+      return jobDate.getMonth() === currentMonth && jobDate.getFullYear() === currentYear;
+    }).reduce((sum, job) => sum + (job.amount || 0), 0);
+  }, [completedJobs, currentMonth, currentYear]);
 
   const [shouldRenderSkillsModal, setShouldRenderSkillsModal] = useState(false);
   const [isAnimatingSkillsOut, setIsAnimatingSkillsOut] = useState(false);
@@ -82,17 +122,29 @@ Issue: `;
     }
   }, [isEditingSkills, shouldRenderSkillsModal]);
 
+
+
   // Fallback profile
   const profile = {
-    name: userProfile?.name || 'New User',
-    phone: userProfile?.phone || 'Add Phone',
+    ...userProfile,
+    name: userId ? (userProfile?.name || 'New User') : 'Guest User',
+    email: userId ? ((userProfile?.email && userProfile.email !== 'Add Email') ? userProfile.email : '') : 'Not Linked (Guest Mode)',
+    phone: userId ? (userProfile?.phone || 'Add Phone') : 'Not Linked (Guest Mode)',
     skills: userProfile?.skills || [],
-    rating: userProfile?.rating || 0,
-    tasksCompleted: userProfile?.tasksCompleted || 0,
-    badges: userProfile?.badges || [],
-    reviews: userProfile?.reviews || [],
-    ...userProfile
+    rating: userId ? (userProfile?.rating || 0) : 0,
+    tasksCompleted: userId ? (userProfile?.tasksCompleted || 0) : 0,
+    badges: userId ? (userProfile?.badges || []) : [],
+    reviews: userId ? (userProfile?.reviews || []) : []
   };
+
+  const groupedBadges = React.useMemo(() => {
+    if (!Array.isArray(profile.badges)) return [];
+    const counts = {};
+    profile.badges.forEach(badge => {
+      counts[badge] = (counts[badge] || 0) + 1;
+    });
+    return Object.entries(counts).map(([badge, count]) => ({ badge, count }));
+  }, [profile.badges]);
 
   const reviews = profile.reviews || [];
   const totalReviews = reviews.length;
@@ -132,47 +184,55 @@ Issue: `;
     setEditedPhone(formattedPhoneNumber);
   };
 
-  const handleSaveAccount = (e) => {
+  const handleSaveAccount = async (e) => {
     if (e) e.preventDefault();
     const updates = {};
-    const finalName = editedName.trim() || 'New User'; // Fallback if they empty it completely
-    const finalPhone = editedPhone.trim() || 'Add Phone';
+    const finalName = editedName.trim();
+    const finalPhone = editedPhone.trim();
 
     if (finalName !== profile.name) {
       updates.name = finalName;
     }
-    if (finalPhone !== profile.phone) {
-      updates.phone = finalPhone;
+    const normalizedPhone = finalPhone.replace(/\D/g, '');
+    const normalizedProfilePhone = (profile.phone || '').replace(/\D/g, '');
+    if (normalizedPhone !== normalizedProfilePhone) {
+      updates.phone = normalizedPhone;
     }
     
     if (Object.keys(updates).length > 0) {
-      setUserProfile({ ...profile, ...updates });
-      showToast('Account details updated successfully!', 'success');
+      setIsSavingAccount(true);
+      try {
+        await setUserProfile({ ...profile, ...updates });
+        showToast('Account details updated successfully!', 'success');
+      } finally {
+        setIsSavingAccount(false);
+      }
     }
     setIsEditingAccount(false);
   };
 
   const phoneDigits = editedPhone.replace(/\D/g, '');
   const isPhoneValidLength = phoneDigits.length === 10;
-  const canSave = editedName.trim().length > 0 || isPhoneValidLength;
+  const canSave = editedName.trim().length > 0 && isPhoneValidLength;
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50 h-full overflow-y-auto pb-20 relative">
-      {/* Smooth Gradient Background */}
-      <div className="absolute top-0 left-0 right-0 h-72 bg-gradient-to-b from-orange-400 via-orange-300/50 to-gray-50 pointer-events-none z-0"></div>
-
+    <div className="flex-1 flex flex-col bg-white h-full w-full overflow-y-auto no-scrollbar relative pb-20">
       {/* Top Banner Area */}
       <div className="relative h-28 shrink-0 z-10">
         {/* Back Button */}
         <button
           onClick={() => {
-            if (role === 'tasker') {
+            // If the profile screen was pushed onto the stack (e.g. navigated from
+            // notifications), use popScreen so the back button returns to the
+            // previous screen. Only switch to the home tab when we're already at
+            // the root (stack length ≤ 1), which is the normal tab-based flow.
+            if (role === 'tasker' && screenStack.length <= 1) {
               setActiveTab('home');
             } else {
               popScreen();
             }
           }}
-          className="absolute top-4 left-4 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/20 backdrop-blur-xs cursor-pointer"
+          className="absolute top-4 left-4 p-2 rounded-full bg-white hover:bg-gray-100 text-dark border border-border cursor-pointer transition-colors shadow-2xs lg:hidden"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -181,13 +241,16 @@ Issue: `;
       {role === 'poster' ? (
         <div className="space-y-4 px-6 -mt-12 relative z-10 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left pb-10">
           {/* Header Section */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border flex flex-col items-center text-center">
+          <div className="m3-card rounded-[24px] p-6 flex flex-col items-center text-center">
             <Tooltip text="Tap to change avatar" position="top">
               <button 
                 onClick={() => setShowBirdSelector(true)}
-                className="w-20 h-20 rounded-full border-4 border-white shadow-md -mt-14 mb-3 overflow-hidden bg-orange-50 flex items-center justify-center cursor-pointer hover:border-primary/20 transition-all active:scale-95"
+                className="w-[88px] h-[88px] rounded-full -mt-16 mb-3 flex items-center justify-center cursor-pointer hover:scale-105 transition-all active:scale-95 p-[3px]"
+                style={{ background: `conic-gradient(#FF6B35 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)` }}
               >
-                <BirdAvatar birdName={selectedBird} size={64} />
+                <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-[3px] border-white shadow-md">
+                  <BirdAvatar birdName={selectedBird} size={64} />
+                </div>
               </button>
             </Tooltip>
             
@@ -200,15 +263,15 @@ Issue: `;
           </div>
 
           {/* Account Details Card */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border space-y-4">
+          <div className="m3-card rounded-[24px] p-6 space-y-5">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Account Details</h3>
               {!isEditingAccount ? (
                 <Tooltip text="Edit account details" position="left">
                   <button 
                     onClick={() => { 
-                      setEditedName(profile.name === 'New User' ? '' : profile.name); 
-                      setEditedPhone(profile.phone === 'Add Phone' ? '' : profile.phone); 
+                      setEditedName(profile.name === 'New User' || profile.name === 'Guest User' ? '' : profile.name); 
+                      setEditedPhone((profile.phone === 'Add Phone' || profile.phone === 'Not Linked (Guest Mode)') ? '' : profile.phone); 
                       setIsEditingAccount(true); 
                     }} 
                     className="text-gray-400 hover:text-primary transition-colors p-1 hover:bg-gray-50 rounded-lg cursor-pointer"
@@ -233,19 +296,22 @@ Issue: `;
             {isEditingAccount ? (
               <form onSubmit={handleSaveAccount} className="space-y-3">
                 <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
-                  <input
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                    placeholder="Enter full name"
-                    autoFocus
-                  />
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4 text-gray-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
+                      placeholder="Enter full name"
+                      autoFocus
+                    />
+                  </div>
                 </div>
                 <div>
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center space-x-2">
+                      <Phone className="w-4 h-4 text-gray-400 shrink-0" />
                       <input
                         type="tel"
                         value={editedPhone}
@@ -256,18 +322,31 @@ Issue: `;
                     </div>
                   </div>
                 </div>
+                <div>
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center space-x-2 opacity-70">
+                      <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                      <div className="flex-1 bg-gray-100/50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 select-none cursor-not-allowed">
+                        {profile.email || '\u00A0'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 
                 <div className="pt-2 flex justify-end">
                   <button
                     type="submit"
-                    disabled={!canSave}
-                    className={`px-6 py-3 rounded-xl text-sm font-bold transition-colors shadow-sm ${
-                      !canSave
+                    disabled={!canSave || isSavingAccount}
+                    className={`px-6 py-3 rounded-xl text-sm font-bold transition-colors shadow-sm flex items-center justify-center gap-2 ${
+                      !canSave || isSavingAccount
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-primary hover:bg-primary/90 text-white cursor-pointer'
                     }`}
                   >
-                    Save Account
+                    {isSavingAccount ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : null}
+                    <span>{isSavingAccount ? 'Saving...' : 'Save Account'}</span>
                   </button>
                 </div>
               </form>
@@ -289,11 +368,21 @@ Issue: `;
                   <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
                     <Phone className="w-4 h-4 text-gray-500" />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 border-b border-gray-100 pb-3">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Phone Number</p>
                     <p className="font-bold text-dark">{profile.phone}</p>
                   </div>
                 </div>
+
+                <div className="flex items-center space-x-3 text-sm pt-1">
+                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                      <Mail className="w-4 h-4 text-gray-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Email</p>
+                      <p className="font-bold text-dark">{profile.email}</p>
+                    </div>
+                  </div>
               </>
             )}
           </div>
@@ -302,36 +391,22 @@ Issue: `;
           <div className="grid grid-cols-2 gap-2">
             <div 
               onClick={() => { setJobHistoryTab('active'); pushScreen('job_history'); }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-blue-200 transition-colors"
+              className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <span className="text-xl font-black text-dark">{activePosterJobs}</span>
               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Active Tasks</span>
             </div>
             <div 
               onClick={() => { setJobHistoryTab('completed'); pushScreen('job_history'); }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-green-200 transition-colors"
+              className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <span className="text-xl font-black text-dark">{completedPosterJobsCount}</span>
               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Completed</span>
             </div>
-            <div 
-              onClick={() => { setJobHistoryTab('draft'); pushScreen('job_history'); }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-orange-200 transition-colors"
-            >
-              <span className="text-xl font-black text-dark">{draftPosterJobs}</span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Drafts</span>
-            </div>
-            <div 
-              onClick={() => { setJobHistoryTab('unfulfilled'); pushScreen('job_history'); }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-red-200 transition-colors"
-            >
-              <span className="text-xl font-black text-dark">{unfulfilledPosterJobs}</span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Unfulfilled & Expired</span>
-            </div>
           </div>
 
           {/* Reputation Section */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border space-y-5">
+          <div className="m3-card rounded-[24px] p-6 space-y-6">
             <div className="flex items-center justify-between pb-1 border-b border-gray-100">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Reputation</h3>
               {showVerifiedLocal && (
@@ -409,10 +484,15 @@ Issue: `;
               <div className="space-y-2 pt-3 border-t border-gray-100">
                 <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Trust Badges</h4>
                 <div className="flex flex-wrap gap-2">
-                  {profile.badges.map((badge, idx) => (
+                  {groupedBadges.map(({ badge, count }, idx) => (
                     <span key={idx} className="text-[10px] font-black uppercase tracking-widest text-green-700 bg-green-50 px-2.5 py-1.5 rounded-xl border border-green-200/50 flex items-center space-x-1 shadow-xs">
-                      <Award className="w-3 h-3"/>
-                      <span>{badge}</span>
+                      <Award className="w-3 h-3 text-green-600 shrink-0"/>
+                      <span>{BADGE_LABELS[badge] || badge}</span>
+                      {count > 1 && (
+                        <span className="ml-1 bg-green-200/80 text-green-800 text-[8px] px-1.5 py-0.5 rounded-full font-black leading-none min-w-[14px] text-center">
+                          {count}x
+                        </span>
+                      )}
                     </span>
                   ))}
                 </div>
@@ -421,72 +501,137 @@ Issue: `;
           </div>
 
           {/* Action Menu */}
-          <div className="bg-white rounded-3xl p-2 shadow-sm border border-border mb-6">
-            <div className="space-y-1">
-              <button onClick={() => switchRole('tasker')} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
+          <div className="m3-card rounded-[24px] p-2">
+            <div className="space-y-0.5">
+              <button onClick={() => switchRole('tasker')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
                 <div className="flex items-center space-x-3">
-                  <Briefcase className="w-4.5 h-4.5 text-primary" />
+                  <Briefcase className="w-4 h-4 text-primary" />
                   <span>Switch to Tasker</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-primary" />
               </button>
 
-              <button onClick={() => pushScreen('address_book')} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <div style={{ height: '13px' }} />
+
+              <button 
+                onClick={() => pushScreen('address_book')} 
+                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
+              >
                 <div className="flex items-center space-x-3">
-                  <MapPin className="w-4.5 h-4.5 text-gray-400" />
+                  <MapPin className="w-4 h-4 text-gray-400" />
                   <span>Address Book</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
-              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
-                  <Star className="w-4.5 h-4.5 text-gray-400" />
+                  <Star className="w-4 h-4 text-gray-400" />
                   <span>About Us</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
-              <div className="px-3 py-1 text-left">
+              <div className="px-3 py-0.5 text-left">
                 <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Need Help?</span>
               </div>
 
-              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
-                  <WhatsAppIcon className="w-4.5 h-4.5 text-green-600 shrink-0" />
+                  <WhatsAppIcon className="w-4 h-4 text-green-600 shrink-0" />
                   <span>WhatsApp Support</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
+              {isAdmin && (
+                <>
+                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-gray-800 hover:bg-gray-100 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                    <div className="flex items-center space-x-3">
+                      <Shield className="w-4 h-4 text-gray-600" />
+                      <span>Admin Dashboard</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300" />
+                  </button>
+                  <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
+                </>
+              )}
 
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              {userId ? (
+                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-red-500 hover:bg-red-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                  <div className="flex items-center space-x-3">
+                    <LogOut className="w-4 h-4 text-red-500" />
+                    <span>Sign Out</span>
+                  </div>
+                </button>
+              ) : (
+                <button onClick={() => openLoginModal()} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                  <div className="flex items-center space-x-3">
+                    <LogIn className="w-4 h-4 text-primary" />
+                    <span>Sign In / Sign Up</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-primary" />
+                </button>
+              )}
 
-              <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-xs font-bold text-red-500 hover:bg-red-50 p-3 rounded-2xl transition-colors cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <LogOut className="w-4.5 h-4.5 text-red-500" />
-                  <span>Sign Out</span>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
+
+              {/* Also from ahr dropdown section merged inside card */}
+              <button 
+                onClick={() => setIsAhrOpen(!isAhrOpen)} 
+                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
+              >
+                <div className="flex items-center space-x-1.5">
+                  <span>Also from</span>
+                  <span 
+                    style={{ fontFamily: "'Satisfy', cursive", fontWeight: 800 }} 
+                    className="text-lg text-primary lowercase select-none"
+                  >
+                    ahr
+                  </span>
                 </div>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isAhrOpen ? 'rotate-180' : ''}`} />
               </button>
+              
+              {isAhrOpen && (
+                <div className="mt-1 border-t border-gray-100 pt-1.5 px-3 pb-2 animate-[fadeIn_200ms_ease-in-out]">
+                  <a 
+                    href="https://civiclens.tech" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="flex items-center justify-between py-2.5 px-2 rounded-xl text-xs font-bold text-gray-600 hover:text-primary hover:bg-orange-50/50 transition-all"
+                  >
+                    <span className="flex items-center space-x-2">
+                      <img src="/civiclens-icon.png" alt="CivicLens" className="w-4 h-4 object-contain rounded-[4px]" />
+                      <span>CivicLens</span>
+                    </span>
+                    <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>
       ) : (
         /* Tasker Layout */
-        <div className="px-6 -mt-12 relative z-10 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left mb-10">
+        <div className="space-y-4 px-6 -mt-12 relative z-10 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left pb-10">
           {/* Header Section */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border flex flex-col items-center text-center">
+          <div className="m3-card rounded-[24px] p-6 flex flex-col items-center text-center">
             <Tooltip text="Tap to change avatar" position="top">
               <button 
                 onClick={() => setShowBirdSelector(true)}
-                className="w-20 h-20 rounded-full border-4 border-white shadow-md -mt-14 mb-3 overflow-hidden bg-orange-50 flex items-center justify-center cursor-pointer hover:border-primary/20 transition-all active:scale-95"
+                className="w-[88px] h-[88px] rounded-full -mt-16 mb-3 flex items-center justify-center cursor-pointer hover:scale-105 transition-all active:scale-95 p-[3px]"
+                style={{ background: `conic-gradient(#FF6B35 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)` }}
               >
-                <BirdAvatar birdName={selectedBird} size={64} />
+                <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-[3px] border-white shadow-md">
+                  <BirdAvatar birdName={selectedBird} size={64} />
+                </div>
               </button>
             </Tooltip>
             
@@ -499,15 +644,15 @@ Issue: `;
           </div>
 
           {/* Account Details Card */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border space-y-4">
+          <div className="m3-card rounded-[24px] p-6 space-y-5">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Account Details</h3>
               {!isEditingAccount ? (
                 <Tooltip text="Edit account details" position="left">
                   <button 
                     onClick={() => { 
-                      setEditedName(profile.name === 'New User' ? '' : profile.name); 
-                      setEditedPhone(profile.phone === 'Add Phone' ? '' : profile.phone); 
+                      setEditedName(profile.name === 'New User' || profile.name === 'Guest User' ? '' : profile.name); 
+                      setEditedPhone((profile.phone === 'Add Phone' || profile.phone === 'Not Linked (Guest Mode)') ? '' : profile.phone); 
                       setIsEditingAccount(true); 
                     }} 
                     className="text-gray-400 hover:text-primary transition-colors p-1 hover:bg-gray-50 rounded-lg cursor-pointer"
@@ -532,19 +677,22 @@ Issue: `;
             {isEditingAccount ? (
               <form onSubmit={handleSaveAccount} className="space-y-3">
                 <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
-                  <input
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                    placeholder="Enter full name"
-                    autoFocus
-                  />
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4 text-gray-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
+                      placeholder="Enter full name"
+                      autoFocus
+                    />
+                  </div>
                 </div>
                 <div>
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center space-x-2">
+                      <Phone className="w-4 h-4 text-gray-400 shrink-0" />
                       <input
                         type="tel"
                         value={editedPhone}
@@ -552,6 +700,16 @@ Issue: `;
                         className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark transition-colors focus:outline-none focus:border-primary focus:bg-white"
                         placeholder="123-456-7890"
                       />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center space-x-2 opacity-70">
+                      <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                      <div className="flex-1 bg-gray-100/50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 select-none cursor-not-allowed">
+                        {profile.email || '\u00A0'}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -588,11 +746,21 @@ Issue: `;
                   <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
                     <Phone className="w-4 h-4 text-gray-500" />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 border-b border-gray-100 pb-3">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Phone Number</p>
                     <p className="font-bold text-dark">{profile.phone}</p>
                   </div>
                 </div>
+
+                <div className="flex items-center space-x-3 text-sm pt-1">
+                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                      <Mail className="w-4 h-4 text-gray-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Email</p>
+                      <p className="font-bold text-dark">{profile.email}</p>
+                    </div>
+                  </div>
               </>
             )}
           </div>
@@ -604,7 +772,7 @@ Issue: `;
                 setJobHistoryTab('active');
                 pushScreen('job_history');
               }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-blue-200 transition-colors"
+              className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <span className="text-xl font-black text-dark">{activeTaskerJobs}</span>
               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Active Tasks</span>
@@ -614,7 +782,7 @@ Issue: `;
                 setJobHistoryTab('completed');
                 pushScreen('job_history');
               }}
-              className="bg-white rounded-3xl p-3 shadow-sm border border-border flex flex-col justify-center items-center text-center cursor-pointer hover:border-green-200 transition-colors"
+              className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <span className="text-xl font-black text-dark">{completedTaskerJobsCount}</span>
               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Completed</span>
@@ -622,7 +790,7 @@ Issue: `;
           </div>
 
           {/* Reputation Section (Tasker) */}
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-border space-y-5 mt-4">
+          <div className="m3-card rounded-[24px] p-6 space-y-6 mt-4">
             <div className="flex items-center justify-between pb-1 border-b border-gray-100">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Reputation</h3>
               {showVerifiedLocal && (
@@ -691,7 +859,7 @@ Issue: `;
             </div>
 
             <div className="flex justify-between items-center text-xs font-bold text-dark border-t border-gray-100 pt-3">
-              <span className="text-gray-400 font-bold uppercase text-[10px] tracking-wider">Jobs Completed</span>
+              <span className="text-gray-400 font-bold uppercase text-[10px] tracking-wider">Tasks Completed</span>
               <span className="text-base font-black text-dark">{profile.tasksCompleted}</span>
             </div>
 
@@ -700,10 +868,15 @@ Issue: `;
               <div className="space-y-2 pt-3 border-t border-gray-100">
                 <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Trust Badges</h4>
                 <div className="flex flex-wrap gap-2">
-                  {profile.badges.map((badge, idx) => (
+                  {groupedBadges.map(({ badge, count }, idx) => (
                     <span key={idx} className="text-[10px] font-black uppercase tracking-widest text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-xl border border-blue-200/50 flex items-center space-x-1 shadow-xs">
-                      <Award className="w-3 h-3"/>
-                      <span>{badge}</span>
+                      <Award className="w-3 h-3 text-blue-600 shrink-0"/>
+                      <span>{BADGE_LABELS[badge] || badge}</span>
+                      {count > 1 && (
+                        <span className="ml-1 bg-blue-200/80 text-blue-800 text-[8px] px-1.5 py-0.5 rounded-full font-black leading-none min-w-[14px] text-center">
+                          {count}x
+                        </span>
+                      )}
                     </span>
                   ))}
                 </div>
@@ -712,23 +885,26 @@ Issue: `;
           </div>
 
           {/* Secondary Info (Area) */}
-          <div className="bg-white rounded-2xl p-4 shadow-xs border border-border mt-4 space-y-3">
+          <div className="m3-card rounded-[20px] p-5 mt-4 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Service Scope</h3>
-              <Tooltip text="Change location" position="left">
-                <button className="text-[9px] font-black text-primary uppercase tracking-wider hover:underline cursor-pointer">
-                  Change
+              <Tooltip text="Change service area" position="left">
+                <button
+                  onClick={() => pushScreen('tasker_onboarding', false, { editServiceAreaOnly: true })}
+                  className="text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Edit2 className="w-4 h-4" />
                 </button>
               </Tooltip>
             </div>
             <div className="flex items-center space-x-2 text-xs font-bold text-dark">
               <Calendar className="w-4.5 h-4.5 text-primary" />
-              <span>Active in {userLocation?.name || 'Koramangala, Bangalore'}</span>
+              <span>Active in {userProfile?.serviceAreaName || 'No service area selected'}</span>
             </div>
           </div>
 
           {/* Skill tags (Tasker Only) */}
-          <div className="bg-white rounded-2xl p-4 shadow-xs border border-border mt-4 space-y-3">
+          <div className="m3-card rounded-[20px] p-5 mt-4 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Your Skills</h3>
               <Tooltip text="Edit skills" position="left">
@@ -761,60 +937,124 @@ Issue: `;
           </div>
 
           {/* Action Menu */}
-          <div className="bg-white rounded-3xl p-2 shadow-xs border border-border mt-4 mb-10">
-            <div className="space-y-1">
-              <button onClick={() => switchRole('poster')} className="w-full flex items-center justify-between text-left text-xs font-bold text-primary hover:bg-primary/5 p-3 rounded-2xl transition-colors cursor-pointer border border-primary/20 bg-primary/5 mb-2">
+          <div className="m3-card rounded-[24px] p-2">
+            <div className="space-y-0.5">
+              <button onClick={() => switchRole('poster')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
                 <div className="flex items-center space-x-3">
-                  <PlusCircle className="w-4.5 h-4.5 text-primary" />
+                  <PlusCircle className="w-4 h-4 text-primary" />
                   <span>Switch to Hirer</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-primary" />
               </button>
 
-              <button onClick={() => pushScreen('tasker_activity')} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <div style={{ height: '13px' }} />
+
+              <button 
+                onClick={() => pushScreen('tasker_activity')} 
+                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
+              >
                 <div className="flex items-center space-x-3">
-                  <Briefcase className="w-4.5 h-4.5 text-gray-400" />
+                  <Briefcase className="w-4 h-4 text-gray-400" />
                   <span>Earnings</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-black text-orange-500 bg-orange-100 px-2 py-0.5 rounded-md">₹{thisMonthEarnings.toLocaleString('en-IN')}</span>
+                  <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                    ₹{(thisMonthEarnings || 0).toLocaleString('en-IN')}
+                  </span>
                   <ChevronRight className="w-4 h-4 text-gray-300" />
                 </div>
               </button>
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
-              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
-                  <Star className="w-4.5 h-4.5 text-gray-400" />
+                  <Star className="w-4 h-4 text-gray-400" />
                   <span>About Us</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
-              <div className="px-3 py-1 text-left">
+              <div className="px-3 py-0.5 text-left">
                 <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Need Help?</span>
               </div>
 
-              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-xs font-bold text-dark hover:bg-gray-50 p-3 rounded-2xl transition-colors cursor-pointer">
+              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
-                  <WhatsAppIcon className="w-4.5 h-4.5 text-green-600 shrink-0" />
+                  <WhatsAppIcon className="w-4 h-4 text-green-600 shrink-0" />
                   <span>WhatsApp Support</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
+              {isAdmin && (
+                <>
+                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-gray-800 hover:bg-gray-100 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                    <div className="flex items-center space-x-3">
+                      <Shield className="w-4 h-4 text-gray-600" />
+                      <span>Admin Dashboard</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300" />
+                  </button>
+                  <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
+                </>
+              )}
 
-              <div className="h-px bg-gray-100 my-2 mx-3"></div>
+              {userId ? (
+                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-red-500 hover:bg-red-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                  <div className="flex items-center space-x-3">
+                    <LogOut className="w-4 h-4 text-red-500" />
+                    <span>Sign Out</span>
+                  </div>
+                </button>
+              ) : (
+                <button onClick={() => setShowLoginModal(true)} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                  <div className="flex items-center space-x-3">
+                    <LogIn className="w-4 h-4 text-primary" />
+                    <span>Sign In / Sign Up</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-primary" />
+                </button>
+              )}
 
-              <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-xs font-bold text-red-500 hover:bg-red-50 p-3 rounded-2xl transition-colors cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <LogOut className="w-4.5 h-4.5 text-red-500" />
-                  <span>Sign Out</span>
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
+
+              {/* Also from ahr dropdown section merged inside card */}
+              <button 
+                onClick={() => setIsAhrOpen(!isAhrOpen)} 
+                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
+              >
+                <div className="flex items-center space-x-1.5">
+                  <span>Also from</span>
+                  <span 
+                    style={{ fontFamily: "'Satisfy', cursive", fontWeight: 800 }} 
+                    className="text-lg text-primary lowercase select-none"
+                  >
+                    ahr
+                  </span>
                 </div>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isAhrOpen ? 'rotate-180' : ''}`} />
               </button>
+              
+              {isAhrOpen && (
+                <div className="mt-1 border-t border-gray-100 pt-1.5 px-3 pb-2 animate-[fadeIn_200ms_ease-in-out]">
+                  <a 
+                    href="https://civiclens.tech" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="flex items-center justify-between py-2.5 px-2 rounded-xl text-xs font-bold text-gray-600 hover:text-primary hover:bg-orange-50/50 transition-all"
+                  >
+                    <span className="flex items-center space-x-2">
+                      <img src="/civiclens-icon.png" alt="CivicLens" className="w-4 h-4 object-contain rounded-[4px]" />
+                      <span>CivicLens</span>
+                    </span>
+                    <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -824,18 +1064,24 @@ Issue: `;
         isOpen={showBirdSelector}
         onClose={() => setShowBirdSelector(false)}
         selectedBird={selectedBird}
-        onSelectBird={(bird) => {
+        onSelectBird={async (bird) => {
           setSelectedBird(bird);
           setShowBirdSelector(false);
+          await setUserProfile({ bird });
           showToast('Avatar updated successfully!');
         }}
+      />
+
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
       />
 
       {/* Skills Editing Modal */}
       {shouldRenderSkillsModal && (
         <div 
           onClick={() => setIsEditingSkills(false)}
-          className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs ${
+          className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 ${
             isAnimatingSkillsOut ? 'modal-backdrop-close' : 'modal-backdrop-open'
           }`}
         >
@@ -857,47 +1103,128 @@ Issue: `;
             </div>
             
             {/* Body */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 bg-gray-50/50">
+            <div className="flex-1 overflow-y-auto px-6 py-6 bg-white">
               <p className="text-xs font-semibold text-gray-500 mb-4">
                 Select the services you want to offer.
               </p>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3 pb-20">
-                {SKILLS.map((skill) => {
-                  const isSelected = editedSkills.includes(skill.id);
-                  return (
-                    <IconLabel
-                      key={skill.id}
-                      icon={skill.icon}
-                      label={skill.label}
-                      selected={isSelected}
-                      onClick={() => {
-                        if (editedSkills.includes(skill.id)) {
-                          setEditedSkills(editedSkills.filter(id => id !== skill.id));
-                        } else {
-                          setEditedSkills([...editedSkills, skill.id]);
-                        }
-                      }}
-                    />
-                  );
-                })}
+              <div className="space-y-6 pb-20">
+                {/* On-site Section */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-1.5 px-1">
+                    <MapPin className="w-3 h-3 text-primary shrink-0" />
+                    <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">On-site &amp; Physical Services</span>
+                  </div>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3">
+                    {SKILLS.filter(s => s.type === 'physical').map((skill) => {
+                      const isSelected = editedSkills.includes(skill.id);
+                      return (
+                        <IconLabel
+                          key={skill.id}
+                          icon={skill.icon}
+                          label={skill.label}
+                          isNew={skill.isNew}
+                          isHighDemand={skill.isHighDemand}
+                          isUrgent={skill.isUrgent}
+                          selected={isSelected}
+                          onClick={() => {
+                            if (editedSkills.includes(skill.id)) {
+                              setEditedSkills(editedSkills.filter(id => id !== skill.id));
+                            } else {
+                              setEditedSkills([...editedSkills, skill.id]);
+                            }
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Online Section */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-1.5 px-1">
+                    <Wifi className="w-3 h-3 text-primary shrink-0" />
+                    <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Online &amp; Remote Services</span>
+                  </div>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3">
+                    {SKILLS.filter(s => s.type === 'remote').map((skill) => {
+                      const isSelected = editedSkills.includes(skill.id);
+                      return (
+                        <IconLabel
+                          key={skill.id}
+                          icon={skill.icon}
+                          label={skill.label}
+                          isNew={skill.isNew}
+                          isHighDemand={skill.isHighDemand}
+                          isUrgent={skill.isUrgent}
+                          selected={isSelected}
+                          onClick={() => {
+                            if (editedSkills.includes(skill.id)) {
+                              setEditedSkills(editedSkills.filter(id => id !== skill.id));
+                            } else {
+                              setEditedSkills([...editedSkills, skill.id]);
+                            }
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="pt-5 mt-4 border-t border-border flex flex-wrap items-center justify-center gap-x-5 gap-y-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary text-white border border-primary">
+                      NEW
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-500">Newly Added</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
+                      <Flame className="w-2.5 h-2.5 fill-current text-white" />
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-500">High Demand</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
+                      <Zap className="w-2.5 h-2.5 fill-current text-white" />
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-500">Quick Match</span>
+                  </div>
+                </div>
               </div>
             </div>
             
             {/* Footer */}
             <div className="px-6 py-4 bg-white border-t border-border shrink-0">
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (editedSkills.length === 0) {
                     alert('Please select at least one skill.');
                     return;
                   }
-                  setUserProfile({ ...profile, skills: editedSkills });
-                  setIsEditingSkills(false);
-                  showToast('Services updated successfully!', 'success');
+                  setIsSavingSkills(true);
+                  try {
+                    const result = await setUserProfile({ skills: editedSkills });
+                    if (result && result.success === false) {
+                      showToast(result.error || 'Failed to save skills. Please try again.', 'error');
+                      return;
+                    }
+                    setIsEditingSkills(false);
+                    showToast('Services updated successfully!', 'success');
+                  } catch (err) {
+                    console.error('Failed to save skills:', err);
+                    showToast('Failed to save skills. Please try again.', 'error');
+                  } finally {
+                    setIsSavingSkills(false);
+                  }
                 }}
-                className="w-full bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer"
+                disabled={isSavingSkills}
+                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-70"
               >
-                Save Services
+                {isSavingSkills ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : null}
+                <span>{isSavingSkills ? 'Saving...' : 'Save Services'}</span>
               </button>
             </div>
           </div>

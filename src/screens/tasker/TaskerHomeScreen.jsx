@@ -1,123 +1,142 @@
-import React, { useState, useContext, useEffect } from 'react';
-import { ToggleLeft, ToggleRight, Wifi, WifiOff, Inbox, MapPin, Users, CheckCircle, Clock } from 'lucide-react';
+import React, { useState, useContext, useEffect, useMemo } from 'react';
+import { Inbox, Users, AlertCircle, RefreshCw, Briefcase } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import JobCard from '../../components/JobCard';
 import Tooltip from '../../components/Tooltip';
-import BirdAvatar from '../../components/BirdAvatars';
-import { SKILLS } from '../../data/mockData';
+import { SKILLS } from '../../config/constants';
 import { getCurrentLocation } from '../../utils/location';
+import { api } from '../../services/api';
+import SetupWizardModal from '../../components/SetupWizardModal';
+import { useProfileCompletion } from '../../hooks/useProfileCompletion';
+
 
 const TaskerHomeScreen = () => {
   const { 
-    userLocation, 
     userProfile, 
     getJobsInRadius, 
-    setShowLocationSheet,
     selectedBird,
-    isOnline,
-    setIsOnline,
     jobs,
     setAcceptedJob,
     pushScreen,
     requireProfile,
     realLocation,
     setRealLocation,
-    setActiveTab
+    setActiveTab,
+    fetchJobs,
+    declineJob,
+    userId,
+    openOnboardingWizard
   } = useContext(AppContext);
+
+  const { missingItems } = useProfileCompletion();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchJobs(true);
+    setIsRefreshing(false);
+  };
+
+  useEffect(() => {
+    fetchJobs();
+    const retryTimer = setTimeout(() => fetchJobs(), 1500);
+    return () => clearTimeout(retryTimer);
+  }, [fetchJobs]);
 
   const [declinedJobIds, setDeclinedJobIds] = useState([]);
 
-  const handleDeclineJob = (jobId) => {
+  const handleDeclineJob = async (jobId) => {
     setDeclinedJobIds(prev => [...prev, jobId]);
+    await declineJob(jobId);
   };
 
-  const { jobsList = [], radius = 5, message = '' } = getJobsInRadius();
+  const visibleJobs = useMemo(() => {
+    const { jobsList = [] } = getJobsInRadius() || {};
+    return jobsList.filter(job => 
+      !declinedJobIds.includes(job?.id) && 
+      job?.posterId !== userProfile?.id
+    );
+  }, [getJobsInRadius, declinedJobIds, userProfile?.id]);
 
-  const visibleJobs = jobsList.filter(job => 
-    !declinedJobIds.includes(job.id) && 
-    job.posterId !== userProfile?.id
-  );
+  const matchingSkillsJobs = useMemo(() => {
+    return visibleJobs.filter(job => 
+      userProfile?.skills && Array.isArray(userProfile.skills) ? userProfile.skills.includes(job?.skillId) : false
+    );
+  }, [visibleJobs, userProfile]);
 
-  const matchingSkillsJobs = visibleJobs.filter(job => 
-    userProfile?.skills?.includes(job.skillId)
-  );
+  const otherLocalJobs = useMemo(() => {
+    return visibleJobs.filter(job => 
+      userProfile?.skills && Array.isArray(userProfile.skills) ? !userProfile.skills.includes(job?.skillId) : true
+    );
+  }, [visibleJobs, userProfile]);
 
-  const displayActiveTasks = jobs.filter(job => 
-    (job.taskerId === userProfile?.id || job.taskerName === userProfile?.name) &&
-    (job.status === 'active' || job.status === 'in_progress')
-  );
+  const displayActiveTasks = useMemo(() => {
+    return (jobs || []).filter(job => 
+      job?.isAcceptedByMe &&
+      (job?.v2_status === 'searching' || job?.v2_status === 'accepted' || job?.v2_status === 'in_progress')
+    );
+  }, [jobs]);
+
+  const isProfileReady = useMemo(() => {
+    const hasSkills = userProfile?.skills && Array.isArray(userProfile.skills) && userProfile.skills.length > 0;
+    const hasServiceArea = !!(userProfile?.serviceAreaLat && userProfile?.serviceAreaLng);
+    return !!userId && hasSkills && hasServiceArea;
+  }, [userId, userProfile]);
+
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    
+    // Log views for visible jobs
+    const jobsToLog = visibleJobs.filter(job => job?.status === 'open');
+    if (jobsToLog.length === 0) return;
+    
+    // Use sessionStorage to remember which jobs we've already logged as viewed in this session
+    const viewedJobs = JSON.parse(sessionStorage.getItem('viewedJobs') || '[]');
+    let updated = false;
+    
+    jobsToLog.forEach(job => {
+      if (!viewedJobs.includes(job.id)) {
+        api.logEvent('job_viewed', { 
+          userId: userProfile.id, 
+          role: 'tasker', 
+          entityId: job.id 
+        });
+        viewedJobs.push(job.id);
+        updated = true;
+      }
+    });
+    
+    if (updated) {
+      sessionStorage.setItem('viewedJobs', JSON.stringify(viewedJobs));
+    }
+  }, [visibleJobs, userProfile?.id]);
 
   return (
-    <div className="flex-1 flex flex-col bg-light-gray h-full select-none">
+    <div className="flex-1 flex flex-col bg-white h-full select-none">
       
-      {/* Top sticky block */}
-      <div className="sticky top-0 z-40 bg-white shadow-xs lg:hidden">
-        {/* Header bar with Online toggle & Radius */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center space-x-3">
-            <span 
-              onClick={() => setActiveTab('profile')}
-              className="text-sm font-black text-dark cursor-pointer hover:text-primary transition-colors"
-            >
-              Hi, {userProfile?.name?.split(' ')[0] || 'Tasker'}
-            </span>
-            <Tooltip text={`Jobs are queried in your surrounding radius`}>
-              <div className="text-[9px] font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20 shrink-0">
-                Radius: {radius}km
-              </div>
+      {/* Main Content Feed */}
+      <div className="flex-1 overflow-y-auto no-scrollbar">
+        <div className="px-4 pt-6 pb-28 space-y-6 max-w-md mx-auto w-full">
+        {/* Start Earning Button */}
+        {(!userId || missingItems.length > 0) && (
+          <div className="flex justify-center w-full">
+            <Tooltip text="Complete configuration to start accepting jobs">
+              <button
+                onClick={() => openOnboardingWizard()}
+                className="flex items-center justify-center bg-primary hover:bg-[#D94F0A] text-white px-6 py-2.5 rounded-full shadow-md hover:shadow-lg active:scale-[0.98] transition-all cursor-pointer font-bold text-sm tracking-wide"
+              >
+                <Briefcase className="w-4 h-4 mr-1.5 stroke-[2.5]" />
+                <span>Start Earning</span>
+              </button>
             </Tooltip>
           </div>
-
-          {/* Online / Offline Toggle */}
-          <Tooltip text={isOnline ? 'Go Offline' : 'Go Online'}>
-            <button
-              onClick={() => setIsOnline(!isOnline)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full border border-border cursor-pointer select-none"
-            >
-              {isOnline ? (
-                <>
-                  <Wifi className="w-3.5 h-3.5 text-green-500 animate-pulse" />
-                  <span className="text-[10px] font-black uppercase text-green-600">Online</span>
-                  <ToggleRight className="w-5 h-5 text-green-500 shrink-0" />
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="text-[10px] font-black uppercase text-gray-500">Offline</span>
-                  <ToggleLeft className="w-5 h-5 text-gray-400 shrink-0" />
-                </>
-              )}
-            </button>
-          </Tooltip>
-        </div>
-      </div>
-
-      {/* Main Content Feed */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 max-w-md lg:max-w-2xl lg:px-8 mx-auto w-full">
-        {/* Guest Banner */}
-        {(!userProfile?.skills || userProfile.skills.length === 0) && (
-          <div 
-            onClick={() => pushScreen('tasker_onboarding')}
-            className="bg-orange-50 border border-primary/20 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-orange-100 transition-colors shadow-sm"
-          >
-            <div>
-              <h4 className="text-sm font-black text-primary">Setup your skills</h4>
-              <p className="text-[10px] font-bold text-primary/80 mt-0.5">Select what tasks you can do to get matched!</p>
-            </div>
-            <div className="bg-white p-2 rounded-xl text-primary shadow-xs shrink-0">
-              <CheckCircle className="w-5 h-5" />
-            </div>
-          </div>
         )}
+
 
         {/* My Active Tasks Section */}
         {displayActiveTasks.length > 0 && (
           <div className="space-y-3 pb-4">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-[11px] font-extrabold uppercase tracking-widest text-blue-500">
-                My Active Tasks
-              </span>
-            </div>
             {displayActiveTasks.map((job) => {
               const skill = SKILLS.find(s => s.id === job.skillId) || SKILLS[0];
               const Icon = skill.icon;
@@ -131,7 +150,7 @@ const TaskerHomeScreen = () => {
                       pushScreen('tasker_accepted_job');
                     });
                   }}
-                  className="bg-white border border-blue-100 rounded-2xl p-4 shadow-sm relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                  className="glass-card rounded-2xl p-4 relative overflow-hidden cursor-pointer active-scale transition-all duration-300 hover:!border-blue-400/60"
                 >
                   <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>
                   <div className="flex items-start justify-between mb-3">
@@ -170,50 +189,96 @@ const TaskerHomeScreen = () => {
           </div>
         )}
 
-        {!isOnline ? (
-          <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 bg-white rounded-3xl p-6 border border-border">
-            <div className="p-4 bg-gray-100 rounded-full text-gray-400">
-              <WifiOff className="w-10 h-10" />
+        {!isProfileReady ? (
+          <div className="flex flex-col items-center justify-center text-center space-y-4 py-12 px-6 glass-card rounded-[32px] my-4 max-w-md mx-auto w-full">
+            <div className="p-4.5 bg-primary/10 text-primary rounded-full shrink-0">
+              <Briefcase className="w-10 h-10 stroke-[2.2]" />
             </div>
-            <h3 className="text-base font-black text-dark">You are Offline</h3>
-            <p className="text-xs font-semibold text-gray-400 max-w-[200px]">
-              Turn online to see real-time task requests in your location.
-            </p>
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-dark tracking-tight">Complete Helper Profile</h3>
+              <p className="text-xs font-semibold text-gray-400 max-w-[280px] mx-auto leading-normal">
+                To start getting task notifications and browsing open tasks nearby, please select your skills and define your service range.
+              </p>
+            </div>
           </div>
         ) : visibleJobs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 bg-white rounded-3xl p-6 border border-border">
+          <div className="flex flex-col items-center justify-center text-center space-y-3 py-20 glass-card rounded-3xl p-6">
             <div className="p-4 bg-orange-50 rounded-full text-primary">
               <Inbox className="w-10 h-10" />
             </div>
-            <h3 className="text-base font-black text-dark">No Tasks Nearby</h3>
+            <h3 className="text-base font-black text-dark">No Open Tasks Right Now</h3>
             <p className="text-xs font-semibold text-gray-400 max-w-[220px]">
-              We couldn't find open tasks even after expanding to 5km radius.
+              No tasks posted on campus yet. Check back soon!
             </p>
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="mt-2 flex items-center space-x-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/15 text-primary disabled:opacity-75 active-scale transition-all rounded-xl text-xs font-bold cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing ? 'Refreshing...' : 'Refresh Feed'}</span>
+            </button>
           </div>
         ) : (
           <div className="space-y-6 pb-20">
-            {/* Radius Expansion Info Alert */}
-            {message && (
-              <div className="bg-orange-50 border border-primary/20 rounded-xl px-3 py-2 text-center text-[11px] text-primary font-bold animate-pulse">
-                🔍 {message}
+            {/* Section 1: Matching Skills */}
+            {matchingSkillsJobs.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
+                      Tasks Matching Your Skills
+                    </span>
+                    <button
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      className="p-1 rounded-lg text-gray-400 hover:text-primary hover:bg-gray-100 transition-colors flex items-center justify-center cursor-pointer"
+                      title="Refresh tasks"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                  <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                    {matchingSkillsJobs.length} Live
+                  </span>
+                </div>
+                {matchingSkillsJobs.map((job, idx) => (
+                  <JobCard
+                    key={job?.id || idx}
+                    job={{ ...job, distance: `${job?.distanceVal || 0} km` }}
+                    onDecline={handleDeclineJob}
+                  />
+                ))}
               </div>
             )}
 
-            {/* Section 1: Matching Skills or All Open Tasks */}
-            {((userProfile?.skills?.length > 0 ? matchingSkillsJobs : visibleJobs).length > 0) && (
+            {/* Section 2: Other Local Fallback Tasks */}
+            {otherLocalJobs.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-                    {userProfile?.skills?.length > 0 ? 'Jobs Matching Your Skills' : 'Open Tasks Nearby'}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
+                      Other Tasks in Your Area
+                    </span>
+                    {matchingSkillsJobs.length === 0 && (
+                      <button
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        className="p-1 rounded-lg text-gray-400 hover:text-primary hover:bg-gray-100 transition-colors flex items-center justify-center cursor-pointer"
+                        title="Refresh tasks"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      </button>
+                    )}
+                  </div>
                   <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                    {(userProfile?.skills?.length > 0 ? matchingSkillsJobs : visibleJobs).length} Live
+                    {otherLocalJobs.length} Live
                   </span>
                 </div>
-                {(userProfile?.skills?.length > 0 ? matchingSkillsJobs : visibleJobs).map((job) => (
+                {otherLocalJobs.map((job, idx) => (
                   <JobCard
-                    key={job.id}
-                    job={{ ...job, distance: `${job.distanceVal} km` }}
+                    key={job?.id || idx}
+                    job={{ ...job, distance: `${job?.distanceVal || 0} km` }}
                     onDecline={handleDeclineJob}
                   />
                 ))}
@@ -221,6 +286,7 @@ const TaskerHomeScreen = () => {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

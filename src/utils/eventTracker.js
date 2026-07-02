@@ -6,15 +6,13 @@ import { api } from '../services/api';
  */
 
 export const trackEvent = (eventType, payload = {}) => {
-  const { userId, role, entityId, metadata } = payload;
-  
-  // EVENT TRACKING DISABLED FOR MVP CONSTRUCTION
-  // To re-enable event instrumentation once flows are stable, 
-  // remove the early return below.
-  return;
-  
-  // Fire and forget - do not await to avoid blocking UI
-  api.logEvent(eventType, payload);
+  try {
+    // Fire and forget - never await, never block UI
+    api.logEvent(eventType, payload);
+  } catch (e) {
+    // Analytics must NEVER crash the app or block user actions
+    // Silently swallow any synchronous errors
+  }
 };
 
 /**
@@ -27,13 +25,22 @@ export const EVENTS = {
   LOGOUT: 'logout',
   ROLE_SWITCH: 'role_switch',
   
-  // Marketplace
+  // Marketplace Flow
   TASK_CREATION: 'task_creation',
   TASK_VIEWED: 'task_viewed',
   TASK_APPLICATION: 'task_application', // if taskers apply to jobs
   TASK_ACCEPTANCE: 'task_acceptance',
   TASK_COMPLETION: 'task_completion',
   TASK_CANCELLATION: 'task_cancellation',
+  
+  // V2 Marketplace Metrics
+  WAITLIST_JOINED: 'waitlist_joined',
+  WAITLIST_SHARED: 'waitlist_shared',
+  NODE_ACTIVATED: 'node_activated',
+  COVERAGE_AREA_DEFINED: 'coverage_area_defined',
+  PRESENCE_ONLINE: 'presence_online',
+  FIRST_JOB_COMPLETED: 'first_job_completed',
+  FIRST_JOB_FAILED: 'first_job_failed',
   
   // Trust
   RATING_SUBMITTED: 'rating_submitted',
