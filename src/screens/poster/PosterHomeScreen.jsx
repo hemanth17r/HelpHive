@@ -139,19 +139,6 @@ const PosterHomeScreen = () => {
       <div className="flex-1 overflow-y-auto no-scrollbar">
         <div className="px-4 pt-6 pb-24 space-y-6 max-w-md mx-auto w-full">
         
-        {/* Post a Task Button */}
-        <div className="flex justify-center w-full">
-          <Tooltip text="Create a new task request">
-            <button
-              onClick={handlePostJobClick}
-              className="flex items-center justify-center bg-primary hover:bg-[#D94F0A] text-white px-6 py-2.5 rounded-full shadow-md hover:shadow-lg active:scale-[0.98] transition-all cursor-pointer font-bold text-sm tracking-wide"
-            >
-              <Plus className="w-4 h-4 mr-1.5 stroke-[2.5]" />
-              <span>Post a Task</span>
-            </button>
-          </Tooltip>
-        </div>
-
         {/* My Active Jobs Section */}
         <div className="space-y-4">
           <div className="flex justify-end px-1">
@@ -278,6 +265,20 @@ const PosterHomeScreen = () => {
               })}
             </div>
           )}
+        </div>
+
+        {/* Post a Task Button */}
+        <div className="flex flex-col items-center justify-center w-full">
+          <div style={{ height: '30px' }} />
+          <Tooltip text="Create a new task request">
+            <button
+              onClick={handlePostJobClick}
+              className="flex items-center justify-center bg-primary hover:bg-[#D94F0A] text-white px-6 py-2.5 rounded-full shadow-md hover:shadow-lg active:scale-[0.98] transition-all cursor-pointer font-bold text-sm tracking-wide"
+            >
+              <Plus className="w-4 h-4 mr-1.5 stroke-[2.5]" />
+              <span>Post a Task</span>
+            </button>
+          </Tooltip>
         </div>
 
 

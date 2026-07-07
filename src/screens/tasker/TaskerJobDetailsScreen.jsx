@@ -238,14 +238,10 @@ const TaskerJobDetailsScreen = () => {
       <div className="flex-1 flex flex-col justify-between bg-white px-6 py-6 overflow-y-auto select-none">
         
         {/* Header */}
-        <div className="text-center pb-3 border-b border-border shrink-0">
-          <div className="inline-flex items-center space-x-1.5 text-[10px] font-black tracking-widest text-primary bg-primary/10 px-2.5 py-1 rounded-full uppercase border border-primary/20">
-            <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
-            <span>Waiting Room</span>
-          </div>
-          <h2 className="text-base font-extrabold text-dark mt-2">
-            Waiting for other Helpers...
-          </h2>
+        <div className="text-center shrink-0">
+          <span className="text-xs font-semibold text-gray-400">
+            Waiting for other helpers...
+          </span>
         </div>
 
         {/* Main Details */}
@@ -386,13 +382,10 @@ const TaskerJobDetailsScreen = () => {
     <div className="flex-1 flex flex-col justify-between bg-white px-6 py-6 overflow-y-auto select-none">
       
       {/* Header */}
-      <div className="text-center pb-3 border-b border-border shrink-0">
-        <span className="text-[10px] font-black tracking-widest text-primary bg-primary/10 px-2.5 py-1 rounded-full uppercase">
-          {isVerified ? 'Active Engagement' : 'Confirmed'}
+      <div className="text-center shrink-0">
+        <span className="text-xs font-semibold text-gray-400">
+          {isVerified ? 'Working on task...' : 'Head to customer...'}
         </span>
-        <h2 className="text-base font-extrabold text-dark mt-2">
-          {isVerified ? 'Working on Task' : 'Head to Customer'}
-        </h2>
       </div>
 
       {/* Main details */}
@@ -547,16 +540,14 @@ const TaskerJobDetailsScreen = () => {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Buttons Footer */}
-      <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-4 shrink-0 space-y-3 pb-6">
+        {/* Buttons Section */}
         {isVerified && (acceptedJob.peopleNeeded || 1) === 1 && (
-          <Tooltip text="Mark task as fully completed">
+          <Tooltip text="Mark task as fully completed" className="w-full flex justify-center">
             <button
               onClick={handleComplete}
               disabled={isCompleting || isCancelling}
-              className="w-full flex justify-center items-center gap-2 font-black py-4 px-6 rounded-2xl transition-all bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20 active:scale-[0.99] cursor-pointer disabled:opacity-70"
+              className="w-full max-w-md flex justify-center items-center gap-2 font-black py-4 px-6 rounded-2xl transition-all bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20 active:scale-[0.99] cursor-pointer disabled:opacity-70 mx-auto"
             >
               {isCompleting ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -571,31 +562,15 @@ const TaskerJobDetailsScreen = () => {
         <button
           onClick={handleCancelTask}
           disabled={isCompleting || isCancelling}
-          className="w-full flex justify-center items-center gap-2 py-3.5 border border-red-200 text-red-500 rounded-2xl text-xs font-bold hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+          className="w-full max-w-md flex justify-center items-center gap-2 py-3.5 border border-red-200 text-red-500 rounded-2xl text-xs font-bold hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed mx-auto"
         >
           {isCancelling ? (
             <div className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
           ) : null}
           <span>{isCancelling ? 'Cancelling...' : 'Cancel Task'}</span>
         </button>
-
-        {/* Divider */}
-        <hr className="border-border my-2" />
-
-        {/* Need Help Section */}
-        <div className="space-y-2">
-          <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
-            Need Help?
-          </h4>
-          <button
-            onClick={handleWhatsAppSupport}
-            className="flex items-center space-x-2 text-xs font-bold text-gray-500 hover:text-green-600 transition-colors cursor-pointer bg-white border border-border hover:border-green-200 hover:bg-green-50/10 px-4 py-3 rounded-xl w-full"
-          >
-            <WhatsAppIcon className="w-4 h-4 text-green-600 shrink-0" />
-            <span>Support</span>
-          </button>
-        </div>
       </div>
+
 
       {/* Custom Confirmation Modal */}
       {showCancelModal && (

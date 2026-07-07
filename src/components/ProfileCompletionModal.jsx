@@ -132,7 +132,7 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-white shrink-0">
           <div>
-            <h2 className="text-lg font-black text-dark">Complete Profile</h2>
+            <h2 className="text-base font-bold text-dark tracking-tight">Complete Profile</h2>
             <p className="text-xs font-semibold text-gray-500 mt-0.5">Required to continue</p>
           </div>
           <div className="flex items-center space-x-3">

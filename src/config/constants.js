@@ -1,11 +1,12 @@
 import {
   Package,
   HeartHandshake,
-  Truck,
+  Boxes,
   Home,
   Users,
   Camera,
   HelpCircle,
+  Clock,
   Video,
   Palette,
   FileText,
@@ -16,108 +17,119 @@ import {
 const CONFIG_CATEGORIES = [
   // --- On-site / Physical Services ---
   {
+    id: 'moving',
+    label: 'Shift & Load',
+    shortLabel: 'Shift & Load',
+    icon: Boxes,
+    type: 'physical',
+    isHighDemand: true,
+    description: 'Lifting, loading, unloading, and shifting heavy items',
+    matchingBehavior: 'location_critical',
+    examples: [
+      'Need 2 people to carry furniture down 3 floors and load a truck',
+      'Help rearrange heavy wardrobes, beds, and tables inside the house',
+      'Unload heavy appliances from a delivery vehicle into the kitchen'
+    ]
+  },
+  {
     id: 'errands',
-    label: 'Errands & Deliveries',
-    shortLabel: 'Errands',
+    label: 'Local Deliveries',
+    shortLabel: 'Local Deliveries',
     icon: Package,
     type: 'physical',
     isUrgent: true,
-    description: 'Pickups, deliveries, and errands',
+    description: 'Quick pickups and drop-offs around the city',
     matchingBehavior: 'location_critical',
     examples: [
-      'Pick up groceries',
-      'Deliver a package',
-      'Pick up a prescription',
-      'Wait in line for an item'
+      'Forgot keys at a cafe. Need someone to pick them up and bring them to me',
+      'Buy prescription medicine from the pharmacy nearby and drop it off',
+      'Deliver a signed document to a client\'s office 3 km away'
+    ]
+  },
+  {
+    id: 'queue_standing',
+    label: 'Queue Standing & Waiting',
+    shortLabel: 'Queue Standing & Waiting',
+    icon: Clock,
+    type: 'physical',
+    isNew: true,
+    description: 'Waiting in physical lines on your behalf',
+    matchingBehavior: 'location_critical',
+    examples: [
+      'Stand in line at 6:00 AM at the hospital registry to secure a token',
+      'Wait outside a visa center or government office to submit a form',
+      'Wait in line for limited concert tickets or product drops'
     ]
   },
   {
     id: 'personal_assistance',
-    label: 'Personal Assistance',
-    shortLabel: 'Assist',
+    label: 'Companion Help',
+    shortLabel: 'Companion Help',
     icon: HeartHandshake,
     type: 'physical',
-    description: 'Queue standing, accompanying, and personal help',
+    description: 'Personal accompaniment and physical navigation support',
     matchingBehavior: 'location_critical',
     examples: [
-      'Personal shopping help',
-      'Appointment assistance',
-      'Administrative assistance',
-      'Senior companionship'
-    ]
-  },
-  {
-    id: 'moving',
-    label: 'Moving & Heavy Lifting',
-    shortLabel: 'Moving',
-    icon: Truck,
-    type: 'physical',
-    isHighDemand: true,
-    description: 'Heavy lifting and moving assistance',
-    matchingBehavior: 'location_critical',
-    examples: [
-      'Move furniture',
-      'Load or unload a truck',
-      'Help with moving homes',
-      'Lift heavy items'
+      'Escort an elderly relative to a clinic appointment and push wheelchair',
+      'Help a physically disabled person navigate public office counters',
+      'Accompany you to a crowded market to help carry bags'
     ]
   },
   {
     id: 'local_helpers',
-    label: 'Home Help',
-    shortLabel: 'Home Help',
+    label: 'Household Help',
+    shortLabel: 'Household Help',
     icon: Home,
     type: 'physical',
-    description: 'Furniture assembly, yard cleanup, and household tasks',
+    description: 'Hands-on help with organizing, assembly, and domestic tasks',
     matchingBehavior: 'location_critical',
     examples: [
-      'Furniture assembly',
-      'Organizing a room or garage',
-      'Yard cleanup',
-      'Household assistance'
+      'Assemble an IKEA study desk or wardrobe',
+      'Clear dry leaves, prune weeds, and move flower pots in my garden',
+      'Help empty, wipe down, and organize my kitchen cabinets'
     ]
   },
   {
     id: 'events',
-    label: 'Events & Staffing',
-    shortLabel: 'Events',
+    label: 'Event Helpers',
+    shortLabel: 'Event Helpers',
     icon: Users,
     type: 'physical',
-    description: 'Temporary workers and event assistance',
+    description: 'Setup, teardown, and hosting assistance for events and parties',
     matchingBehavior: 'location_important',
     examples: [
-      'Event setup',
-      'Event teardown',
-      'Registration desk assistance',
-      'Temporary event staffing'
+      'Blow up balloons, hang banners, and arrange tables for a party',
+      'Help pack up decorations, stack rented chairs, and collect trash post-event',
+      'Greet guests and handle the reception desk at a local seminar'
     ]
   },
   {
     id: 'creative',
-    label: 'Cameraman & Vlog Shooting',
-    shortLabel: 'Cameraman',
+    label: 'Vlog Cameraman',
+    shortLabel: 'Vlog Cameraman',
     icon: Camera,
     type: 'physical',
     isNew: true,
-    description: 'Hire a cameraman to shoot vlogs, videos, and events locally',
+    description: 'A local person to record your vlogs, videos, and events',
     matchingBehavior: 'location_important',
     examples: [
-      'Shoot a YouTube Vlog',
-      'Cameraman for local streamer',
-      'Shoot a local event',
-      'B-roll local videography'
+      'Hold my phone/gimbal to film a street food vlog or Reels',
+      'Shoot raw video clips of a housewarming party using a phone/camera',
+      'Record a local live stream setup or capture local B-roll footage'
     ]
   },
   {
     id: 'others_physical',
-    label: 'Others (On-site)',
-    shortLabel: 'Others',
+    label: 'Custom On-Site Help',
+    shortLabel: 'Custom On-Site Help',
     icon: HelpCircle,
     type: 'physical',
-    description: 'Any other miscellaneous physical tasks',
+    description: 'Any custom physical task or odd job not covered by other categories',
     matchingBehavior: 'generic',
     examples: [
-      'On-site tasks not covered by the categories above'
+      'Walk my dog around the park for 30 minutes',
+      'Hand out flyers for my new bakery at the local market corner',
+      'Supervise an internet installation technician while I work from home'
     ]
   },
 

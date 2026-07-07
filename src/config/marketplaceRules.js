@@ -19,6 +19,7 @@ export const MARKETPLACE_RULES = {
     local_helpers: 'nearby',
     errands: 'local',
     personal_assistance: 'local',
+    queue_standing: 'local',
     events: 'flexible',
     creative: 'flexible',
     others_physical: 'local',

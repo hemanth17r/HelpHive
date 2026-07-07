@@ -50,13 +50,6 @@ const DevToolsPanel = () => {
       role: 'tasker',
       desc: 'Third Test Tasker close by (1.5km, online, moving & video skills)',
       color: 'from-purple-500 to-pink-500'
-    },
-    {
-      id: '023288da-7cab-4bc7-99ef-affe319e3513',
-      name: 'HR',
-      role: 'tasker',
-      desc: 'Developer debug Tasker account (falcon bird avatar)',
-      color: 'from-gray-500 to-slate-500'
     }
   ];
 
@@ -108,7 +101,7 @@ const DevToolsPanel = () => {
             <div className="flex items-center space-x-2">
               <Sparkles className="w-5 h-5 text-primary animate-pulse" />
               <h2 className="text-sm font-black text-white tracking-widest uppercase">
-                HelpHive Debug Console
+                HelpHive Test Console
               </h2>
             </div>
             <button
@@ -143,7 +136,7 @@ const DevToolsPanel = () => {
             <div className="flex flex-col space-y-1">
               <span className="text-xs font-black text-orange-400">Notification Protection Active</span>
               <p className="text-[11px] text-gray-300 leading-relaxed font-semibold">
-                To test matching safely without notifying real users, prefix your job description with <strong className="text-white bg-orange-500/20 px-1 rounded">[TEST]</strong>. The system will restrict matching strictly to test accounts.
+                To test matching safely without notifying real users, prefix your task description with <strong className="text-white bg-orange-500/20 px-1 rounded">[TEST]</strong>. The system will restrict matching strictly to test accounts.
               </p>
             </div>
           </div>
@@ -185,7 +178,7 @@ const DevToolsPanel = () => {
             <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Copy Test Templates</span>
             <div className="flex flex-col space-y-2">
               {[
-                '[TEST] Physical moving job',
+                '[TEST] Physical moving task',
                 '[TEST] Remote website design support'
               ].map((template) => {
                 const isCopied = copiedText === template;

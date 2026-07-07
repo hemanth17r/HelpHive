@@ -84,11 +84,11 @@ Issue: `;
   }, [jobs, userId, userProfile?.id, userProfile?.name]);
 
   const activeTaskerJobs = useMemo(() => {
-    return taskerJobs.filter(j => ['active', 'in_progress'].includes(j?.status)).length;
+    return taskerJobs.filter(j => ['active', 'in_progress'].includes(j?.status) && !j?.completedByMe).length;
   }, [taskerJobs]);
 
   const completedJobs = useMemo(() => {
-    return taskerJobs.filter(j => j?.status === 'completed');
+    return taskerJobs.filter(j => j?.status === 'completed' || j?.completedByMe);
   }, [taskerJobs]);
 
   const completedTaskerJobsCount = useMemo(() => {
@@ -232,9 +232,9 @@ Issue: `;
               popScreen();
             }
           }}
-          className="absolute top-4 left-4 p-2 rounded-full bg-white hover:bg-gray-100 text-dark border border-border cursor-pointer transition-colors shadow-2xs lg:hidden"
+          className="absolute top-4 left-4 p-2 rounded-full hover:bg-gray-100 active:bg-gray-200/50 text-dark cursor-pointer transition-colors lg:hidden"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-5 h-5" />
         </button>
       </div>
 
@@ -245,20 +245,20 @@ Issue: `;
             <Tooltip text="Tap to change avatar" position="top">
               <button 
                 onClick={() => setShowBirdSelector(true)}
-                className="w-[88px] h-[88px] rounded-full -mt-16 mb-3 flex items-center justify-center cursor-pointer hover:scale-105 transition-all active:scale-95 p-[3px]"
+                className="w-[88px] h-[88px] rounded-full -mt-16 mb-3 flex items-center justify-center cursor-pointer hover:scale-105 transition-all active:scale-95 p-[2px]"
                 style={{ background: `conic-gradient(#FF6B35 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)` }}
               >
-                <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-[3px] border-white shadow-md">
+                <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-[2px] border-white shadow-md">
                   <BirdAvatar birdName={selectedBird} size={64} />
                 </div>
               </button>
             </Tooltip>
             
             <div className="flex flex-col items-center w-full">
-              <h2 className="text-xl font-black text-dark leading-tight">{profile.name}</h2>
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full mt-2 flex items-center gap-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full mb-2 flex items-center gap-1">
                 Hirer
               </span>
+              <h2 className="text-xl font-black text-dark leading-tight">{profile.name}</h2>
             </div>
           </div>
 
@@ -503,7 +503,7 @@ Issue: `;
           {/* Action Menu */}
           <div className="m3-card rounded-[24px] p-2">
             <div className="space-y-0.5">
-              <button onClick={() => switchRole('tasker')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
+              <button onClick={() => switchRole('tasker', true)} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
                 <div className="flex items-center space-x-3">
                   <Briefcase className="w-4 h-4 text-primary" />
                   <span>Switch to Tasker</span>
@@ -526,30 +526,6 @@ Issue: `;
 
               <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
-              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <Star className="w-4 h-4 text-gray-400" />
-                  <span>About Us</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-300" />
-              </button>
-
-              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
-
-              <div className="px-3 py-0.5 text-left">
-                <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Need Help?</span>
-              </div>
-
-              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <WhatsAppIcon className="w-4 h-4 text-green-600 shrink-0" />
-                  <span>WhatsApp Support</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-300" />
-              </button>
-
-              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
-
               {isAdmin && (
                 <>
                   <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-gray-800 hover:bg-gray-100 py-2 px-3 rounded-xl transition-colors cursor-pointer">
@@ -562,6 +538,16 @@ Issue: `;
                   <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
                 </>
               )}
+
+              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                <div className="flex items-center space-x-3">
+                  <Star className="w-4 h-4 text-gray-400" />
+                  <span>About Us</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+              </button>
+
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
               {userId ? (
                 <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-red-500 hover:bg-red-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
@@ -579,6 +565,20 @@ Issue: `;
                   <ChevronRight className="w-4 h-4 text-primary" />
                 </button>
               )}
+
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
+
+              <div className="px-3 py-0.5 text-left">
+                <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Need Help?</span>
+              </div>
+
+              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                <div className="flex items-center space-x-3">
+                  <WhatsAppIcon className="w-4 h-4 text-green-600 shrink-0" />
+                  <span>WhatsApp Support</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+              </button>
 
               <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
@@ -626,20 +626,20 @@ Issue: `;
             <Tooltip text="Tap to change avatar" position="top">
               <button 
                 onClick={() => setShowBirdSelector(true)}
-                className="w-[88px] h-[88px] rounded-full -mt-16 mb-3 flex items-center justify-center cursor-pointer hover:scale-105 transition-all active:scale-95 p-[3px]"
+                className="w-[88px] h-[88px] rounded-full -mt-16 mb-3 flex items-center justify-center cursor-pointer hover:scale-105 transition-all active:scale-95 p-[2px]"
                 style={{ background: `conic-gradient(#FF6B35 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)` }}
               >
-                <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-[3px] border-white shadow-md">
+                <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-[2px] border-white shadow-md">
                   <BirdAvatar birdName={selectedBird} size={64} />
                 </div>
               </button>
             </Tooltip>
             
             <div className="flex flex-col items-center w-full">
-              <h2 className="text-xl font-black text-dark leading-tight">{profile.name}</h2>
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full mt-2 flex items-center gap-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full mb-2 flex items-center gap-1">
                 Tasker
               </span>
+              <h2 className="text-xl font-black text-dark leading-tight">{profile.name}</h2>
             </div>
           </div>
 
@@ -939,7 +939,7 @@ Issue: `;
           {/* Action Menu */}
           <div className="m3-card rounded-[24px] p-2">
             <div className="space-y-0.5">
-              <button onClick={() => switchRole('poster')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
+              <button onClick={() => switchRole('poster', true)} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
                 <div className="flex items-center space-x-3">
                   <PlusCircle className="w-4 h-4 text-primary" />
                   <span>Switch to Hirer</span>
@@ -964,29 +964,6 @@ Issue: `;
                   <ChevronRight className="w-4 h-4 text-gray-300" />
                 </div>
               </button>
-              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
-
-              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <Star className="w-4 h-4 text-gray-400" />
-                  <span>About Us</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-300" />
-              </button>
-
-              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
-
-              <div className="px-3 py-0.5 text-left">
-                <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Need Help?</span>
-              </div>
-
-              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <WhatsAppIcon className="w-4 h-4 text-green-600 shrink-0" />
-                  <span>WhatsApp Support</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-300" />
-              </button>
 
               <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
@@ -1002,6 +979,16 @@ Issue: `;
                   <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
                 </>
               )}
+
+              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                <div className="flex items-center space-x-3">
+                  <Star className="w-4 h-4 text-gray-400" />
+                  <span>About Us</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+              </button>
+
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
               {userId ? (
                 <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-red-500 hover:bg-red-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
@@ -1019,6 +1006,20 @@ Issue: `;
                   <ChevronRight className="w-4 h-4 text-primary" />
                 </button>
               )}
+
+              <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
+
+              <div className="px-3 py-0.5 text-left">
+                <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Need Help?</span>
+              </div>
+
+              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                <div className="flex items-center space-x-3">
+                  <WhatsAppIcon className="w-4 h-4 text-green-600 shrink-0" />
+                  <span>WhatsApp Support</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+              </button>
 
               <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 

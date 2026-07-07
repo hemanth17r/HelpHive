@@ -346,7 +346,7 @@ const TaskerOnboardingScreen = () => {
               Where Can You Work?
             </h2>
             <p className="text-xs font-semibold text-gray-400 mb-4">
-              Set your coverage area so we can match you with local jobs.
+              Set your coverage area so we can match you with local tasks.
             </p>
             
             {/* Map Preview First */}
@@ -438,12 +438,12 @@ const TaskerOnboardingScreen = () => {
       </div>
 
       {/* Button footer */}
-      <div className="max-w-md lg:max-w-3xl lg:px-4 mx-auto w-full pt-4 shrink-0 border-t border-border mt-4">
-        <Tooltip text={step === 1 ? 'Next to Service Area' : (routeParams?.editServiceAreaOnly ? 'Save service area changes' : 'Start earning with selected area')}>
+      <div className="max-w-md lg:max-w-3xl lg:px-4 mx-auto w-full pt-4 shrink-0 border-t border-border mt-4 flex justify-center">
+        <Tooltip text={step === 1 ? 'Next to Service Area' : (routeParams?.editServiceAreaOnly ? 'Save service area changes' : 'Start earning with selected area')} className="w-full flex justify-center">
           <button
             onClick={handleNextStep}
             disabled={isLoading}
-            className={`w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
+            className={`w-full max-w-md flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
           >
             {isLoading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

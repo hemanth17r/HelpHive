@@ -109,7 +109,6 @@ const AdminDashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [activeTimeRange, setActiveTimeRange] = useState(30);
-  const [helpReports, setHelpReports] = useState([]);
   
   // V2 Marketplace Metrics
   const [demandHotspots, setDemandHotspots] = useState([]);
@@ -119,23 +118,30 @@ const AdminDashboard = () => {
 
   const fetchAllData = useCallback(async () => {
     try {
-      const [statsRes, countsRes, timeseriesRes, eventsRes, reportsRes, hotspotsRes, gapsRes, failedRes, leaderboardRes] = await Promise.all([
+      const [statsRes, countsRes, timeseriesRes, eventsRes, hotspotsRes, gapsRes, failedRes, leaderboardRes] = await Promise.all([
         api.getDashboardStats(),
         api.getEventCounts(),
         api.getDailyTimeseries(null, activeTimeRange),
         api.getRecentEvents(50),
-        api.getHelpReports(),
         api.getDemandHotspots(),
         api.getCoverageGaps(),
         api.getFailedFirstExperiences(),
         api.getCityLeaderboard()
       ]);
 
+      if (statsRes.error) {
+        if (statsRes.error.message?.includes('Unauthorized') || statsRes.error.message?.includes('access required')) {
+          setError('Your session has expired or is unauthorized. Please try logging out and logging back in.');
+        } else {
+          setError(statsRes.error.message || 'Failed to load dashboard metrics.');
+        }
+        return;
+      }
+
       if (statsRes.data) setStats(statsRes.data);
       if (countsRes.data) setEventCounts(countsRes.data);
       if (timeseriesRes.data) setTimeseries(timeseriesRes.data);
       if (eventsRes.data) setRecentEvents(eventsRes.data);
-      if (reportsRes.data) setHelpReports(reportsRes.data);
       if (failedRes.data) setFailedExperiences(failedRes.data);
       if (leaderboardRes.data) setCityLeaderboard(leaderboardRes.data);
 
@@ -264,13 +270,6 @@ const AdminDashboard = () => {
     setRefreshing(true);
     await fetchAllData();
     setTimeout(() => setRefreshing(false), 500);
-  };
-
-  const handleResolveReport = async (id) => {
-    const { error } = await api.updateHelpReportStatus(id, 'resolved');
-    if (!error) {
-      setHelpReports(prev => prev.map(r => r.id === id ? { ...r, status: 'resolved' } : r));
-    }
   };
 
   // Compute derived metrics
@@ -656,10 +655,6 @@ const AdminDashboard = () => {
                         <span className={stats?.cancellations_today > 0 ? "text-red-500 font-bold" : "text-gray-500 font-semibold"}>
                           {stats?.cancellations_today ?? 0} cancellations today
                         </span>
-                        {' '}•{' '}
-                        <span className={stats?.reports_today > 0 ? "text-red-500 font-bold" : "text-gray-500 font-semibold"}>
-                          {stats?.reports_today ?? 0} reports/help tickets today
-                        </span>
                       </p>
                     </div>
                   </div>
@@ -831,57 +826,7 @@ const AdminDashboard = () => {
                 )}
               </div>
 
-              {/* Help Reports Section */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Flag className="w-4 h-4 text-red-500" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-red-500">Help Reports</h3>
-                  </div>
-                  <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-                    {helpReports.filter(r => r.status === 'pending').length} pending
-                  </span>
-                </div>
 
-                {helpReports.length === 0 ? (
-                  <div className="text-center py-6">
-                    <CheckCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-xs font-semibold text-gray-400">No help reports!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3.5">
-                    {helpReports.slice(0, 10).map(report => (
-                      <div key={report.id} className="border border-gray-100 rounded-xl p-3">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                                report.status === 'pending' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
-                              }`}>
-                                {report.status.toUpperCase()}
-                              </span>
-                              <span className="text-[10px] text-gray-400 font-semibold">{timeAgo(report.created_at)}</span>
-                            </div>
-                            <p className="text-xs font-medium text-dark">{report.description}</p>
-                            {report.user_id && (
-                              <p className="text-[10px] text-gray-500 mt-1 font-semibold truncate">User ID: {report.user_id}</p>
-                            )}
-                          </div>
-                        </div>
-                        {report.status === 'pending' && (
-                          <button
-                            onClick={() => handleResolveReport(report.id)}
-                            className="text-[10px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer w-full mt-2 flex items-center justify-center gap-1.5"
-                          >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            Mark as Resolved
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
 
               {/* System Info */}
               <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">

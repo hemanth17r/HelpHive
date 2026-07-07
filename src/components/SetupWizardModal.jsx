@@ -683,7 +683,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                 <button 
                   onClick={handleGoogleLogin}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center space-x-3 bg-white border border-border hover:border-gray-300 hover:bg-gray-50/80 text-dark px-4 py-3.5 rounded-xl font-bold transition-all disabled:opacity-50 active-press cursor-pointer shadow-xs"
+                  className="w-full flex items-center justify-center space-x-3 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50/80 text-slate-700 px-4 py-3 rounded-xl font-medium transition-all disabled:opacity-50 active-press cursor-pointer shadow-xs"
                 >
                   {loadingAction === 'google' ? (
                     <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>

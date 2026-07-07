@@ -90,9 +90,9 @@ export const api = {
       initPromises.push(
         supabase
           .from('job_offers')
-          .select('job_id, status, expires_at, otp_verified')
+          .select('job_id, status, expires_at, otp_verified, completed_by_tasker')
           .eq('tasker_id', userId)
-          .in('status', ['pending', 'accepted'])
+          .in('status', ['pending', 'accepted', 'rejected'])
           .then(res => {
             offers = res.data || [];
           })
@@ -217,8 +217,10 @@ export const api = {
             taskerUpi: tasker.upi_id,
             taskerRating: tasker.rating,
             taskerTasksCompleted: tasker.tasks_completed,
-            isAcceptedByMe: acceptedJobIds.includes(j.id) || j.tasker_id === userId,
-            isPendingOffer: offerJobIds.includes(j.id) && !acceptedJobIds.includes(j.id),
+            isAcceptedByMe: (acceptedJobIds.includes(j.id) || (offer && offer.status === 'accepted') || j.tasker_id === userId) && !(offer && offer.status === 'rejected'),
+            isCancelledByMe: offer && offer.status === 'rejected' && ['accepted', 'in_progress', 'completed', 'cancelled'].includes(j.status),
+            completedByMe: offer && offer.completed_by_tasker === true,
+            isPendingOffer: offerJobIds.includes(j.id) && offer && offer.status === 'pending',
             offerExpiresAt: offer ? offer.expires_at : null,
             otpVerified: offer ? offer.otp_verified : false,
             address: addressObj,
@@ -440,9 +442,9 @@ export const api = {
   fetchJobCrew: async (jobId) => {
     const { data, error } = await supabase
       .from('job_offers')
-      .select('tasker_id, otp_verified, profiles(id, name, bird, phone, upi_id, rating, tasks_completed, location)')
+      .select('tasker_id, status, otp_verified, completed_by_tasker, profiles(id, name, bird, phone, upi_id, rating, tasks_completed, location)')
       .eq('job_id', jobId)
-      .eq('status', 'accepted');
+      .in('status', ['accepted', 'rejected']);
       
     if (data) {
       return { data: data.map(d => {
@@ -456,12 +458,24 @@ export const api = {
           rating: d.profiles?.rating,
           tasksCompleted: d.profiles?.tasks_completed,
           otpVerified: d.otp_verified,
+          completedByTasker: d.completed_by_tasker,
+          status: d.status,
           serviceAreaLat: parsedLoc?.lat || null,
           serviceAreaLng: parsedLoc?.lng || null
         };
       }), error };
     }
     return { data: [], error };
+  },
+
+  completeTaskerOffer: async (jobId, taskerId) => {
+    const { data, error } = await supabase
+      .from('job_offers')
+      .update({ completed_by_tasker: true })
+      .eq('job_id', jobId)
+      .eq('tasker_id', taskerId)
+      .select();
+    return { data, error };
   },
 
   dispatchJobWave: async (jobId, waveNumber) => {
@@ -824,13 +838,23 @@ export const api = {
 
   // --- Admin Dashboard APIs ---
   verifyAdmin: async (userId) => {
+    // Check if there is an active auth session
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    if (!session?.user) {
+      console.warn('[Admin Verification] No active auth session found.');
+      return false;
+    }
+
     const { data, error } = await supabase
       .from('profiles')
-      .select('is_admin')
+      .select('is_admin, auth_id')
       .eq('id', userId)
       .single();
     if (error) return false;
-    return data?.is_admin === true;
+    
+    // Verify user is admin and the profile's auth_id matches the logged-in session user's ID
+    return data?.is_admin === true && data?.auth_id === session.user.id;
   },
 
   getDashboardStats: async () => {

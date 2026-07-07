@@ -44,10 +44,12 @@ const CrewConfirmedScreen = () => {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [paymentsTracker, setPaymentsTracker] = useState({});
+  const [hasDecidedToContinue, setHasDecidedToContinue] = useState(false);
 
   const [crewLocations, setCrewLocations] = useState({});
-  const allHelpersVerified = localCrewTaskers.length > 0 && localCrewTaskers.every(t => t.otpVerified);
-  const verifiedCount = localCrewTaskers.filter(t => t.otpVerified).length;
+  const activeCrew = localCrewTaskers.filter(t => t.status === 'accepted');
+  const allHelpersVerified = activeCrew.length > 0 && activeCrew.every(t => t.otpVerified);
+  const verifiedCount = activeCrew.filter(t => t.otpVerified).length;
 
   // Poll the crew members from the API periodically to capture accepts/cancels in real-time
   useEffect(() => {
@@ -242,7 +244,7 @@ const CrewConfirmedScreen = () => {
     setShowCancelModal(true);
   };
 
-  const allOnlinePaymentsInitiated = localCrewTaskers.every(tasker => {
+  const allOnlinePaymentsInitiated = activeCrew.every(tasker => {
     return paymentsTracker[tasker.id] || localStorage.getItem(`payment_initiated_${currentPostedJob?.id}_${tasker.id}`) === 'true';
   });
 
@@ -258,20 +260,16 @@ const CrewConfirmedScreen = () => {
     <div className="flex-1 flex flex-col justify-between bg-white px-6 py-6 overflow-y-auto select-none">
       
       {/* Header */}
-      <div className="relative text-center pb-3 border-b border-border shrink-0">
+      <div className="relative text-center shrink-0">
         <button 
           onClick={() => pushScreen('poster_home')} 
-          className="absolute left-0 top-2 p-2 -ml-2 text-dark hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+          className="absolute left-0 top-0 p-2 -ml-2 text-dark hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="inline-flex items-center space-x-1.5 text-[10px] font-black tracking-widest text-green-600 bg-green-50 px-2.5 py-1 rounded-full uppercase border border-green-200">
-          <Sparkles className="w-3 h-3 text-green-600 animate-pulse" />
-          <span>{currentPostedJob?.status === 'in_progress' ? 'Task in Progress' : 'Crew Confirmed'}</span>
-        </div>
-        <h2 className="text-base font-extrabold text-dark mt-2">
-          {currentPostedJob?.status === 'in_progress' ? 'Your helper is working!' : 'Your Crew is Set!'}
-        </h2>
+        <span className="text-xs font-semibold text-gray-400">
+          {currentPostedJob?.status === 'in_progress' ? 'Your helper is working...' : 'Your crew is set!'}
+        </span>
       </div>
 
       {/* Main Content scrollable container */}
@@ -288,7 +286,7 @@ const CrewConfirmedScreen = () => {
 
           <MapView 
             jobLocation={{ lat: currentPostedJob?.lat || 31.2560, lng: currentPostedJob?.lng || 75.7051 }}
-            taskers={localCrewTaskers.map(tasker => {
+            taskers={activeCrew.map(tasker => {
               const jobLat = currentPostedJob?.lat || 31.2560;
               const jobLng = currentPostedJob?.lng || 75.7051;
               const isJobInPunjab = Math.abs(jobLat - 31.2560) < 0.5 && Math.abs(jobLng - 75.7051) < 0.5;
@@ -314,7 +312,7 @@ const CrewConfirmedScreen = () => {
               };
             })}
             taskerLocation={null}
-            taskerBirdName={localCrewTaskers[0]?.bird || 'falcon'}
+            taskerBirdName={activeCrew[0]?.bird || 'falcon'}
             height="180px"
           />
         </div>
@@ -336,14 +334,27 @@ const CrewConfirmedScreen = () => {
                 <h3 className="text-sm font-black text-dark leading-tight">{tasker.name}</h3>
                 
                 {/* OTP Verification Badge */}
-                <div className="mt-1 flex items-center space-x-1.5">
-                  <span className={`inline-flex items-center text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${
-                    tasker.otpVerified 
-                      ? 'text-green-600 bg-green-50 border-green-200' 
-                      : 'text-amber-600 bg-amber-50 border-amber-200'
-                  }`}>
-                    {tasker.otpVerified ? 'OTP Verified' : 'Awaiting OTP'}
-                  </span>
+                <div className="mt-1 flex flex-wrap gap-1 items-center">
+                  {tasker.status === 'rejected' ? (
+                    <span className="inline-flex items-center text-[9px] font-black uppercase px-2 py-0.5 rounded-md border text-red-600 bg-red-50 border-red-200">
+                      Cancelled
+                    </span>
+                  ) : (
+                    <>
+                      <span className={`inline-flex items-center text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                        tasker.otpVerified 
+                          ? 'text-green-600 bg-green-50 border-green-200' 
+                          : 'text-amber-600 bg-amber-50 border-amber-200'
+                      }`}>
+                        {tasker.otpVerified ? 'OTP Verified' : 'Awaiting OTP'}
+                      </span>
+                      {tasker.completedByTasker && (
+                        <span className="inline-flex items-center text-[9px] font-black uppercase px-2 py-0.5 rounded-md border text-green-600 bg-green-50 border-green-200">
+                          Marked Complete
+                        </span>
+                      )}
+                    </>
+                  )}
                 </div>
                 {tasker.rating && tasker.tasksCompleted > 0 ? (
                   <div className="flex items-center space-x-2 mt-1">
@@ -491,7 +502,7 @@ const CrewConfirmedScreen = () => {
           </label>
 
           {paymentOption === 'online' ? (
-            localCrewTaskers.map((tasker) => {
+            activeCrew.map((tasker) => {
               const hasInitiated = paymentsTracker[tasker.id] || localStorage.getItem(`payment_initiated_${currentPostedJob?.id}_${tasker.id}`) === 'true';
               return (
                 <div key={tasker.id} className="bg-white border border-border p-4 rounded-xl mb-3 flex flex-col space-y-2">
@@ -534,7 +545,7 @@ const CrewConfirmedScreen = () => {
                 Please pay the helper(s) directly via Cash, personal UPI, or any other offline method once the task is completed.
               </p>
               <div className="border-t border-dashed border-border pt-2.5 mt-1">
-                {localCrewTaskers.map(t => (
+                {activeCrew.map(t => (
                   <div key={t.id} className="flex justify-between items-center text-xs font-bold text-gray-500 mt-1">
                     <span>{t.name}</span>
                     <span className="text-dark">₹{currentPostedJob?.amount || 0}</span>
@@ -545,12 +556,12 @@ const CrewConfirmedScreen = () => {
           )}
 
           {/* Primary Action Button */}
-          <div className="pt-2">
+          <div className="pt-2 flex justify-center w-full">
             {(currentPostedJob?.amount > 0) ? (
               <Tooltip text={paymentOption === 'online' && !allOnlinePaymentsInitiated ? "Please initiate payment for all helpers first" : "Confirm payment to complete the task"}>
                 <button
                   onClick={handleConfirmPaymentsClick}
-                  className={`w-full flex items-center justify-center font-black py-4 px-6 rounded-2xl active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide ${
+                  className={`w-full max-w-md flex items-center justify-center font-black py-4 px-6 rounded-2xl active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide ${
                     paymentOption === 'online' && !allOnlinePaymentsInitiated
                       ? 'bg-gray-200 text-gray-400 border border-gray-300 cursor-not-allowed shadow-none'
                       : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20'
@@ -564,7 +575,7 @@ const CrewConfirmedScreen = () => {
                 <button
                   onClick={handleCompleteTask}
                   disabled={isCompleting || isCancelling}
-                  className="w-full flex justify-center items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide disabled:opacity-70"
+                  className="w-full max-w-md flex justify-center items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide disabled:opacity-70"
                 >
                   {isCompleting ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -575,16 +586,18 @@ const CrewConfirmedScreen = () => {
             )}
           </div>
 
-          <button
-            onClick={handleCancelTask}
-            disabled={isCompleting || isCancelling}
-            className="w-full flex justify-center items-center gap-2 py-3 border border-red-200 text-red-500 rounded-xl text-xs font-bold hover:bg-red-50 transition-colors cursor-pointer mt-3 disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {isCancelling ? (
-              <div className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
-            ) : null}
-            <span>{isCancelling ? 'Cancelling...' : 'Cancel Task'}</span>
-          </button>
+          <div className="flex justify-center w-full">
+            <button
+              onClick={handleCancelTask}
+              disabled={isCompleting || isCancelling}
+              className="w-full max-w-md flex justify-center items-center gap-2 py-3 border border-red-200 text-red-500 rounded-xl text-xs font-bold hover:bg-red-50 transition-colors cursor-pointer mt-3 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isCancelling ? (
+                <div className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
+              ) : null}
+              <span>{isCancelling ? 'Cancelling...' : 'Cancel Task'}</span>
+            </button>
+          </div>
 
           {/* Divider */}
           <hr className="border-border my-2" />
@@ -715,6 +728,51 @@ const CrewConfirmedScreen = () => {
                 className="flex-1 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
               >
                 Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Helper Cancelled Alert Modal */}
+      {localCrewTaskers.some(t => t.status === 'rejected') && !hasDecidedToContinue && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+          <div className="bg-white w-full max-w-sm rounded-[32px] p-6 flex flex-col shadow-2xl animate-scale-up">
+            <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-3">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-black text-dark text-center">Helper Cancelled</h3>
+            <p className="text-xs font-semibold text-gray-500 mt-3 text-center leading-relaxed">
+              {localCrewTaskers.filter(t => t.status === 'rejected').map(t => t.name).join(', ')} has left this task. Do you want to continue with the remaining helper(s) or end this task entirely?
+            </p>
+            
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={async () => {
+                  try {
+                    setIsCancelling(true);
+                    await api.updateJob(currentPostedJob.id, { status: 'cancelled', v2_status: 'cancelled' });
+                    setJobs(prevJobs =>
+                      prevJobs.map(j => j.id === currentPostedJob.id ? { ...j, status: 'cancelled', v2_status: 'cancelled' } : j)
+                    );
+                    setCurrentPostedJob(null);
+                    showToast('Task has been ended.', 'info');
+                    pushScreen('poster_home', true);
+                  } catch (err) {
+                    showToast('Failed to cancel task.', 'error');
+                  } finally {
+                    setIsCancelling(false);
+                  }
+                }}
+                className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
+              >
+                End Task
+              </button>
+              <button
+                onClick={() => setHasDecidedToContinue(true)}
+                className="flex-1 py-3 border border-border text-gray-600 hover:bg-gray-50 rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
+              >
+                Continue
               </button>
             </div>
           </div>

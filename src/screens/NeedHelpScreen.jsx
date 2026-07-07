@@ -69,11 +69,11 @@ const NeedHelpScreen = () => {
       </div>
 
       {/* Sticky Bottom CTA */}
-      <div className="absolute bottom-6 left-0 right-0 px-6 z-20">
+      <div className="absolute bottom-6 left-0 right-0 px-6 z-20 flex justify-center">
         <button 
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className={`w-full flex items-center justify-center py-4 rounded-2xl shadow-lg font-black tracking-wide transition-all ${
+          className={`w-full max-w-md flex items-center justify-center py-4 rounded-2xl shadow-lg font-black tracking-wide transition-all ${
             isSubmitting 
               ? 'bg-gray-400 text-white cursor-not-allowed' 
               : 'bg-primary hover:bg-primary/95 text-white cursor-pointer active:scale-[0.99]'

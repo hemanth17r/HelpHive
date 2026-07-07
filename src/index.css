@@ -56,6 +56,21 @@ body {
 @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(5px); } }
 @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 
+@keyframes toastSlideDown {
+  from {
+    transform: translate3d(0, -20px, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-down {
+  animation: toastSlideDown 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Pure opacity-only backdrop animation — no translateY, no blur re-composition.
  * Forces GPU compositing from frame 0 via translateZ(0), so the ENTIRE overlay
  * fades in as one uniform layer with no tile/flash artifacts. */
@@ -243,6 +258,16 @@ body {
 .m3-card-hover:hover {
   background-color: #F1F5F9 !important;
   border-color: var(--color-primary-hover) !important;
+}
+
+/* Remove default Leaflet divIcon borders, backgrounds, and outlines on custom pins */
+.leaflet-custom-pin-tasker,
+.leaflet-custom-pin-orange,
+.leaflet-marker-icon {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 

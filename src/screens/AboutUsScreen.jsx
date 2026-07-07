@@ -25,7 +25,7 @@ const AboutUsScreen = () => {
             <h1 className="text-[22px] font-black text-dark tracking-tight">
               Help<span className="text-primary">Hive</span>
             </h1>
-            <span className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Version 6.0.0</span>
+            <span className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Version 7.0.0</span>
           </div>
         </div>
 
@@ -34,7 +34,7 @@ const AboutUsScreen = () => {
             HelpHive is a trusted, hyperlocal service marketplace built to connect you with skilled professionals for both physical and remote tasks.
           </p>
           <p>
-            While our core focus remains on delivering fast, reliable help for physical jobs in your neighborhood, HelpHive also seamlessly supports remote tasks to handle all your service needs.
+            While our core focus remains on delivering fast, reliable help for physical tasks in your neighborhood, HelpHive also seamlessly supports remote tasks to handle all your service needs.
           </p>
           <p>
             By combining transparency, verified providers, and smart matching, we are building a safer, more convenient ecosystem for everyone.
@@ -94,7 +94,7 @@ const AboutUsScreen = () => {
                   <div>
                     <h4 className="font-bold text-dark mb-1">1. Information We Collect</h4>
                     <p>
-                      We collect information you provide directly to us, including your profile details (name, email, phone number, and UPI ID), location data (to connect posters and taskers based on proximity), job details, and communication logs.
+                      We collect information you provide directly to us, including your profile details (name, email, phone number, and UPI ID), location data (to connect posters and taskers based on proximity), task details, and communication logs.
                     </p>
                   </div>
                   <div>
@@ -106,7 +106,7 @@ const AboutUsScreen = () => {
                   <div>
                     <h4 className="font-bold text-dark mb-1">3. Sharing of Information</h4>
                     <p>
-                      We share information necessary to fulfill service agreements. Your contact details (like phone number) are only shared with matching taskers or posters after a job is accepted. We do not sell your personal data to third parties.
+                      We share information necessary to fulfill service agreements. Your contact details (like phone number) are only shared with matching taskers or posters after a task is accepted. We do not sell your personal data to third parties.
                     </p>
                   </div>
                   <div>
@@ -135,15 +135,15 @@ const AboutUsScreen = () => {
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-dark mb-1">3. Payments & Jobs</h4>
+                    <h4 className="font-bold text-dark mb-1">3. Payments & Tasks</h4>
                     <p>
-                      Posters agree to pay the agreed-upon amount upon successful completion of the job. Taskers agree to perform services professionally and verify job start using the security OTP. HelpHive is not responsible for disputes regarding the quality of work.
+                      Posters agree to pay the agreed-upon amount upon successful completion of the task. Taskers agree to perform services professionally and verify task start using the security OTP. HelpHive is not responsible for disputes regarding the quality of work.
                     </p>
                   </div>
                   <div>
                     <h4 className="font-bold text-dark mb-1">4. Acceptable Use</h4>
                     <p>
-                      You agree not to use the platform for any illegal activities, harassment, or to post fraudulent jobs. We reserve the right to suspend or terminate accounts that violate these terms.
+                      You agree not to use the platform for any illegal activities, harassment, or to post fraudulent tasks. We reserve the right to suspend or terminate accounts that violate these terms.
                     </p>
                   </div>
                   <div>

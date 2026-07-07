@@ -37,9 +37,7 @@ export const useProfileCompletion = () => {
   const hasServiceArea = !!(userProfile?.serviceAreaLat && userProfile?.serviceAreaLng);
 
   const isTestUser = userProfile?.name && (
-    userProfile.name.toLowerCase().includes('tester') || 
-    userProfile.name.toLowerCase().includes('debug') || 
-    userProfile.name === 'HR'
+    userProfile.name.toLowerCase().includes('test')
   );
 
   let completionPercentage = 100;

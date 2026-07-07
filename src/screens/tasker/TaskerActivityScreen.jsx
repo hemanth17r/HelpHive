@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
-import { ArrowLeft, TrendingUp, Briefcase, CalendarDays, Check, X } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Briefcase, CalendarDays, Check, X, Edit2 } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
 
@@ -154,7 +154,7 @@ const TaskerActivityScreen = () => {
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
               <div className="bg-gray-50 rounded-2xl p-3 text-center">
                 <span className="text-xl font-black text-dark block leading-none" id="jobs-completed-value">{jobsCompletedCount}</span>
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 block">Jobs Completed</span>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 block">Tasks Completed</span>
               </div>
               <div className="bg-gray-50 rounded-2xl p-3 text-center">
                 <span className="text-xl font-black text-dark block leading-none" id="this-month-value">₹{(thisMonthEarnings || 0).toLocaleString('en-IN')}</span>
@@ -226,8 +226,8 @@ const TaskerActivityScreen = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Receive Payments (UPI)</span>
                   {!isEditingUpi && (
-                    <button onClick={() => { setEditedUpiId(userProfile.upiId); setIsEditingUpi(true); }} className="text-primary hover:bg-primary/10 p-1 rounded-md transition-colors cursor-pointer text-[10px] font-bold uppercase">
-                      Edit
+                    <button onClick={() => { setEditedUpiId(userProfile.upiId); setIsEditingUpi(true); }} className="text-primary hover:bg-primary/10 p-1.5 rounded-full transition-colors cursor-pointer flex items-center justify-center" title="Edit UPI ID">
+                      <Edit2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>

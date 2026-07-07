@@ -33,7 +33,7 @@ const JobCard = ({ job, onDecline }) => {
 
   const [isAccepting, setIsAccepting] = useState(false);
 
-  const handleAcceptJob = () => {
+  const handleAcceptJob = async () => {
     if (!userId) {
       openLoginModal(() => {
         handleAcceptJob();
@@ -57,15 +57,13 @@ const JobCard = ({ job, onDecline }) => {
       return;
     }
 
-    // 2. Require Location before accepting
-    requireLocation('tasker', async () => {
-      setIsAccepting(true);
-      try {
-        await acceptJob(job.id);
-      } finally {
-        setIsAccepting(false);
-      }
-    });
+    // 2. Accept directly (uses Service Area fallback from DB)
+    setIsAccepting(true);
+    try {
+      await acceptJob(job.id);
+    } finally {
+      setIsAccepting(false);
+    }
   };
 
   const [timeLeft, setTimeLeft] = useState(null);
@@ -171,7 +169,7 @@ const JobCard = ({ job, onDecline }) => {
           </button>
         </Tooltip>
         
-        <Tooltip text="Accept job and get details" className="flex-1">
+        <Tooltip text="Accept task and get details" className="flex-1">
           <button
             onClick={handleAcceptJob}
             disabled={timeLeft === 0 || isAccepting}

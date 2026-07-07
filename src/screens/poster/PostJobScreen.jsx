@@ -1,7 +1,8 @@
 import React, { useState, useContext, useRef } from 'react';
-import { ArrowLeft, Minus, Plus, IndianRupee, Send, Info, Calendar, MapPin, Home, Briefcase, Wifi, Flame, Zap, Check } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, IndianRupee, Radio, Info, Calendar, MapPin, Home, Briefcase, Wifi } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
+import IconLabel from '../../components/IconLabel';
 import Tooltip from '../../components/Tooltip';
 import LocationPicker from '../../components/LocationPicker';
 import { ToastContext } from '../../store/ToastContext';
@@ -109,8 +110,6 @@ const PostJobScreen = () => {
   }, [savedAddresses, selectedJobLocation]);
 
   const [isSavingAddress, setIsSavingAddress] = useState(false);
-  const [city, setCity] = useState('Jalandhar');
-  const [area, setArea] = useState('LPU');
   const [completeAddress, setCompleteAddress] = useState('');
   const [landmark, setLandmark] = useState('');
   const [addressType, setAddressType] = useState('Home');
@@ -299,7 +298,7 @@ const PostJobScreen = () => {
     });
     setIsLoading(false);
     if (!result || !result.success) {
-      showToast(result?.error || 'Failed to post job. Please try again.', 'error');
+      showToast(result?.error || 'Failed to post task. Please try again.', 'error');
     }
   };
 
@@ -360,6 +359,10 @@ const PostJobScreen = () => {
   const parsedAmount = parseFloat(amount);
   const isPostDisabled = !selectedSkillId || amount === '' || isNaN(parsedAmount) || parsedAmount < 0 || !time || isLoading;
 
+  const selectedSkill = SKILLS.find(s => s.id === selectedSkillId);
+  const showPhysical = !selectedSkill || selectedSkill.type === 'physical';
+  const showRemote = !selectedSkill || selectedSkill.type === 'remote';
+
   return (
     <div className="flex-1 flex flex-col justify-between bg-white px-6 pt-3 pb-8 lg:pt-4 lg:px-8 overflow-hidden select-none">
       
@@ -379,7 +382,7 @@ const PostJobScreen = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">
-            Post a Job
+            Post a Task
           </span>
           <div className="w-10"></div>
         </div>
@@ -459,106 +462,56 @@ const PostJobScreen = () => {
               </div>
 
               {/* Physical & On-site Section */}
-              <div className="space-y-2.5">
-                <div className="flex items-center space-x-1.5 px-1">
-                  <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
-                    On-site & Physical Services
-                  </span>
+              {showPhysical && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center space-x-1.5 px-1">
+                    <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                      On-site & Physical Services
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3 max-w-md mx-auto">
+                    {SKILLS.filter(s => s.type === 'physical').map((skill) => {
+                      const isSelected = selectedSkillId === skill.id;
+                      return (
+                        <IconLabel
+                          key={skill.id}
+                          icon={skill.icon}
+                          label={skill.label}
+                          selected={isSelected}
+                          onClick={() => setSelectedSkillId(prev => prev === skill.id ? '' : skill.id)}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
-                  {SKILLS.filter(s => s.type === 'physical').map((skill) => {
-                    const isSelected = selectedSkillId === skill.id;
-                    const Icon = skill.icon;
-                    return (
-                      <button
-                        key={skill.id}
-                        onClick={() => setSelectedSkillId(skill.id)}
-                        className={`relative flex flex-col items-center justify-center w-full aspect-square rounded-2xl transition-all cursor-pointer border ${
-                          isSelected 
-                            ? 'bg-primary border-primary text-white shadow-md shadow-primary/20 scale-[1.02]' 
-                            : 'bg-gray-50 border-border text-gray-500 hover:bg-orange-50 hover:border-primary/30 hover:text-primary'
-                        }`}
-                      >
-                        {isSelected && (
-                          <div className="absolute top-1.5 left-1.5 w-3.5 h-3.5 bg-white text-primary rounded-full flex items-center justify-center shadow-xs animate-[scaleIn_150ms_ease-out]">
-                            <Check className="w-2.5 h-2.5 stroke-[4.5]" />
-                          </div>
-                        )}
-                        {(skill.isNew || skill.isHighDemand || skill.isUrgent) && (
-                          <span className={`absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-xs border transition-all duration-300 flex items-center gap-1 ${
-                            isSelected 
-                              ? 'bg-white text-primary border-white scale-105' 
-                              : 'bg-primary text-white border-primary'
-                          }`}>
-                            {skill.isHighDemand ? (
-                              <Flame className="w-2.5 h-2.5 shrink-0 fill-current" />
-                            ) : skill.isUrgent ? (
-                              <Zap className="w-2.5 h-2.5 shrink-0 fill-current" />
-                            ) : null}
-                            {skill.isNew && <span>NEW</span>}
-                          </span>
-                        )}
-                        <Icon className="w-7 h-7 mb-1 shrink-0" />
-                        <span className={`text-[10px] font-black truncate w-full px-1 text-center ${isSelected ? 'text-white' : 'text-dark'}`}>
-                          {skill.shortLabel || skill.label.split(' ')[0]}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              )}
 
               {/* Online & Remote Section */}
-              <div className="space-y-2.5">
-                <div className="flex items-center space-x-1.5 px-1">
-                  <Wifi className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
-                    Online & Remote Services
-                  </span>
+              {showRemote && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center space-x-1.5 px-1">
+                    <Wifi className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                      Online & Remote Services
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3 max-w-md mx-auto">
+                    {SKILLS.filter(s => s.type === 'remote').map((skill) => {
+                      const isSelected = selectedSkillId === skill.id;
+                      return (
+                        <IconLabel
+                          key={skill.id}
+                          icon={skill.icon}
+                          label={skill.label}
+                          selected={isSelected}
+                          onClick={() => setSelectedSkillId(prev => prev === skill.id ? '' : skill.id)}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
-                  {SKILLS.filter(s => s.type === 'remote').map((skill) => {
-                    const isSelected = selectedSkillId === skill.id;
-                    const Icon = skill.icon;
-                    return (
-                      <button
-                        key={skill.id}
-                        onClick={() => setSelectedSkillId(skill.id)}
-                        className={`relative flex flex-col items-center justify-center w-full aspect-square rounded-2xl transition-all cursor-pointer border ${
-                          isSelected 
-                            ? 'bg-primary border-primary text-white shadow-md shadow-primary/20 scale-[1.02]' 
-                            : 'bg-gray-50 border-border text-gray-500 hover:bg-orange-50 hover:border-primary/30 hover:text-primary'
-                        }`}
-                      >
-                        {isSelected && (
-                          <div className="absolute top-1.5 left-1.5 w-3.5 h-3.5 bg-white text-primary rounded-full flex items-center justify-center shadow-xs animate-[scaleIn_150ms_ease-out]">
-                            <Check className="w-2.5 h-2.5 stroke-[4.5]" />
-                          </div>
-                        )}
-                        {(skill.isNew || skill.isHighDemand || skill.isUrgent) && (
-                          <span className={`absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-xs border transition-all duration-300 flex items-center gap-1 ${
-                            isSelected 
-                              ? 'bg-white text-primary border-white scale-105' 
-                              : 'bg-primary text-white border-primary'
-                          }`}>
-                            {skill.isHighDemand ? (
-                              <Flame className="w-2.5 h-2.5 shrink-0 fill-current" />
-                            ) : skill.isUrgent ? (
-                              <Zap className="w-2.5 h-2.5 shrink-0 fill-current" />
-                            ) : null}
-                            {skill.isNew && <span>NEW</span>}
-                          </span>
-                        )}
-                        <Icon className="w-7 h-7 mb-1 shrink-0" />
-                        <span className={`text-[10px] font-black truncate w-full px-1 text-center ${isSelected ? 'text-white' : 'text-dark'}`}>
-                          {skill.shortLabel || skill.label.split(' ')[0]}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Description Section */}
@@ -721,12 +674,11 @@ const PostJobScreen = () => {
           </div>
         </div>
 
-        {/* Button footer */}
-          <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-4 border-t border-border bg-white mt-4 shrink-0">
+          <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-1 bg-white mt-2 shrink-0 flex justify-center">
             <button
               onClick={handlePost}
               disabled={isPostDisabled}
-              className={`w-full flex items-center justify-center space-x-2 font-black py-4 px-6 rounded-2xl shadow-lg active:scale-[0.99] transition-all cursor-pointer ${
+              className={`w-full max-w-md h-14 flex items-center justify-center space-x-2 font-black rounded-2xl shadow-lg active:scale-[0.99] transition-all cursor-pointer text-base ${
                 isPostDisabled 
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
                   : 'bg-primary hover:bg-primary/95 text-white shadow-primary/20'
@@ -736,8 +688,8 @@ const PostJobScreen = () => {
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
                 <>
-                  <Send className="w-5 h-5" />
-                  <span>Post Task Now</span>
+                  <Radio className="w-5 h-5 text-white" />
+                  <span>Post</span>
                 </>
               )}
             </button>

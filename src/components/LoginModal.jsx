@@ -95,7 +95,9 @@ const LoginModal = ({ isOpen, onClose }) => {
       >
         <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-white shrink-0">
           <div>
-            <h2 className="text-lg font-black text-dark">Welcome to HelpHive</h2>
+            <h2 className="text-base font-bold text-dark tracking-tight">
+              Welcome to <span className="font-black">Help<span className="text-primary">Hive</span></span>
+            </h2>
           </div>
           <button 
             onClick={onClose}
@@ -112,7 +114,7 @@ const LoginModal = ({ isOpen, onClose }) => {
               <button 
                 onClick={handleGoogleLogin}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center space-x-3 bg-white border border-border hover:border-gray-300 hover:bg-gray-50/80 text-dark px-4 py-3.5 rounded-xl font-bold transition-all disabled:opacity-50 active-press cursor-pointer shadow-xs"
+                className="w-full flex items-center justify-center space-x-3 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50/80 text-slate-700 px-4 py-3 rounded-xl font-medium transition-all disabled:opacity-50 active-press cursor-pointer shadow-xs"
               >
                 {loadingAction === 'google' ? (
                   <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>

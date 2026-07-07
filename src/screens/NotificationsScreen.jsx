@@ -123,7 +123,7 @@ const NotificationsScreen = () => {
               ) : (
                 <>
                   <h3 className="text-sm font-bold text-dark">Enable Push Notifications</h3>
-                  <p className="text-xs text-gray-600 mt-1">Get instantly notified when a tasker accepts your job or completes a task, even when you're not in the app.</p>
+                  <p className="text-xs text-gray-600 mt-1">Get instantly notified when a tasker accepts your task or completes it, even when you're not in the app.</p>
                   <button 
                     onClick={handleSubscribeToPush}
                     disabled={isSubscribing}

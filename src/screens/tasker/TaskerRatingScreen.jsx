@@ -14,12 +14,7 @@ const TaskerRatingScreen = () => {
   const [rating, setRating] = useState(5);
   const [selectedBadge, setSelectedBadge] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
-
-  const [isReporting, setIsReporting] = useState(false);
-  const [reportReason, setReportReason] = useState('');
-  const [reportDetails, setReportDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   const redirectTimerRef = React.useRef(null);
 
@@ -52,13 +47,6 @@ const TaskerRatingScreen = () => {
       default: return 'bg-gray-50 border-gray-300 text-gray-700 shadow-xs';
     }
   };
-
-  const reportReasons = [
-    'Unsafe Environment',
-    'Rude or Unprofessional',
-    'Payment Issue',
-    'Other'
-  ];
 
   const handleSubmit = async () => {
     if (!acceptedJob) return;
@@ -111,45 +99,13 @@ const TaskerRatingScreen = () => {
     }
   };
 
-  const handleReportSubmit = async () => {
-    if (!reportReason) {
-      showToast('Please select a reason', 'error');
-      return;
-    }
-    setIsSubmittingReport(true);
-    try {
-      const { error } = await api.submitUserReport(
-        acceptedJob?.posterId,
-        acceptedJob?.id,
-        reportReason,
-        reportDetails,
-        userProfile?.id
-      );
-      if (error) {
-        showToast(`Failed to submit report: ${error.message || error}`, 'error');
-      } else {
-        showToast('Report submitted for moderation', 'success');
-        trackEvent(EVENTS.REPORT_SUBMITTED, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { reason: reportReason } });
-        setIsReporting(false);
-        setReportReason('');
-        setReportDetails('');
-      }
-    } catch (err) {
-      console.error("Failed to submit report:", err);
-      showToast('Failed to submit report.', 'error');
-    } finally {
-      setIsSubmittingReport(false);
-    }
-  };
-
   return (
     <div className="flex-1 flex flex-col justify-between bg-white px-6 py-8 overflow-y-auto select-none">
       {/* Header */}
-      <div className="flex flex-col items-center pb-3 border-b border-border shrink-0 relative">
+      <div className="relative w-full h-8 shrink-0">
         <button onClick={() => popScreen()} className="absolute left-0 top-0 p-2 -ml-2 rounded-full hover:bg-gray-100 text-dark transition-colors cursor-pointer">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-base font-extrabold text-dark mt-2">Rate the Hirer</h2>
       </div>
 
       {isSubmitted ? (
@@ -163,72 +119,9 @@ const TaskerRatingScreen = () => {
             Your rating helps build trust in our community.
           </p>
         </div>
-      ) : isReporting ? (
-        /* Report Screen */
-        <div className="flex-1 flex flex-col space-y-5 my-6 lg:px-8 w-full text-left">
-          <div className="flex items-center space-x-2 text-red-600 mb-2">
-            <AlertTriangle className="w-5 h-5" />
-            <h3 className="text-sm font-black text-dark">Report {acceptedJob?.posterName || 'Hirer'}</h3>
-          </div>
-          <p className="text-xs font-bold text-gray-500">
-            This report will be sent securely to admin moderation. It will not be shown publicly.
-          </p>
-
-          <div className="space-y-2">
-            <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-              Reason for reporting
-            </label>
-            <div className="flex flex-col space-y-2">
-              {reportReasons.map((reason) => (
-                <button
-                  key={reason}
-                  onClick={() => setReportReason(reason)}
-                  className={`text-left px-4 py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                    reportReason === reason 
-                      ? 'border-red-500 bg-red-50 text-red-700' 
-                      : 'border-border bg-gray-50 text-dark hover:bg-gray-100'
-                  }`}
-                >
-                  {reason}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-              Private Details (Optional)
-            </label>
-            <textarea
-              value={reportDetails}
-              onChange={(e) => setReportDetails(e.target.value)}
-              placeholder="Provide more details for moderators..."
-              className="w-full bg-gray-50 border border-border focus:border-red-500 rounded-xl px-4 py-3 text-xs font-semibold outline-hidden min-h-[80px]"
-            />
-          </div>
-
-          <div className="flex space-x-3 pt-4">
-            <button
-              onClick={() => setIsReporting(false)}
-              className="flex-1 py-3 text-xs font-bold text-gray-500 border border-border rounded-xl hover:bg-gray-50 cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleReportSubmit}
-              disabled={isSubmittingReport}
-              className="flex-1 flex justify-center items-center gap-2 py-3 text-xs font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-md cursor-pointer transition-all active:scale-[0.98] disabled:opacity-70"
-            >
-              {isSubmittingReport ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : null}
-              <span>{isSubmittingReport ? 'Submitting...' : 'Submit Report'}</span>
-            </button>
-          </div>
-        </div>
       ) : (
         /* Form Screen */
-        <div className="flex-1 flex flex-col justify-center items-center text-center space-y-6 my-6 lg:px-8 w-full">
+        <div className="flex-1 flex flex-col items-center text-center space-y-5 mt-3 mb-6 lg:px-8 w-full">
           <div className="flex flex-col items-center space-y-2">
             <div className="w-16 h-16 rounded-full border-2 border-primary/20 shadow-xs overflow-hidden bg-orange-50 flex items-center justify-center">
               <BirdAvatar birdName={acceptedJob?.posterBird || 'robin'} size={56} />
@@ -238,9 +131,6 @@ const TaskerRatingScreen = () => {
 
           {/* Interactive Stars */}
           <div className="space-y-1.5 w-full">
-            <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-              Select Rating
-            </label>
             <div className="flex justify-center space-x-3.5 py-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Tooltip key={star} text={`Rate ${star} Stars`}>
@@ -262,10 +152,7 @@ const TaskerRatingScreen = () => {
           </div>
 
           {/* Badge Selection */}
-          <div className="space-y-3 w-full text-left pt-2">
-            <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400 text-center">
-              Give a Trust Badge (Optional)
-            </label>
+          <div className="w-full">
             <div className="flex flex-wrap justify-center gap-2">
               {posterBadges.map((badge) => {
                 const Icon = badge.icon;
@@ -283,28 +170,17 @@ const TaskerRatingScreen = () => {
               })}
             </div>
           </div>
-
-          {/* Report Button */}
-          <div className="w-full pt-4">
-             <button 
-                onClick={() => setIsReporting(true)}
-                className="flex items-center justify-center space-x-1.5 mx-auto text-[10px] font-bold text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
-             >
-                <Flag className="w-3 h-3" />
-                <span className="uppercase tracking-wider">Report Issue Privately</span>
-             </button>
-          </div>
         </div>
       )}
 
       {/* Submit Button Footer */}
-      {!isSubmitted && !isReporting && (
-        <div className="w-full pt-4 border-t border-border shrink-0 lg:px-8">
+      {!isSubmitted && (
+        <div className="w-full pt-4 border-t border-border shrink-0 lg:px-8 flex justify-center">
           <Tooltip text="Submit feedback">
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-70"
+              className="w-full max-w-md flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-70"
             >
               {isSubmitting ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

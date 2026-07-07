@@ -16,6 +16,8 @@ const LiveStatusScreen = () => {
   const hasNavigatedRef = useRef(false);
 
   useEffect(() => {
+    if (!currentPostedJob?.id) return;
+    
     let isMounted = true;
 
     // Snapshot the tasker_id that exists when this screen mounts.
@@ -103,11 +105,10 @@ const LiveStatusScreen = () => {
   return (
     <div className="flex-1 flex flex-col justify-between bg-white px-6 py-6 overflow-y-auto">
       {/* Header */}
-      <div className="text-center pb-3 border-b border-border shrink-0">
-        <span className="text-[10px] font-black tracking-widest text-primary bg-primary/10 px-2.5 py-1 rounded-full uppercase">
-          Live Broadcast
+      <div className="text-center shrink-0">
+        <span className="text-xs font-semibold text-gray-400">
+          Searching for Helpers...
         </span>
-        <h2 className="text-base font-extrabold text-dark mt-2">Searching for Helpers...</h2>
       </div>
 
       {/* Main Status Area */}
@@ -173,22 +174,22 @@ const LiveStatusScreen = () => {
       </div>
 
       {/* Bottom Action buttons */}
-      <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-4 border-t border-border shrink-0 space-y-3">
+      <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-4 border-t border-border shrink-0 space-y-3 flex flex-col items-center">
         {currentPostedJob.peopleNeeded > 1 && crewTaskers.length > 0 && (
           <button
             onClick={() => acceptPartialCrew(currentPostedJob.id)}
-            className="w-full flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all cursor-pointer"
+            className="w-full max-w-md flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all cursor-pointer"
           >
             <span>Proceed with {crewTaskers.length} Helper{crewTaskers.length > 1 ? 's' : ''}</span>
           </button>
         )}
-        <Tooltip text="Cancel this job broadcast" position="top">
+        <Tooltip text="Cancel this task search" position="top" className="w-full flex justify-center">
           <button
             onClick={() => setShowCancelModal(true)}
-            className="w-full flex items-center justify-center space-x-2 bg-gray-100 hover:bg-red-50 hover:text-red-500 text-gray-500 font-bold py-3.5 px-6 rounded-2xl transition-colors cursor-pointer"
+            className="w-full max-w-md flex items-center justify-center space-x-2 bg-gray-100 hover:bg-red-50 hover:text-red-500 text-gray-500 font-bold py-3.5 px-6 rounded-2xl transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
-            <span>Cancel Broadcast</span>
+            <span>Cancel Search</span>
           </button>
         </Tooltip>
       </div>
@@ -206,9 +207,9 @@ const LiveStatusScreen = () => {
               <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
                 <ShieldAlert className="w-6 h-6 text-red-500" />
               </div>
-              <h3 className="text-lg font-black text-dark">Cancel Broadcast?</h3>
+              <h3 className="text-lg font-black text-dark">Cancel Search?</h3>
               <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
-                Are you sure you want to cancel this task search? This will expire all pending task offers.
+                Are you sure you want to cancel this task search?
               </p>
             </div>
             <div className="flex space-x-3">

@@ -60,7 +60,7 @@ const ServiceUnavailableScreen = () => {
             HelpHive isn't here yet
           </h2>
           <p className="text-xs font-semibold text-gray-400 leading-relaxed px-2">
-            We are currently building and testing HelpHive within the <span className="text-primary font-bold">LPU campus</span>. We will be expanding soon!
+            We are currently expanding HelpHive across India. We will be in your area soon!
           </p>
         </div>
 
@@ -94,10 +94,10 @@ const ServiceUnavailableScreen = () => {
               </div>
             </div>
 
-            <Tooltip text="Submit your notification request" position="bottom" className="w-full">
+            <Tooltip text="Submit your notification request" position="bottom" className="w-full flex justify-center">
               <button
                 type="submit"
-                className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer text-xs"
+                className="w-full max-w-sm flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all cursor-pointer text-xs"
               >
                 <Send className="w-4.5 h-4.5" />
                 <span>Notify Me</span>
@@ -113,7 +113,7 @@ const ServiceUnavailableScreen = () => {
           Currently Live In
         </span>
         <p className="text-[10px] font-black text-dark tracking-wide">
-          LPU <span className="text-[8px] font-bold text-gray-500">&amp; nearby</span>
+          Nationwide <span className="text-[8px] font-bold text-gray-500">across India</span>
         </p>
       </div>
 

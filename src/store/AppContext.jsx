@@ -1,5 +1,4 @@
 import React, { createContext, useState, useEffect, useRef, useContext, useCallback } from 'react';
-import { SERVICE_AREAS } from '../config/serviceAreas';
 import { api } from '../services/api';
 import { SKILLS } from '../config/constants';
 import { trackEvent, EVENTS } from '../utils/eventTracker';
@@ -157,8 +156,11 @@ export const AppProvider = ({ children }) => {
   }); // Bird avatar selection
   const [isAdmin, setIsAdmin] = useState(false); // Admin dashboard access
 
-  // Always online
-  const [isOnline, setIsOnlineState] = useState(true);
+  // Availability status (ON/OFF)
+  const [isOnline, setIsOnlineState] = useState(() => {
+    const saved = localStorage.getItem('isOnline');
+    return saved === null ? true : saved === 'true';
+  });
   
   // Navigation stack state
   const [screenStack, setScreenStack] = useState(() => {
@@ -606,12 +608,10 @@ export const AppProvider = ({ children }) => {
 
           if (data.bird) setSelectedBird(data.bird);
           setIsAdmin(data.is_admin === true);
-          // Always force online status in the database and frontend
-          setIsOnlineState(true);
-          localStorage.setItem('isOnline', 'true');
-          if (data.is_online !== true) {
-            api.updateProfile(data.id, { is_online: true }).catch(console.error);
-          }
+          // Sync with database profile availability status
+          const profileOnline = data.is_online ?? true;
+          setIsOnlineState(profileOnline);
+          localStorage.setItem('isOnline', profileOnline ? 'true' : 'false');
           setRole(activeRole);
           localStorage.setItem('activeRole', activeRole);
           trackEvent(EVENTS.LOGIN, { userId: data.id, role: activeRole });
@@ -892,12 +892,11 @@ export const AppProvider = ({ children }) => {
   const [otpEntered, setOtpEntered] = useState('');
 
   const setIsOnline = async (online) => {
-    // Force always online status
-    setIsOnlineState(true);
-    localStorage.setItem('isOnline', 'true');
+    setIsOnlineState(online);
+    localStorage.setItem('isOnline', online ? 'true' : 'false');
     const currentUserId = userId || localStorage.getItem('userId');
     if (currentUserId) {
-      await api.updateProfile(currentUserId, { is_online: true });
+      await api.updateProfile(currentUserId, { is_online: online }).catch(console.error);
     }
   };
   
@@ -1029,7 +1028,7 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const switchRole = async (newRole) => {
+  const switchRole = async (newRole, fromProfile = false) => {
     if (!userId) {
       setRole(newRole);
       localStorage.setItem('activeRole', newRole);
@@ -1043,7 +1042,16 @@ export const AppProvider = ({ children }) => {
       } else {
         setUserProfileState(null);
       }
-      pushScreen(newRole === 'tasker' ? 'tasker_home' : 'poster_home');
+      if (fromProfile) {
+        if (newRole === 'tasker') {
+          setActiveTab('profile');
+          pushScreen('tasker_home');
+        } else {
+          pushScreen('my_profile');
+        }
+      } else {
+        pushScreen(newRole === 'tasker' ? 'tasker_home' : 'poster_home');
+      }
       return;
     }
 
@@ -1064,10 +1072,19 @@ export const AppProvider = ({ children }) => {
     api.updateProfile(userId, { role: newRole }).then();
     trackEvent(EVENTS.ROLE_SWITCH, { userId, role: newRole });
 
-    if (newRole === 'tasker') {
-      pushScreen('tasker_home');
+    if (fromProfile) {
+      if (newRole === 'tasker') {
+        setActiveTab('profile');
+        pushScreen('tasker_home');
+      } else {
+        pushScreen('my_profile');
+      }
     } else {
-      pushScreen('poster_home');
+      if (newRole === 'tasker') {
+        pushScreen('tasker_home');
+      } else {
+        pushScreen('poster_home');
+      }
     }
   };
 
@@ -1351,8 +1368,8 @@ export const AppProvider = ({ children }) => {
 
         api.sendNotification(
           targetJob.posterId,
-          "Job Accepted!",
-          `${tName} has accepted your job and is on their way.`,
+          "Task Accepted!",
+          `${tName} has accepted your task and is on their way.`,
           actionUrl,
           'job_accepted',
           'poster',
@@ -1387,9 +1404,9 @@ export const AppProvider = ({ children }) => {
       console.warn("Optimistic accept failed, reverting state:", err);
       if (showToast) {
         if (err.message === 'not_available') {
-          showToast('This job is no longer available.', 'error');
+          showToast('This task is no longer available.', 'error');
         } else {
-          showToast('Could not accept job. Please check your connection.', 'error');
+          showToast('Could not accept task. Please check your connection.', 'error');
         }
       }
       // Revert state smoothly
@@ -1421,9 +1438,24 @@ export const AppProvider = ({ children }) => {
 
   const cancelTaskerAssignment = async (jobId) => {
     const tId = userProfile?.id || userId || localStorage.getItem('userId');
+    const job = jobs.find(j => j.id === jobId);
     const { data: success } = await api.cancelAcceptedJobOffer(jobId, tId);
     if (success) {
       if (showToast) showToast('You have cancelled your assignment for this task.', 'info');
+      
+      // Notify Hirer
+      if (job && job.posterId) {
+        api.sendNotification(
+          job.posterId,
+          "Helper Left Task",
+          `${userProfile?.name || 'A helper'} has left the task "${job.description || 'Task'}".`,
+          'crew_confirmed',
+          'helper_left',
+          'poster',
+          { job_id: jobId, tasker_id: tId }
+        );
+      }
+
       const { data } = await api.fetchJobs();
       if (data) setJobs(data);
       setAcceptedJob(null);
@@ -1445,7 +1477,7 @@ export const AppProvider = ({ children }) => {
       setLiveStatus('crew_set');
       pushScreen('crew_confirmed', true);
     } else {
-      if (showToast) showToast('No taskers have accepted this job yet.', 'error');
+      if (showToast) showToast('No taskers have accepted this task yet.', 'error');
     }
   };
 
@@ -1453,16 +1485,17 @@ export const AppProvider = ({ children }) => {
   const completeJob = async (jobId) => {
     const originalJobs = [...jobs];
     const originalAcceptedJob = acceptedJob ? { ...acceptedJob } : null;
+    const tId = userProfile?.id || userId || localStorage.getItem('userId');
 
     setJobs(prevJobs => 
-      prevJobs.map(j => j.id === jobId ? { ...j, status: 'completed', v2_status: 'completed' } : j)
+      prevJobs.map(j => j.id === jobId ? { ...j, completedByMe: true } : j)
     );
     if (acceptedJob && acceptedJob.id === jobId) {
-      setAcceptedJob(prev => ({ ...prev, status: 'completed', v2_status: 'completed' }));
+      setAcceptedJob(prev => ({ ...prev, completedByMe: true }));
     }
 
     try {
-      const { error } = await api.updateJob(jobId, { status: 'completed', v2_status: 'completed' });
+      const { error } = await api.completeTaskerOffer(jobId, tId);
       if (error) throw error;
 
       const job = originalJobs.find(j => j.id === jobId);
@@ -1472,12 +1505,12 @@ export const AppProvider = ({ children }) => {
       if (job && job.posterId) {
         api.sendNotification(
           job.posterId,
-          "Job Completed!",
-          "Your tasker has marked the job as complete. Please review and pay.",
-          'rating_screen',
+          "Helper Marked Complete",
+          `${userProfile?.name || 'A helper'} has marked the task as complete.`,
+          'crew_confirmed',
           'job_completed',
           'poster',
-          { job_id: jobId }
+          { job_id: jobId, tasker_id: tId }
         );
       }
 
@@ -1488,7 +1521,7 @@ export const AppProvider = ({ children }) => {
       pushScreen('tasker_rating', true);
     } catch (err) {
       console.error("Failed to complete job", err);
-      if (showToast) showToast('Failed to complete job. Please try again.', 'error');
+      if (showToast) showToast('Failed to complete task. Please try again.', 'error');
       // Rollback optimistic state
       setJobs(originalJobs);
       if (originalAcceptedJob) setAcceptedJob(originalAcceptedJob);
@@ -1591,11 +1624,11 @@ export const AppProvider = ({ children }) => {
       setLiveStatus('posted');
 
       pushScreen('live_status', true);
-      showToast('Job posted successfully!', 'success');
+      showToast('Task posted successfully!', 'success');
       return { success: true, data: dbJob };
     }
 
-    return { success: false, error: error?.message || 'Failed to post job' };
+    return { success: false, error: error?.message || 'Failed to post task' };
   };
 
 
@@ -1904,12 +1937,10 @@ export const AppProvider = ({ children }) => {
 
         if (profile.bird) setSelectedBird(profile.bird);
         setIsAdmin(profile.is_admin === true);
-        // Force always online status on OAuth/magic-link sign-in
-        setIsOnlineState(true);
-        localStorage.setItem('isOnline', 'true');
-        if (profile.is_online !== true) {
-          api.updateProfile(profile.id, { is_online: true }).catch(console.error);
-        }
+        // Sync with database profile availability status on OAuth/magic-link sign-in
+        const profileOnline = profile.is_online ?? true;
+        setIsOnlineState(profileOnline);
+        localStorage.setItem('isOnline', profileOnline ? 'true' : 'false');
 
         if (loginCallbackRef.current) {
           const callback = loginCallbackRef.current;
@@ -2104,6 +2135,7 @@ export const AppProvider = ({ children }) => {
         otpEntered,
         setOtpEntered,
         resetApp,
+        logout: resetApp,
         getJobsInRadius,
         trackingTaskerPos,
         setTrackingTaskerPos,

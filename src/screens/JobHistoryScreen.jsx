@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Clock, CheckCircle, Users, MoreVertical, MapPin } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, Users, MoreVertical, MapPin, XCircle } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { SKILLS } from '../config/constants';
 
@@ -9,22 +9,25 @@ const JobHistoryScreen = () => {
   // Separate jobs based on role
   const userJobs = jobs.filter(j => {
     if (role === 'tasker') {
-      return j.isAcceptedByMe || j.taskerId === userProfile?.id || j.taskerName === userProfile?.name;
+      return j.isAcceptedByMe || j.isCancelledByMe || j.taskerId === userProfile?.id || j.taskerName === userProfile?.name;
     }
     return j.posterName === userProfile?.name || j.posterName === 'You' || j.posterId === userProfile?.id;
   });
 
-  const activeJobs = userJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft' && j.status !== 'cancelled');
-  const completedJobs = userJobs.filter(j => j.status === 'completed');
-  const expiredJobs = userJobs.filter(j => j.status === 'expired');
+  const activeJobs = userJobs.filter(j => j.status !== 'expired' && j.status !== 'completed' && j.status !== 'draft' && j.status !== 'cancelled' && !j.isCancelledByMe && !(role === 'tasker' && j.completedByMe));
+  const completedJobs = userJobs.filter(j => (j.status === 'completed' || (role === 'tasker' && j.completedByMe)) && !j.isCancelledByMe);
+  const expiredJobs = userJobs.filter(j => j.status === 'expired' && !j.isCancelledByMe);
+  const cancelledJobs = userJobs.filter(j => j.isCancelledByMe || j.status === 'cancelled');
 
   const displayActive = activeJobs;
   const displayCompleted = completedJobs;
   const displayExpired = expiredJobs;
+  const displayCancelled = cancelledJobs;
 
   const activeRef = useRef(null);
   const completedRef = useRef(null);
   const expiredRef = useRef(null);
+  const cancelledRef = useRef(null);
 
   const [activeDropdownId, setActiveDropdownId] = useState(null);
 
@@ -65,6 +68,10 @@ const JobHistoryScreen = () => {
       borderColor = 'border-green-100';
       iconBg = 'bg-green-50 text-green-500';
       statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-green-500 bg-green-50 border-green-200">Completed</span>;
+    } else if (type === 'cancelled') {
+      borderColor = 'border-red-100';
+      iconBg = 'bg-red-50 text-red-500';
+      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-red-500 bg-red-50 border-red-200">Cancelled</span>;
     }
 
     return (
@@ -75,7 +82,7 @@ const JobHistoryScreen = () => {
             // Expired jobs do not open receipt summary
             return;
           }
-          if (type === 'completed') {
+          if (type === 'completed' || type === 'cancelled') {
             setCurrentPostedJob(job);
             pushScreen('job_receipt');
           } else if (type === 'active') {
@@ -92,11 +99,12 @@ const JobHistoryScreen = () => {
             }
           }
         }}
-        className={`bg-white border ${borderColor} rounded-2xl p-4 shadow-sm relative ${(!isExpired && (type === 'completed' || type === 'active')) ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+        className={`bg-white border ${borderColor} rounded-2xl p-4 shadow-sm relative ${(!isExpired && (type === 'completed' || type === 'cancelled' || type === 'active')) ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
       >
         {!isExpired && type === 'completed' && <div className="absolute top-0 left-0 w-1 h-full bg-green-400 rounded-l-2xl"></div>}
         {isExpired && <div className="absolute top-0 left-0 w-1 h-full bg-red-400 rounded-l-2xl"></div>}
         {type === 'active' && <div className="absolute top-0 left-0 w-1 h-full bg-blue-400 rounded-l-2xl"></div>}
+        {type === 'cancelled' && <div className="absolute top-0 left-0 w-1 h-full bg-red-400 rounded-l-2xl"></div>}
         
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center space-x-2">
@@ -249,6 +257,21 @@ const JobHistoryScreen = () => {
             </div>
             <div className="space-y-3">
               {displayExpired.map(job => renderJobCard(job, 'completed'))}
+            </div>
+          </div>
+        )}
+
+        {/* Cancelled Section */}
+        {displayCancelled.length > 0 && (
+          <div ref={cancelledRef} className="space-y-4 pt-4 scroll-m-4" id="cancelled-section">
+            <div className="flex items-center space-x-2 px-1">
+              <XCircle className="w-4 h-4 text-red-500" />
+              <span className="text-sm font-black uppercase tracking-widest text-dark">
+                Cancelled Tasks
+              </span>
+            </div>
+            <div className="space-y-3">
+              {displayCancelled.map(job => renderJobCard(job, 'cancelled'))}
             </div>
           </div>
         )}

@@ -123,7 +123,9 @@ const PWAInstallPrompt = () => {
             <Download size={20} />
           </div>
           <div>
-            <h3 className="font-bold text-gray-900">Install HelpHive</h3>
+            <h3 className="font-bold text-gray-900">
+              Install <span className="font-black text-dark">Help<span className="text-primary">Hive</span></span>
+            </h3>
             <p className="text-sm text-gray-500">Add to home screen for quick access</p>
           </div>
         </div>
