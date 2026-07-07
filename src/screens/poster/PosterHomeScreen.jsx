@@ -114,11 +114,11 @@ const PosterHomeScreen = () => {
 
 
       {/* Main Content Feed */}
-      <div className="flex-1 overflow-y-auto no-scrollbar">
-        <div className="px-4 pt-6 pb-24 space-y-6 max-w-md mx-auto w-full">
+      <div className={`flex-1 overflow-y-auto no-scrollbar ${displayActiveJobs.length === 0 ? 'flex flex-col' : ''}`}>
+        <div className={`px-4 pt-6 pb-24 space-y-6 max-w-md mx-auto w-full ${displayActiveJobs.length === 0 ? 'flex-1 flex flex-col' : ''}`}>
         
         {/* My Active Jobs Section */}
-        <div className="space-y-4">
+        <div className={`space-y-4 ${displayActiveJobs.length === 0 ? 'flex-1 flex flex-col' : ''}`}>
           <div className="flex justify-end px-1">
             <button
               onClick={handleRefresh}
@@ -132,32 +132,32 @@ const PosterHomeScreen = () => {
           </div>
 
           {displayActiveJobs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center space-y-3 py-6 px-4 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-3xl border border-orange-100/50 shadow-xs relative overflow-hidden group h-[200px] w-full shrink-0">
-              <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-orange-100/30 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
-              
-              <div className="p-2.5 bg-orange-500/10 text-orange-500 rounded-full shrink-0">
-                <PlusCircle className="w-5 h-5" />
-              </div>
-              
-              <div className="space-y-1 shrink-0">
-                <span className="text-[9px] font-black uppercase tracking-wider text-orange-500 bg-orange-100/50 px-2 py-0.5 rounded-full border border-orange-200/20">
-                  Try Posting Something Like:
-                </span>
-              </div>
-              
-              <div className="h-[54px] flex items-center justify-center px-4 w-full shrink-0">
-                <p className={`text-xs font-extrabold text-gray-700 italic leading-relaxed transition-opacity duration-300 ${fadeState === 'fade-out' ? 'opacity-0' : 'opacity-100'}`}>
-                  "{EXAMPLE_TASKS[exampleIndex]}"
-                </p>
-              </div>
+            <div className="flex-1 flex flex-col justify-center items-center">
+              <div className="flex flex-col items-center justify-center text-center space-y-3 py-6 px-4 bg-transparent w-full shrink-0 h-[200px] relative">
+                <div className="p-2.5 bg-orange-500/10 text-orange-500 rounded-full shrink-0">
+                  <PlusCircle className="w-5 h-5" />
+                </div>
+                
+                <div className="space-y-1 shrink-0">
+                  <span className="text-[9px] font-black uppercase tracking-wider text-orange-500 px-2 py-0.5">
+                    Try Posting Something Like:
+                  </span>
+                </div>
+                
+                <div className="h-[54px] flex items-center justify-center px-4 w-full shrink-0">
+                  <p className={`text-xs font-extrabold text-gray-700 italic leading-relaxed transition-opacity duration-300 ${fadeState === 'fade-out' ? 'opacity-0' : 'opacity-100'}`}>
+                    "{EXAMPLE_TASKS[exampleIndex]}"
+                  </p>
+                </div>
 
-              <div className="flex justify-center space-x-1.5 pt-1 shrink-0">
-                {EXAMPLE_TASKS.map((_, idx) => (
-                  <div 
-                    key={idx}
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === exampleIndex ? 'bg-orange-500 w-3' : 'bg-orange-200'}`}
-                  ></div>
-                ))}
+                <div className="flex justify-center space-x-1.5 pt-1 shrink-0">
+                  {EXAMPLE_TASKS.map((_, idx) => (
+                    <div 
+                      key={idx}
+                      className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === exampleIndex ? 'bg-orange-500 w-3' : 'bg-orange-200'}`}
+                    ></div>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (

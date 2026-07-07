@@ -131,12 +131,14 @@ const TaskerHomeScreen = () => {
     }
   }, [visibleJobs, userProfile?.id]);
 
+  const isScreenEmpty = !isOnline || !isProfileReady || (visibleJobs.length === 0 && displayActiveTasks.length === 0);
+
   return (
     <div className="flex-1 flex flex-col bg-white h-full select-none">
       
       {/* Main Content Feed */}
-      <div className="flex-1 overflow-y-auto no-scrollbar">
-        <div className="px-4 pt-6 pb-28 space-y-6 max-w-md mx-auto w-full">
+      <div className={`flex-1 overflow-y-auto no-scrollbar ${isScreenEmpty ? 'flex flex-col' : ''}`}>
+        <div className={`px-4 pt-6 pb-28 space-y-6 max-w-md mx-auto w-full ${isScreenEmpty ? 'flex-1 flex flex-col justify-center' : ''}`}>
         
 
 
@@ -198,7 +200,7 @@ const TaskerHomeScreen = () => {
         )}
 
         {!isOnline ? (
-          <div className="flex flex-col items-center justify-center text-center space-y-3 py-10 px-6 bg-gray-50/60 rounded-[32px] border border-gray-200/60 my-4 max-w-md mx-auto w-full animate-scale-up">
+          <div className="flex flex-col items-center justify-center text-center space-y-3 py-10 px-6 bg-transparent w-full animate-scale-up">
             <div className="p-3 bg-gray-100 text-gray-400 rounded-full shrink-0">
               <Smile className="w-7 h-7 stroke-[2.2] opacity-60" />
             </div>
@@ -207,22 +209,17 @@ const TaskerHomeScreen = () => {
             </span>
           </div>
         ) : !isProfileReady ? (
-          <div className="flex flex-col items-center justify-center text-center space-y-3 py-10 px-6 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-[32px] border border-orange-100/50 shadow-xs relative overflow-hidden group my-4 max-w-md mx-auto w-full">
-            <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-orange-100/30 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
-            
+          <div className="flex flex-col items-center justify-center text-center space-y-3 py-10 px-6 bg-transparent w-full">
             <div className="p-3 bg-orange-500/10 text-orange-500 rounded-full shrink-0 relative z-10">
               <Briefcase className="w-7 h-7" />
             </div>
-            
             <span className="text-xs font-semibold text-dark relative z-10 max-w-[240px] leading-normal">
               Complete your helper profile to start getting task notifications.
             </span>
           </div>
         ) : (visibleJobs.length === 0 && displayActiveTasks.length === 0) ? (
-          <div className="flex flex-col items-center justify-center text-center space-y-3 py-16 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-3xl border border-orange-100/50 shadow-xs relative overflow-hidden group px-6 w-full">
-            <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-orange-100/30 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
-            
-            <div className="p-4 bg-orange-50 rounded-full text-primary relative z-10">
+          <div className="flex flex-col items-center justify-center text-center space-y-3 py-10 px-6 bg-transparent w-full">
+            <div className="p-4 bg-orange-500/10 rounded-full text-primary relative z-10">
               <Inbox className="w-8 h-8" />
             </div>
             <span className="text-xs font-semibold text-gray-400 max-w-[220px] relative z-10 leading-normal">

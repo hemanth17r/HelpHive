@@ -113,7 +113,7 @@ const BottomNav = () => {
 
   return (
     <div 
-      className={`grid grid-cols-3 items-center bg-white/95 backdrop-blur-lg border-t border-border-m3 shrink-0 w-full transition-all duration-300 ease-in-out origin-bottom ${
+      className={`grid grid-cols-3 items-center bg-white/95 backdrop-blur-lg shrink-0 w-full transition-all duration-300 ease-in-out origin-bottom ${
         visible 
           ? 'py-2.5 opacity-100 translate-y-0 shadow-[0_-2px_10px_rgba(0,0,0,0.02)]' 
           : 'py-0 opacity-0 pointer-events-none overflow-hidden border-transparent translate-y-full'
