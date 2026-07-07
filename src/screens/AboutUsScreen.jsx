@@ -25,7 +25,7 @@ const AboutUsScreen = () => {
             <h1 className="text-[22px] font-black text-dark tracking-tight">
               Help<span className="text-primary">Hive</span>
             </h1>
-            <span className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Version 7.1.0</span>
+            <span className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Version 7.2.0</span>
           </div>
         </div>
 
