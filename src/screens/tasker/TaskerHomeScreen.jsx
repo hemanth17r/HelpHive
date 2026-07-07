@@ -89,9 +89,17 @@ const TaskerHomeScreen = () => {
   // resolving accurate relative distances.
   useEffect(() => {
     if (isOnline && visibleJobs.length > 0 && !realLocation && navigator.geolocation) {
-      getCurrentLocation()
-        .then((loc) => setRealLocation(loc))
-        .catch((err) => console.log('Background GPS fetch paused/denied:', err));
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: 'geolocation' })
+          .then((result) => {
+            if (result.state === 'granted') {
+              getCurrentLocation()
+                .then((loc) => setRealLocation(loc))
+                .catch((err) => console.log('Background GPS fetch paused/denied:', err));
+            }
+          })
+          .catch((err) => console.log('Permission check for background GPS failed:', err));
+      }
     }
   }, [isOnline, visibleJobs.length, realLocation, setRealLocation]);
 

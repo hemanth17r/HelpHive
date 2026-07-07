@@ -1,11 +1,8 @@
 import React, { useContext, useEffect, useState, useMemo } from 'react';
-import { PlusCircle, Plus, MapPin, User, Clock, Users, ArrowRight, MoreVertical, RefreshCw } from 'lucide-react';
+import { PlusCircle, MapPin, User, Clock, Users, ArrowRight, MoreVertical, RefreshCw } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
-import Tooltip from '../../components/Tooltip';
 import BirdAvatar from '../../components/BirdAvatars';
-import SetupWizardModal from '../../components/SetupWizardModal';
-import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 
 const PosterHomeScreen = () => {
   const { 
@@ -21,12 +18,8 @@ const PosterHomeScreen = () => {
     realLocation,
     setRealLocation,
     fetchJobs,
-    openOnboardingWizard,
-    userId,
-    openLoginModal
+    userId
   } = useContext(AppContext);
-
-  const { missingWizardItems } = useProfileCompletion();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -40,22 +33,7 @@ const PosterHomeScreen = () => {
     fetchJobs();
   }, [fetchJobs]);
 
-  const handlePostJobClick = () => {
-    if (!userId) {
-      openLoginModal(() => {
-        handlePostJobClick();
-      });
-      return;
-    }
-    const isWizardCompleted = localStorage.getItem(`helphive_wizard_completed_poster_${userId}`) === 'true' && missingWizardItems.length === 0;
-    if (!isWizardCompleted) {
-      openOnboardingWizard(() => {
-        pushScreen('post_job');
-      });
-    } else {
-      pushScreen('post_job');
-    }
-  };
+
 
   // Filter jobs for the current user
   const posterJobs = useMemo(() => {
@@ -154,26 +132,26 @@ const PosterHomeScreen = () => {
           </div>
 
           {displayActiveJobs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center space-y-4 py-10 px-6 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-3xl border border-orange-100/50 shadow-xs relative overflow-hidden group">
+            <div className="flex flex-col items-center justify-center text-center space-y-3 py-6 px-4 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-3xl border border-orange-100/50 shadow-xs relative overflow-hidden group h-[200px] w-full shrink-0">
               <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-orange-100/30 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500"></div>
               
-              <div className="p-3 bg-orange-500/10 text-orange-500 rounded-full">
-                <PlusCircle className="w-7 h-7" />
+              <div className="p-2.5 bg-orange-500/10 text-orange-500 rounded-full shrink-0">
+                <PlusCircle className="w-5 h-5" />
               </div>
               
-              <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-orange-500 bg-orange-100/50 px-2.5 py-1 rounded-full border border-orange-200/20">
+              <div className="space-y-1 shrink-0">
+                <span className="text-[9px] font-black uppercase tracking-wider text-orange-500 bg-orange-100/50 px-2 py-0.5 rounded-full border border-orange-200/20">
                   Try Posting Something Like:
                 </span>
               </div>
               
-              <div className="min-h-[48px] flex items-center justify-center px-4 w-full">
-                <p className={`text-sm font-extrabold text-gray-700 italic leading-relaxed transition-opacity duration-300 ${fadeState === 'fade-out' ? 'opacity-0' : 'opacity-100'}`}>
+              <div className="h-[54px] flex items-center justify-center px-4 w-full shrink-0">
+                <p className={`text-xs font-extrabold text-gray-700 italic leading-relaxed transition-opacity duration-300 ${fadeState === 'fade-out' ? 'opacity-0' : 'opacity-100'}`}>
                   "{EXAMPLE_TASKS[exampleIndex]}"
                 </p>
               </div>
 
-              <div className="flex justify-center space-x-1.5 pt-1">
+              <div className="flex justify-center space-x-1.5 pt-1 shrink-0">
                 {EXAMPLE_TASKS.map((_, idx) => (
                   <div 
                     key={idx}
@@ -267,19 +245,7 @@ const PosterHomeScreen = () => {
           )}
         </div>
 
-        {/* Post a Task Button */}
-        <div className="flex flex-col items-center justify-center w-full">
-          <div style={{ height: '30px' }} />
-          <Tooltip text="Create a new task request">
-            <button
-              onClick={handlePostJobClick}
-              className="flex items-center justify-center bg-primary hover:bg-[#D94F0A] text-white px-6 py-2.5 rounded-full shadow-md hover:shadow-lg active:scale-[0.98] transition-all cursor-pointer font-bold text-sm tracking-wide"
-            >
-              <Plus className="w-4 h-4 mr-1.5 stroke-[2.5]" />
-              <span>Post a Task</span>
-            </button>
-          </Tooltip>
-        </div>
+
 
 
         </div>

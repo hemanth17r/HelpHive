@@ -38,22 +38,37 @@ const TaskerOnboardingScreen = () => {
   const dropdownRef = useRef(null);
   const searchTimeoutRef = useRef(null);
 
-  // Auto-detect location on step 2 if not set yet
+  // Auto-detect location on step 2 if not set yet (only if permission is already granted)
   useEffect(() => {
     if (step === 2 && (!userProfile?.serviceAreaLat || !userProfile?.serviceAreaLng)) {
-      getCurrentLocation()
-        .then(loc => {
-          setServiceAreaLocation(loc);
-          reverseGeocode(loc.lat, loc.lng).then(result => {
-            if (result) setSearchQuery(result.displayName);
-          });
-        })
-        .catch(err => {
-          console.warn('Initial geolocation for service area failed/denied, using default:', err);
-          reverseGeocode(serviceAreaLocation.lat, serviceAreaLocation.lng).then(result => {
-            if (result) setSearchQuery(result.displayName);
-          });
-        });
+      const detectLocation = async () => {
+        let locationDetected = false;
+        if (navigator.geolocation && navigator.permissions && navigator.permissions.query) {
+          try {
+            const result = await navigator.permissions.query({ name: 'geolocation' });
+            if (result.state === 'granted') {
+              const loc = await getCurrentLocation();
+              setServiceAreaLocation(loc);
+              const geoResult = await reverseGeocode(loc.lat, loc.lng);
+              if (geoResult) setSearchQuery(geoResult.displayName);
+              locationDetected = true;
+            }
+          } catch (e) {
+            console.warn('Geolocation permission query failed:', e);
+          }
+        }
+        
+        if (!locationDetected) {
+          try {
+            const geoResult = await reverseGeocode(serviceAreaLocation.lat, serviceAreaLocation.lng);
+            if (geoResult) setSearchQuery(geoResult.displayName);
+          } catch (e) {
+            console.error('Failed reverse geocoding default location:', e);
+          }
+        }
+      };
+      
+      detectLocation();
     } else if (step === 2 && userProfile?.serviceAreaName) {
       setSearchQuery(userProfile.serviceAreaName);
     }
