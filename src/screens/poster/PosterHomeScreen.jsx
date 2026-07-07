@@ -25,7 +25,13 @@ const PosterHomeScreen = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    const start = Date.now();
     await fetchJobs(true);
+    const elapsed = Date.now() - start;
+    const minDelay = 800;
+    if (elapsed < minDelay) {
+      await new Promise(resolve => setTimeout(resolve, minDelay - elapsed));
+    }
     setIsRefreshing(false);
   };
 
