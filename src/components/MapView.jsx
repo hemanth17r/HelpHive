@@ -121,14 +121,20 @@ const MapView = ({
     if (mapInstanceRef.current && center) {
       const currentCenter = mapInstanceRef.current.getCenter();
       const [newLat, newLng] = center;
+      console.log('[MapView Center Effect] Received new center:', center, 'Current map center:', currentCenter);
       if (Math.abs(currentCenter.lat - newLat) > 0.0001 || Math.abs(currentCenter.lng - newLng) > 0.0001) {
+        console.log('[MapView Center Effect] Centers differ. Calling setView to pan map...');
         mapInstanceRef.current.setView(center, zoom || mapInstanceRef.current.getZoom());
         if (draggableMarkerRef.current) {
+          console.log('[MapView Center Effect] Updating draggable marker position to:', center);
           draggableMarkerRef.current.setLatLng(center);
         }
         if (coverageCircleRef.current) {
+          console.log('[MapView Center Effect] Updating coverage circle position to:', center);
           coverageCircleRef.current.setLatLng(center);
         }
+      } else {
+        console.log('[MapView Center Effect] Center is unchanged (within tolerance). Skipping setView.');
       }
     }
   }, [center, zoom]);

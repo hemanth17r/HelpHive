@@ -13,7 +13,7 @@ export const getCurrentLocation = () => {
   return new Promise((resolve, reject) => {
     const overallTimeout = setTimeout(() => {
       reject(new Error('Location request timed out (user did not respond to prompt or system hung).'));
-    }, 15000); // 15 seconds max wait time for the whole process including prompt
+    }, 20000); // 20 seconds max wait time for the whole process including prompts and fallbacks
 
     const clearOverallTimeout = () => clearTimeout(overallTimeout);
 
@@ -31,6 +31,7 @@ export const getCurrentLocation = () => {
 };
 
 async function fetchIpLocation() {
+  // Try ipapi.co first
   try {
     const response = await fetch('https://ipapi.co/json/');
     if (response.ok) {
@@ -43,7 +44,23 @@ async function fetchIpLocation() {
       }
     }
   } catch (e) {
-    console.warn('Failed to fetch location from ipapi.co:', e);
+    console.warn('Failed to fetch location from ipapi.co, trying ipinfo.io...', e);
+  }
+
+  // Try ipinfo.io as fallback
+  try {
+    const response = await fetch('https://ipinfo.io/json');
+    if (response.ok) {
+      const data = await response.json();
+      if (data.loc) {
+        const [lat, lng] = data.loc.split(',').map(Number);
+        if (lat && lng) {
+          return { lat, lng };
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to fetch location from ipinfo.io:', e);
   }
   return null;
 }
@@ -109,10 +126,10 @@ function requestPosition(resolve, reject) {
           (error2) => {
             handleFailure(error2);
           },
-          { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+          { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
         );
       },
-      { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 4000, maximumAge: 60000 }
     );
   } catch (err) {
     handleFailure({ code: 0, message: err.message });

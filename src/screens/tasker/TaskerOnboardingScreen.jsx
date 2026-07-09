@@ -115,20 +115,27 @@ const TaskerOnboardingScreen = () => {
   };
 
   const handleUseCurrentLocation = async () => {
+    console.log('[GPS Clicked] Starting location detection...');
     setIsLocating(true);
     try {
       const loc = await getCurrentLocation();
+      console.log('[GPS Resolved] Coordinates fetched:', loc);
+      
+      console.log('[GPS State Update] Setting service area location to:', loc);
       setServiceAreaLocation({ lat: loc.lat, lng: loc.lng });
       
+      console.log('[GPS Geocoding] Starting reverse geocoding for:', loc);
       const result = await reverseGeocode(loc.lat, loc.lng);
+      console.log('[GPS Geocoding Completed] Result:', result);
       if (result) {
         setSearchQuery(result.displayName);
       }
     } catch (e) {
-      console.error('Failed to get current location', e);
+      console.error('[GPS Error] Failed to get current location:', e);
       showToast('Location permission denied or unavailable.', 'error');
     } finally {
       setIsLocating(false);
+      console.log('[GPS Completed] Locator spinner stopped.');
     }
   };
 
