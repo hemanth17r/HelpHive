@@ -23,32 +23,10 @@ export const getCurrentLocation = () => {
       return;
     }
 
-    // Check if we can query the permission state first (supported in modern browsers)
-    if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-        if (result.state === 'denied') {
-          clearOverallTimeout();
-          reject(new Error('Location permission has been denied. Please enable it in your browser settings.'));
-          return;
-        }
-        // Permission is 'granted' or 'prompt' - proceed to get position
-        requestPosition(
-          (pos) => { clearOverallTimeout(); resolve(pos); },
-          (err) => { clearOverallTimeout(); reject(err); }
-        );
-      }).catch(() => {
-        // permissions.query not supported for geolocation in this browser, try directly
-        requestPosition(
-          (pos) => { clearOverallTimeout(); resolve(pos); },
-          (err) => { clearOverallTimeout(); reject(err); }
-        );
-      });
-    } else {
-      requestPosition(
-        (pos) => { clearOverallTimeout(); resolve(pos); },
-        (err) => { clearOverallTimeout(); reject(err); }
-      );
-    }
+    requestPosition(
+      (pos) => { clearOverallTimeout(); resolve(pos); },
+      (err) => { clearOverallTimeout(); reject(err); }
+    );
   });
 };
 
@@ -62,28 +40,51 @@ function requestPosition(resolve, reject) {
         });
       },
       (error) => {
-        let message;
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            message = 'Location permission denied. Please enable location access in your browser settings.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            message = 'Location information is unavailable. Please check that GPS/location services are enabled on your device.';
-            break;
-          case error.TIMEOUT:
-            message = 'Location request timed out. Please try again.';
-            break;
-          default:
-            message = 'An unknown error occurred while getting your location.';
+        // If the user explicitly denied permission, do not retry
+        if (error.code === error.PERMISSION_DENIED) {
+          let message = 'Location permission denied. Please enable location access in your browser settings.';
+          const enrichedError = new Error(message);
+          enrichedError.code = error.code;
+          enrichedError.originalError = error;
+          reject(enrichedError);
+          return;
         }
-        const enrichedError = new Error(message);
-        enrichedError.code = error.code;
-        enrichedError.originalError = error;
-        reject(enrichedError);
+
+        // Fallback to lower accuracy if high accuracy fails or times out (common on desktop/laptops)
+        console.warn('High accuracy geolocation failed or timed out, trying low accuracy...', error);
+        navigator.geolocation.getCurrentPosition(
+          (position2) => {
+            resolve({
+              lat: position2.coords.latitude,
+              lng: position2.coords.longitude
+            });
+          },
+          (error2) => {
+            let message;
+            switch (error2.code) {
+              case error2.PERMISSION_DENIED:
+                message = 'Location permission denied. Please enable location access in your browser settings.';
+                break;
+              case error2.POSITION_UNAVAILABLE:
+                message = 'Location information is unavailable. Please check that GPS/location services are enabled on your device.';
+                break;
+              case error2.TIMEOUT:
+                message = 'Location request timed out. Please try again.';
+                break;
+              default:
+                message = 'An unknown error occurred while getting your location.';
+            }
+            const enrichedError = new Error(message);
+            enrichedError.code = error2.code;
+            enrichedError.originalError = error2;
+            reject(enrichedError);
+          },
+          { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+        );
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
     );
-  } catch (err) {
+  } catch {
     // Handle the case where the browser blocks the call entirely (e.g., NotAllowedError from overlay apps on Android)
     reject(new Error('Your browser blocked the location request. Close any overlays or bubbles from other apps, then try again.'));
   }

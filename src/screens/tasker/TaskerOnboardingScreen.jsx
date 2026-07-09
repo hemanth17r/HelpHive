@@ -34,6 +34,7 @@ const TaskerOnboardingScreen = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   const dropdownRef = useRef(null);
   const searchTimeoutRef = useRef(null);
@@ -114,6 +115,7 @@ const TaskerOnboardingScreen = () => {
   };
 
   const handleUseCurrentLocation = async () => {
+    setIsLocating(true);
     try {
       const loc = await getCurrentLocation();
       setServiceAreaLocation({ lat: loc.lat, lng: loc.lng });
@@ -125,6 +127,8 @@ const TaskerOnboardingScreen = () => {
     } catch (e) {
       console.error('Failed to get current location', e);
       showToast('Location permission denied or unavailable.', 'error');
+    } finally {
+      setIsLocating(false);
     }
   };
 
@@ -415,10 +419,15 @@ const TaskerOnboardingScreen = () => {
                 {/* Floating GPS Button */}
                 <button 
                   onClick={handleUseCurrentLocation}
-                  className="absolute bottom-6 right-4 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer border border-gray-100"
+                  disabled={isLocating}
+                  className="absolute bottom-6 right-4 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer border border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed select-none"
                   aria-label="Use current location"
                 >
-                  <Navigation className="w-5 h-5" />
+                  {isLocating ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
+                  ) : (
+                    <Navigation className="w-5 h-5 shrink-0" />
+                  )}
                 </button>
               </div>
               <p className="text-[10px] text-gray-400 mt-2 text-center">Drag the pin or use search to adjust the center of your service area.</p>

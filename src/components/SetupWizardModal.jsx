@@ -84,6 +84,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const hasInitializedRef = useRef(false);
 
   // Profile fields state (Common)
@@ -380,6 +381,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
   };
 
   const handleUseCurrentLocation = async () => {
+    setIsLocating(true);
     try {
       const loc = await getCurrentLocation();
       setServiceAreaLocation({ lat: loc.lat, lng: loc.lng });
@@ -390,6 +392,8 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
       }
     } catch (e) {
       showToast('Location permission denied or unavailable.', 'error');
+    } finally {
+      setIsLocating(false);
     }
   };
 
@@ -957,10 +961,17 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                     {/* Labeled GPS Button */}
                     <button 
                       onClick={handleUseCurrentLocation}
-                      className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-1.5 px-4 py-2 bg-white rounded-full shadow-lg border border-gray-100 text-gray-600 hover:text-primary hover:border-primary/30 hover:shadow-xl active:scale-[0.95] transition-all cursor-pointer select-none"
+                      disabled={isLocating}
+                      className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-1.5 px-4 py-2 bg-white rounded-full shadow-lg border border-gray-100 text-gray-600 hover:text-primary hover:border-primary/30 hover:shadow-xl active:scale-[0.95] transition-all cursor-pointer select-none disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <Navigation className="w-3.5 h-3.5 shrink-0" />
-                      <span className="text-[11px] font-bold">Use my location</span>
+                      {isLocating ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary shrink-0" />
+                      ) : (
+                        <Navigation className="w-3.5 h-3.5 shrink-0" />
+                      )}
+                      <span className="text-[11px] font-bold">
+                        {isLocating ? 'Locating...' : 'Use my location'}
+                      </span>
                     </button>
                   </div>
 
