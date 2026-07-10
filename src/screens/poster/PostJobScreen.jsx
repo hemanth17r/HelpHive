@@ -454,7 +454,7 @@ const PostJobScreen = () => {
             <div className="space-y-8 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left pt-2">
             
             {/* Category Section */}
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div>
                 <h2 className="text-xl font-black text-dark tracking-tight mb-1">
                   What kind of help do you need?
@@ -463,10 +463,10 @@ const PostJobScreen = () => {
 
               {/* Physical & On-site Section */}
               {showPhysical && (
-                <div className="space-y-2.5">
+                <div className="space-y-4">
                   <div className="flex items-center space-x-1.5 px-1">
                     <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                    <span className="text-xs font-medium text-slate-700 tracking-wide">
                       On-site & Physical Services
                     </span>
                   </div>
@@ -489,10 +489,10 @@ const PostJobScreen = () => {
 
               {/* Online & Remote Section */}
               {showRemote && (
-                <div className="space-y-2.5">
+                <div className="space-y-4">
                   <div className="flex items-center space-x-1.5 px-1">
                     <Wifi className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                    <span className="text-xs font-medium text-slate-700 tracking-wide">
                       Online & Remote Services
                     </span>
                   </div>

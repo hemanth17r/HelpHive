@@ -63,6 +63,15 @@ export const NotificationProvider = ({ children }) => {
     
     // Sync permission state on mount (in case it changed externally)
     setPushPermission(getNotificationPermission());
+
+    const handleFocus = () => {
+      setPushPermission(getNotificationPermission());
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   // Fetch initial notifications when user logs in and when role changes

@@ -782,12 +782,12 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                     <p className="text-xs font-semibold text-gray-400 mt-1">Select all categories of work you are comfortable doing.</p>
                   </div>
                   
-                  <div className="space-y-5 pt-1">
+                  <div className="space-y-8 pt-1">
                     {/* On-site Section */}
-                    <div className="space-y-2.5">
+                    <div className="space-y-4">
                       <div className="flex items-center gap-1.5 px-1">
                         <MapPin className="w-3 h-3 text-primary shrink-0" />
-                        <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">On-site &amp; Physical Services</span>
+                        <span className="text-xs font-medium text-slate-700 tracking-wide">On-site &amp; Physical Services</span>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         {SKILLS.filter(s => s.type === 'physical').map((skill) => {
@@ -833,10 +833,10 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                     </div>
 
                     {/* Online Section */}
-                    <div className="space-y-2.5">
+                    <div className="space-y-4">
                       <div className="flex items-center gap-1.5 px-1">
                         <Wifi className="w-3 h-3 text-primary shrink-0" />
-                        <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Online &amp; Remote Services</span>
+                        <span className="text-xs font-medium text-slate-700 tracking-wide">Online &amp; Remote Services</span>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         {SKILLS.filter(s => s.type === 'remote').map((skill) => {

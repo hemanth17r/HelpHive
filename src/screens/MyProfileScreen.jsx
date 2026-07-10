@@ -1105,15 +1105,12 @@ Issue: `;
             
             {/* Body */}
             <div className="flex-1 overflow-y-auto px-6 py-6 bg-white">
-              <p className="text-xs font-semibold text-gray-500 mb-4">
-                Select the services you want to offer.
-              </p>
-              <div className="space-y-6 pb-20">
+              <div className="space-y-8 pb-20">
                 {/* On-site Section */}
-                <div className="space-y-2.5">
+                <div className="space-y-4">
                   <div className="flex items-center gap-1.5 px-1">
                     <MapPin className="w-3 h-3 text-primary shrink-0" />
-                    <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">On-site &amp; Physical Services</span>
+                    <span className="text-xs font-medium text-slate-700 tracking-wide">On-site &amp; Physical Services</span>
                   </div>
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3">
                     {SKILLS.filter(s => s.type === 'physical').map((skill) => {
@@ -1141,10 +1138,10 @@ Issue: `;
                 </div>
 
                 {/* Online Section */}
-                <div className="space-y-2.5">
+                <div className="space-y-4">
                   <div className="flex items-center gap-1.5 px-1">
                     <Wifi className="w-3 h-3 text-primary shrink-0" />
-                    <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Online &amp; Remote Services</span>
+                    <span className="text-xs font-medium text-slate-700 tracking-wide">Online &amp; Remote Services</span>
                   </div>
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3">
                     {SKILLS.filter(s => s.type === 'remote').map((skill) => {
@@ -1171,26 +1168,31 @@ Issue: `;
                   </div>
                 </div>
 
-                {/* Legend */}
-                <div className="pt-5 mt-4 border-t border-border flex flex-wrap items-center justify-center gap-x-5 gap-y-2.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary text-white border border-primary">
-                      NEW
-                    </span>
-                    <span className="text-[10px] font-bold text-gray-500">Newly Added</span>
+                {/* Legend & Tip */}
+                <div className="pt-5 mt-4 border-t border-border flex flex-col items-center gap-3">
+                  <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2.5 w-full">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary text-white border border-primary">
+                        NEW
+                      </span>
+                      <span className="text-[10px] font-bold text-gray-500">Newly Added</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
+                        <Flame className="w-2.5 h-2.5 fill-current text-white" />
+                      </span>
+                      <span className="text-[10px] font-bold text-gray-500">High Demand</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
+                        <Zap className="w-2.5 h-2.5 fill-current text-white" />
+                      </span>
+                      <span className="text-[10px] font-bold text-gray-500">Quick Match</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
-                      <Flame className="w-2.5 h-2.5 fill-current text-white" />
-                    </span>
-                    <span className="text-[10px] font-bold text-gray-500">High Demand</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
-                      <Zap className="w-2.5 h-2.5 fill-current text-white" />
-                    </span>
-                    <span className="text-[10px] font-bold text-gray-500">Quick Match</span>
-                  </div>
+                  <p className="text-[10px] font-bold text-gray-400 text-center mt-1 leading-normal max-w-[280px]">
+                    💡 Note: Select all the services you are willing to perform. You can choose as many as you like!
+                  </p>
                 </div>
               </div>
             </div>

@@ -30,7 +30,7 @@ const TaskerHomeScreen = () => {
     setIsOnline
   } = useContext(AppContext);
 
-  const { missingItems } = useProfileCompletion();
+  const { missingItems, missingWizardItems } = useProfileCompletion();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [declinedJobIds, setDeclinedJobIds] = useState([]);
@@ -309,7 +309,7 @@ const TaskerHomeScreen = () => {
         )}
 
         {/* Start Earning Button */}
-        {(!userId || missingItems.length > 0) && (
+        {(!userId || missingWizardItems.length > 0) && (
           <div className="flex flex-col items-center justify-center w-full">
             <div style={{ height: '30px' }} />
             <Tooltip text="Complete configuration to start accepting tasks">

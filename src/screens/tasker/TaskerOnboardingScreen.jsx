@@ -288,12 +288,12 @@ const TaskerOnboardingScreen = () => {
               Don't worry, you can always change these services later!
             </div>
 
-            <div className="flex-1 space-y-6 overflow-y-auto pr-1">
+            <div className="flex-1 space-y-8 overflow-y-auto pr-1">
               {/* On-site Section */}
-              <div className="space-y-2.5">
+              <div className="space-y-4">
                 <div className="flex items-center gap-1.5 px-1">
                   <MapPin className="w-3 h-3 text-primary shrink-0" />
-                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">On-site &amp; Physical Services</span>
+                  <span className="text-xs font-medium text-slate-700 tracking-wide">On-site &amp; Physical Services</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {SKILLS.filter(s => s.type === 'physical').map((skill) => {
@@ -316,10 +316,10 @@ const TaskerOnboardingScreen = () => {
               </div>
 
               {/* Online Section */}
-              <div className="space-y-2.5">
+              <div className="space-y-4">
                 <div className="flex items-center gap-1.5 px-1">
                   <Wifi className="w-3 h-3 text-primary shrink-0" />
-                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Online &amp; Remote Services</span>
+                  <span className="text-xs font-medium text-slate-700 tracking-wide">Online &amp; Remote Services</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {SKILLS.filter(s => s.type === 'remote').map((skill) => {

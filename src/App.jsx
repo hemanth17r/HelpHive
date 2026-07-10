@@ -286,9 +286,9 @@ const AppContent = () => {
   }, [currentScreen, userProfile?.id]);
 
   const handleNotificationClick = async () => {
-    if ('Notification' in window && Notification.permission === 'default') {
+    if (pushSupported && pushPermission === 'default') {
       try {
-        await Notification.requestPermission();
+        await subscribeToPush();
       } catch (e) {
         console.error("Notification permission request failed", e);
       }
