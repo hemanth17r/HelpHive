@@ -1093,8 +1093,7 @@ Issue: `;
             }`}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-white sticky top-0 z-10 shrink-0">
-              <h2 className="text-lg font-black text-dark">Edit Services</h2>
+            <div className="flex items-center justify-end px-6 py-3 bg-white sticky top-0 z-10 shrink-0">
               <button 
                 onClick={() => setIsEditingSkills(false)}
                 className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors cursor-pointer"

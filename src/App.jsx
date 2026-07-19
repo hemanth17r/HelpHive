@@ -7,6 +7,7 @@ import {
   Sparkles, 
   Home, 
   PlusCircle, 
+  Plus, 
   User, 
   HelpCircle, 
   LogOut, 
@@ -97,6 +98,7 @@ const AppContent = () => {
     closeOnboardingWizard,
     showLoginModal,
     setShowLoginModal,
+    openLoginModal,
     userId,
     logout,
     switchRole,
@@ -191,6 +193,23 @@ const AppContent = () => {
       pushScreen('poster_home');
     } else {
       resetApp();
+    }
+  };
+
+  const handlePostTaskClick = () => {
+    if (!userId) {
+      openLoginModal(() => {
+        handlePostTaskClick();
+      });
+      return;
+    }
+    const isWizardCompleted = localStorage.getItem(`helphive_wizard_completed_poster_${userId}`) === 'true' && missingWizardItems.length === 0;
+    if (!isWizardCompleted) {
+      openOnboardingWizard(() => {
+        pushScreen('post_job');
+      });
+    } else {
+      pushScreen('post_job');
     }
   };
 
@@ -441,6 +460,16 @@ const AppContent = () => {
           {/* Right: Actions */}
           <div className="flex items-center space-x-2">
             
+            {role === 'poster' && (
+              <button
+                onClick={handlePostTaskClick}
+                className="flex items-center space-x-1.5 px-4 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-black rounded-full shadow-md shadow-primary/10 active-scale cursor-pointer mr-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Post a Task</span>
+              </button>
+            )}
+
             {/* Notification Bell */}
             <button 
               className="relative p-2.5 text-gray-600 hover:bg-[#E8EAED] rounded-full transition-colors active-scale cursor-pointer"
@@ -513,6 +542,7 @@ const AppContent = () => {
           
           {/* Right side actions */}
           <div className="flex items-center space-x-3">
+
             {/* Notification Bell (Mobile) */}
             <div 
               className="relative cursor-pointer hover:opacity-80 transition-opacity"

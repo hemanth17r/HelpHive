@@ -498,7 +498,7 @@ export const AppProvider = ({ children }) => {
     }
     lastFetchTimeRef.current = now;
 
-    const { data, error } = await api.fetchJobs();
+    const { data, error } = await api.fetchJobs(userId, role);
     if (data) {
       const mappedJobs = data.map(j => {
         let expiresAt = j.expiresAt || j.scheduled_for || j.scheduledFor || null;

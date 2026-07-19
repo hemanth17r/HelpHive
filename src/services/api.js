@@ -69,217 +69,64 @@ export const api = {
   },
 
   // --- Jobs API ---
-  fetchJobs: async () => {
-    const userId = localStorage.getItem('userId');
-    const role = localStorage.getItem('activeRole');
+  fetchJobs: async (userId, role) => {
+    if (!userId || !role) {
+      return { data: [], error: null };
+    }
     
     let ratedJobsMap = {};
-    let authUserId = null;
     let offers = [];
     
-    // Parallelize Session and Offers fetching
-    const initPromises = [];
-    if (userId) {
-      initPromises.push(
-        supabase.auth.getSession().then(res => {
-          authUserId = res.data?.session?.user?.id;
-        })
-      );
+    if (role === 'tasker') {
+      const { data: offersData } = await supabase
+        .from('job_offers')
+        .select('job_id, status, expires_at, otp_verified, completed_by_tasker')
+        .eq('tasker_id', userId)
+        .in('status', ['pending', 'accepted', 'rejected']);
+      offers = offersData || [];
     }
-    if (role === 'tasker' && userId) {
-      initPromises.push(
-        supabase
-          .from('job_offers')
-          .select('job_id, status, expires_at, otp_verified, completed_by_tasker')
-          .eq('tasker_id', userId)
-          .in('status', ['pending', 'accepted', 'rejected'])
-          .then(res => {
-            offers = res.data || [];
-          })
-      );
-    }
-    await Promise.all(initPromises);
 
-    let query = supabase.from('jobs').select('*, primary_address:user_addresses!jobs_primary_address_id_fkey(*)');
+    let query = supabase.from('jobs').select(`
+      *,
+      primary_address:user_addresses!jobs_primary_address_id_fkey(*),
+      poster:profiles!jobs_poster_id_fkey(id, name, bird, phone, upi_id, rating, tasks_completed),
+      tasker:profiles!jobs_tasker_id_fkey(id, name, bird, phone, upi_id, rating, tasks_completed)
+    `);
     
-    // Poster only sees their own jobs
     if (role === 'poster') {
-      if (userId) {
-        query = query.eq('poster_id', userId);
-      } else {
-        return { data: [], error: null };
-      }
-    } 
-    // Tasker sees: jobs with active offers (pending/accepted) + jobs assigned to them
-    else if (role === 'tasker') {
-      if (!userId) return { data: [], error: null };
-      
+      query = query.eq('poster_id', userId);
+    } else if (role === 'tasker') {
       const offerJobIds = offers.map(o => o.job_id);
-      const acceptedJobIds = offers.filter(o => o.status === 'accepted').map(o => o.job_id);
-      
       if (offerJobIds.length > 0) {
         query = query.neq('poster_id', userId).or(`tasker_id.eq.${userId},id.in.(${offerJobIds.join(',')})`);
       } else {
         query = query.neq('poster_id', userId).eq('tasker_id', userId);
       }
-      
-      const { data, error } = await query;
-      if (data && data.length > 0) {
-        const posterIds = [...new Set(data.map(j => j.poster_id).filter(Boolean))];
-        const taskerIds = [...new Set(data.map(j => j.tasker_id).filter(Boolean))];
-        const profileIds = [...new Set([...posterIds, ...taskerIds])];
-        
-        let profileMap = {};
-        const subPromises = [];
-        
-        if (profileIds.length > 0) {
-          subPromises.push(
-            supabase
-              .from('profiles')
-              .select('id, name, bird, phone, upi_id, rating, tasks_completed')
-              .in('id', profileIds)
-              .then(res => {
-                if (res.data) {
-                  res.data.forEach(p => { profileMap[p.id] = p; });
-                }
-              })
-          );
-        }
-
-        if (authUserId) {
-          const jobIds = data.map(j => j.id);
-          subPromises.push(
-            supabase
-              .from('feedbacks')
-              .select('job_id, rating')
-              .eq('giver_id', authUserId)
-              .in('job_id', jobIds)
-              .then(res => {
-                if (res.data) {
-                  res.data.forEach(f => {
-                    ratedJobsMap[f.job_id] = f.rating;
-                  });
-                }
-              })
-          );
-        }
-
-        await Promise.all(subPromises);
-
-        const mappedJobs = data.map(j => {
-          const coords = parseEWKBPoint(j.location) || { lng: 0, lat: 0 };
-          const poster = profileMap[j.poster_id] || {};
-          const tasker = profileMap[j.tasker_id] || {};
-          const offer = offers.find(o => o.job_id === j.id);
-          
-          let addressObj = null;
-          if (j.primary_address) {
-            const addrCoords = parseEWKBPoint(j.primary_address.coordinates) || { lng: 0, lat: 0 };
-            addressObj = {
-              id: j.primary_address.id,
-              type: j.primary_address.label || 'Other',
-              completeAddress: j.primary_address.formatted_address,
-              landmark: j.primary_address.landmark,
-              lat: addrCoords.lat,
-              lng: addrCoords.lng,
-              contactName: poster.name || 'Customer',
-              contactPhone: poster.phone || ''
-            };
-          }
-
-          let expiresAt = j.scheduled_for || j.created_at;
-          let cleanDesc = j.description || '';
-          const match = cleanDesc.match(/\s*\[Time: ([^\]]+)\]/);
-          if (match) {
-            expiresAt = match[1];
-            cleanDesc = cleanDesc.replace(/\s*\[Time: [^\]]+\]/, '');
-          }
-
-          return {
-            ...j,
-            description: cleanDesc,
-            expiresAt: expiresAt,
-            posterId: j.poster_id,
-            taskerId: j.tasker_id,
-            skillId: j.skill_id,
-            peopleNeeded: j.people_needed,
-            timePosted: j.created_at,
-            lng: coords.lng,
-            lat: coords.lat,
-            posterName: poster.name,
-            posterBird: poster.bird,
-            posterPhone: poster.phone,
-            posterRating: poster.rating,
-            posterTasksCompleted: poster.tasks_completed,
-            taskerName: tasker.name,
-            taskerBird: tasker.bird,
-            taskerPhone: tasker.phone,
-            taskerUpi: tasker.upi_id,
-            taskerRating: tasker.rating,
-            taskerTasksCompleted: tasker.tasks_completed,
-            isAcceptedByMe: (acceptedJobIds.includes(j.id) || (offer && offer.status === 'accepted') || j.tasker_id === userId) && !(offer && offer.status === 'rejected'),
-            isCancelledByMe: offer && offer.status === 'rejected' && ['accepted', 'in_progress', 'completed', 'cancelled'].includes(j.status),
-            completedByMe: offer && offer.completed_by_tasker === true,
-            isPendingOffer: offerJobIds.includes(j.id) && offer && offer.status === 'pending',
-            offerExpiresAt: offer ? offer.expires_at : null,
-            otpVerified: offer ? offer.otp_verified : false,
-            address: addressObj,
-            taskerCurrentLocation: j.tasker_current_location ? parseEWKBPoint(j.tasker_current_location) : null,
-            hasBeenRated: !!ratedJobsMap[j.id],
-            myRatingToReceiver: ratedJobsMap[j.id] || null
-          };
-        });
-        return { data: mappedJobs, error };
-      }
-      return { data: data || [], error };
     }
 
     const { data, error } = await query;
     if (data && data.length > 0) {
-      const posterIds = [...new Set(data.map(j => j.poster_id).filter(Boolean))];
-      const taskerIds = [...new Set(data.map(j => j.tasker_id).filter(Boolean))];
-      const profileIds = [...new Set([...posterIds, ...taskerIds])];
-      
-      let profileMap = {};
-      const subPromises = [];
-      if (profileIds.length > 0) {
-        subPromises.push(
-          supabase
-            .from('profiles')
-            .select('id, name, bird, phone, upi_id, rating, tasks_completed')
-            .in('id', profileIds)
-            .then(res => {
-              if (res.data) {
-                res.data.forEach(p => { profileMap[p.id] = p; });
-              }
-            })
-        );
+      const jobIds = data.map(j => j.id);
+      const { data: feedbacksData } = await supabase
+        .from('feedbacks')
+        .select('job_id, rating')
+        .eq('giver_id', userId)
+        .in('job_id', jobIds);
+        
+      if (feedbacksData) {
+        feedbacksData.forEach(f => {
+          ratedJobsMap[f.job_id] = f.rating;
+        });
       }
 
-      if (authUserId) {
-        const jobIds = data.map(j => j.id);
-        subPromises.push(
-          supabase
-            .from('feedbacks')
-            .select('job_id, rating')
-            .eq('giver_id', authUserId)
-            .in('job_id', jobIds)
-            .then(res => {
-              if (res.data) {
-                res.data.forEach(f => {
-                  ratedJobsMap[f.job_id] = f.rating;
-                });
-              }
-            })
-        );
-      }
-
-      await Promise.all(subPromises);
+      const offerJobIds = offers.map(o => o.job_id);
+      const acceptedJobIds = offers.filter(o => o.status === 'accepted').map(o => o.job_id);
 
       const mappedJobs = data.map(j => {
         const coords = parseEWKBPoint(j.location) || { lng: 0, lat: 0 };
-        const poster = profileMap[j.poster_id] || {};
-        const tasker = profileMap[j.tasker_id] || {};
+        const poster = j.poster || {};
+        const tasker = j.tasker || {};
+        const offer = offers.find(o => o.job_id === j.id);
         
         let addressObj = null;
         if (j.primary_address) {
@@ -326,6 +173,12 @@ export const api = {
           taskerUpi: tasker.upi_id,
           taskerRating: tasker.rating,
           taskerTasksCompleted: tasker.tasks_completed,
+          isAcceptedByMe: (acceptedJobIds.includes(j.id) || (offer && offer.status === 'accepted') || j.tasker_id === userId) && !(offer && offer.status === 'rejected'),
+          isCancelledByMe: offer && offer.status === 'rejected' && ['accepted', 'in_progress', 'completed', 'cancelled'].includes(j.status),
+          completedByMe: offer && offer.completed_by_tasker === true,
+          isPendingOffer: offerJobIds.includes(j.id) && offer && offer.status === 'pending',
+          offerExpiresAt: offer ? offer.expires_at : null,
+          otpVerified: offer ? offer.otp_verified : false,
           address: addressObj,
           taskerCurrentLocation: j.tasker_current_location ? parseEWKBPoint(j.tasker_current_location) : null,
           hasBeenRated: !!ratedJobsMap[j.id],

@@ -51,7 +51,7 @@ BEGIN
             WHEN 'moving' THEN v_category_label := 'Shift & Load';
             WHEN 'local_helpers' THEN v_category_label := 'Household Help';
             WHEN 'events' THEN v_category_label := 'Event Helpers';
-            WHEN 'creative' THEN v_category_label := 'Vlog Cameraman';
+            WHEN 'creative' THEN v_category_label := 'Creative Work';
             WHEN 'others_physical' THEN v_category_label := 'Custom On-Site Help';
             WHEN 'video_editing' THEN v_category_label := 'Video Editing';
             WHEN 'graphic_design' THEN v_category_label := 'Graphic Design';
@@ -116,7 +116,7 @@ BEGIN
         WHEN 'moving' THEN v_category_label := 'Shift & Load';
         WHEN 'local_helpers' THEN v_category_label := 'Household Help';
         WHEN 'events' THEN v_category_label := 'Event Helpers';
-        WHEN 'creative' THEN v_category_label := 'Vlog Cameraman';
+        WHEN 'creative' THEN v_category_label := 'Creative Work';
         WHEN 'others_physical' THEN v_category_label := 'Custom On-Site Help';
         WHEN 'video_editing' THEN v_category_label := 'Video Editing';
         WHEN 'graphic_design' THEN v_category_label := 'Graphic Design';

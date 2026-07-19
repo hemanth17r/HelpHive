@@ -17,6 +17,35 @@ import {
 const CONFIG_CATEGORIES = [
   // --- On-site / Physical Services ---
   {
+    id: 'creative',
+    label: 'Creative Work',
+    shortLabel: 'Creative Work',
+    icon: Camera,
+    type: 'physical',
+    isNew: true,
+    description: 'Recording vlogs, videos, and capturing events',
+    matchingBehavior: 'location_important',
+    examples: [
+      'Hold my phone/gimbal to film a street food vlog or Reels',
+      'Shoot raw video clips of a housewarming party using a phone/camera',
+      'Record a local live stream setup or capture local B-roll footage'
+    ]
+  },
+  {
+    id: 'events',
+    label: 'Event Helpers',
+    shortLabel: 'Event Helpers',
+    icon: Users,
+    type: 'physical',
+    description: 'Setup, teardown, and hosting assistance for events and parties',
+    matchingBehavior: 'location_important',
+    examples: [
+      'Blow up balloons, hang banners, and arrange tables for a party',
+      'Help pack up decorations, stack rented chairs, and collect trash post-event',
+      'Greet guests and handle the reception desk at a local seminar'
+    ]
+  },
+  {
     id: 'moving',
     label: 'Shift & Load',
     shortLabel: 'Shift & Load',
@@ -29,21 +58,6 @@ const CONFIG_CATEGORIES = [
       'Need 2 people to carry furniture down 3 floors and load a truck',
       'Help rearrange heavy wardrobes, beds, and tables inside the house',
       'Unload heavy appliances from a delivery vehicle into the kitchen'
-    ]
-  },
-  {
-    id: 'errands',
-    label: 'Local Deliveries',
-    shortLabel: 'Local Deliveries',
-    icon: Package,
-    type: 'physical',
-    isUrgent: true,
-    description: 'Quick pickups and drop-offs around the city',
-    matchingBehavior: 'location_critical',
-    examples: [
-      'Forgot keys at a cafe. Need someone to pick them up and bring them to me',
-      'Buy prescription medicine from the pharmacy nearby and drop it off',
-      'Deliver a signed document to a client\'s office 3 km away'
     ]
   },
   {
@@ -90,32 +104,18 @@ const CONFIG_CATEGORIES = [
     ]
   },
   {
-    id: 'events',
-    label: 'Event Helpers',
-    shortLabel: 'Event Helpers',
-    icon: Users,
+    id: 'errands',
+    label: 'Local Deliveries',
+    shortLabel: 'Local Deliveries',
+    icon: Package,
     type: 'physical',
-    description: 'Setup, teardown, and hosting assistance for events and parties',
-    matchingBehavior: 'location_important',
+    isUrgent: true,
+    description: 'Quick pickups and drop-offs around the city',
+    matchingBehavior: 'location_critical',
     examples: [
-      'Blow up balloons, hang banners, and arrange tables for a party',
-      'Help pack up decorations, stack rented chairs, and collect trash post-event',
-      'Greet guests and handle the reception desk at a local seminar'
-    ]
-  },
-  {
-    id: 'creative',
-    label: 'Vlog Cameraman',
-    shortLabel: 'Vlog Cameraman',
-    icon: Camera,
-    type: 'physical',
-    isNew: true,
-    description: 'A local person to record your vlogs, videos, and events',
-    matchingBehavior: 'location_important',
-    examples: [
-      'Hold my phone/gimbal to film a street food vlog or Reels',
-      'Shoot raw video clips of a housewarming party using a phone/camera',
-      'Record a local live stream setup or capture local B-roll footage'
+      'Forgot keys at a cafe. Need someone to pick them up and bring them to me',
+      'Buy prescription medicine from the pharmacy nearby and drop it off',
+      'Deliver a signed document to a client\'s office 3 km away'
     ]
   },
   {
@@ -202,7 +202,7 @@ const CONFIG_CATEGORIES = [
   },
   {
     id: 'others_remote',
-    label: 'Others (Online)',
+    label: 'Others',
     shortLabel: 'Others',
     icon: Wifi,
     type: 'remote',
