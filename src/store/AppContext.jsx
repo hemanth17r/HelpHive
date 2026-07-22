@@ -233,6 +233,23 @@ export const AppProvider = ({ children }) => {
     }
     return null;
   }); // Actual GPS coordinates {lat, lng}
+
+  // Persist realLocation to localStorage whenever it is granted/updated
+  useEffect(() => {
+    if (realLocation?.lat && realLocation?.lng) {
+      const stored = localStorage.getItem('userLocation');
+      let updated = { lat: realLocation.lat, lng: realLocation.lng };
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          updated = { ...parsed, lat: realLocation.lat, lng: realLocation.lng };
+        } catch (e) {
+          // ignore
+        }
+      }
+      localStorage.setItem('userLocation', JSON.stringify(updated));
+    }
+  }, [realLocation]);
   
   const [isLocationModalOpen, setLocationModalOpen] = useState(false);
   const [showBlinkitPrompt, setShowBlinkitPrompt] = useState(false);
@@ -312,19 +329,11 @@ export const AppProvider = ({ children }) => {
   // On startup or login, manage user location detection
   useEffect(() => {
     const initLocation = async () => {
-      // 1. If we already have a userLocation from state/local storage, we can proceed
-      if (userLocation) {
-        if (!realLocation && userLocation.lat && userLocation.lng) {
-          setRealLocation({ lat: userLocation.lat, lng: userLocation.lng });
-        }
-        return;
-      }
-
-      // 2. If logged in, check database first
+      // 1. If logged in, check database location / user profile location first
       if (userId) {
         try {
           const { data } = await api.fetchUserLocation(userId);
-          if (data && data.area_name) {
+          if (data && data.area_name && data.latitude && data.longitude) {
             const loc = {
               id: 'db_saved',
               name: data.area_name,
@@ -339,6 +348,14 @@ export const AppProvider = ({ children }) => {
         } catch (e) {
           console.error("Failed to fetch user location from DB:", e);
         }
+      }
+
+      // 2. If we already have a userLocation from state/local storage, keep it
+      if (userLocation) {
+        if (!realLocation && userLocation.lat && userLocation.lng) {
+          setRealLocation({ lat: userLocation.lat, lng: userLocation.lng });
+        }
+        return;
       }
 
       // 3. Try to check permission and auto-detect location
@@ -606,6 +623,20 @@ export const AppProvider = ({ children }) => {
           // Sync with local cache
           localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
 
+          // Sync active userLocation and realLocation with DB profile location
+          if (updatedProfile.serviceAreaLat && updatedProfile.serviceAreaLng) {
+            const locName = updatedProfile.serviceAreaName || `${updatedProfile.serviceAreaLat.toFixed(4)}, ${updatedProfile.serviceAreaLng.toFixed(4)}`;
+            const profileLoc = {
+              id: 'profile_saved',
+              name: locName,
+              lat: updatedProfile.serviceAreaLat,
+              lng: updatedProfile.serviceAreaLng
+            };
+            setUserLocation(profileLoc);
+            localStorage.setItem('userLocation', JSON.stringify(profileLoc));
+            setRealLocation({ lat: updatedProfile.serviceAreaLat, lng: updatedProfile.serviceAreaLng });
+          }
+
           if (data.bird) setSelectedBird(data.bird);
           setIsAdmin(data.is_admin === true);
           // Sync with database profile availability status
@@ -691,6 +722,7 @@ export const AppProvider = ({ children }) => {
 
       if (profileData.locationStr !== undefined) {
         updatesPayload.location = profileData.locationStr;
+        updatesPayload.locationStr = profileData.locationStr;
       }
 
       const { data, error } = await api.updateProfile(currentUserId, updatesPayload);
@@ -707,14 +739,41 @@ export const AppProvider = ({ children }) => {
 
       if (data) {
         const dbLoc = data.location ? parseEWKBPoint(data.location) : null;
+        const targetLat = dbLoc?.lat || parsedLoc?.lat || profileData.serviceAreaLat;
+        const targetLng = dbLoc?.lng || parsedLoc?.lng || profileData.serviceAreaLng;
+        const targetAreaName = data.service_area_name || profileData.serviceAreaName;
+
         setUserProfileState(prev => ({
           ...prev,
           ...profileData,
           ...roleSpecificUpdates,
           verifiedPhones: data.verified_phones || prev?.verifiedPhones || [],
-          serviceAreaLat: dbLoc ? dbLoc.lat : prev?.serviceAreaLat,
-          serviceAreaLng: dbLoc ? dbLoc.lng : prev?.serviceAreaLng
+          serviceAreaLat: targetLat !== undefined ? targetLat : prev?.serviceAreaLat,
+          serviceAreaLng: targetLng !== undefined ? targetLng : prev?.serviceAreaLng
         }));
+
+        if (targetLat && targetLng) {
+          const locName = targetAreaName || `${targetLat.toFixed(4)}, ${targetLng.toFixed(4)}`;
+          const newLoc = {
+            id: 'user_set',
+            name: locName,
+            lat: targetLat,
+            lng: targetLng
+          };
+          setUserLocation(newLoc);
+          localStorage.setItem('userLocation', JSON.stringify(newLoc));
+          setRealLocation({ lat: targetLat, lng: targetLng });
+
+          api.upsertUserLocation({
+            user_id: currentUserId,
+            area_name: locName,
+            city: data.city || 'Pan India',
+            latitude: targetLat,
+            longitude: targetLng,
+            updated_at: new Date().toISOString()
+          }).catch(err => console.warn('Failed to upsert user_location:', err));
+        }
+
         if (data.bird) {
           setSelectedBird(data.bird);
         }

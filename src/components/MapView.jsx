@@ -21,6 +21,9 @@ const MapView = ({
   const taskersMarkersRef = useRef({}); // maps taskerId -> Leaflet marker
   const routeLinesRef = useRef({}); // maps taskerId -> Leaflet polyline
   const coverageCircleRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  const lastDraggedPosRef = useRef(null);
+  const prevZoomPropRef = useRef(zoom);
 
   useEffect(() => {
     if (!window.L || !mapContainerRef.current) return;
@@ -30,9 +33,9 @@ const MapView = ({
     // Custom pins using SVG divIcons to avoid Leaflet default icon path bugs
     const orangeIcon = L.divIcon({
       className: 'leaflet-custom-pin-orange',
-      html: `<div class="bg-primary text-white p-2 rounded-full shadow-lg border-2 border-white flex items-center justify-center scale-100 hover:scale-105 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18]
+      html: `<div class="w-full h-full bg-primary text-white rounded-full shadow-lg flex items-center justify-center scale-100 hover:scale-105 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
+      iconSize: [38, 38],
+      iconAnchor: [19, 19]
     });
 
 
@@ -64,16 +67,21 @@ const MapView = ({
 
       draggableMarkerRef.current = marker;
 
+      marker.on('dragstart', () => {
+        isDraggingRef.current = true;
+      });
+
       // Handle drag ends
       marker.on('dragend', () => {
+        isDraggingRef.current = false;
         const position = marker.getLatLng();
+        lastDraggedPosRef.current = { lat: parseFloat(position.lat.toFixed(5)), lng: parseFloat(position.lng.toFixed(5)) };
         if (coverageCircleRef.current) {
           coverageCircleRef.current.setLatLng(position);
         }
         if (typeof onDragEnd === 'function') {
           onDragEnd({ lat: parseFloat(position.lat.toFixed(5)), lng: parseFloat(position.lng.toFixed(5)) });
         }
-
       });
     }
 
@@ -116,25 +124,37 @@ const MapView = ({
     };
   }, []);
 
-  // Pan the map dynamically when center/zoom props update
+  // Pan the map dynamically when center/zoom props update from external sources (e.g., search/GPS button)
   useEffect(() => {
     if (mapInstanceRef.current && center) {
-      const currentCenter = mapInstanceRef.current.getCenter();
       const [newLat, newLng] = center;
-      console.log('[MapView Center Effect] Received new center:', center, 'Current map center:', currentCenter);
-      if (Math.abs(currentCenter.lat - newLat) > 0.0001 || Math.abs(currentCenter.lng - newLng) > 0.0001) {
-        console.log('[MapView Center Effect] Centers differ. Calling setView to pan map...');
-        mapInstanceRef.current.setView(center, zoom || mapInstanceRef.current.getZoom());
+      
+      const zoomPropChanged = prevZoomPropRef.current !== zoom;
+      prevZoomPropRef.current = zoom;
+
+      // If this center update was caused by dragging the pin manually, skip map setView/zoom change completely!
+      if (lastDraggedPosRef.current) {
+        const dLat = Math.abs(lastDraggedPosRef.current.lat - newLat);
+        const dLng = Math.abs(lastDraggedPosRef.current.lng - newLng);
+        if (dLat < 0.005 && dLng < 0.005) {
+          lastDraggedPosRef.current = null;
+          return;
+        }
+        lastDraggedPosRef.current = null;
+      }
+
+      const currentCenter = mapInstanceRef.current.getCenter();
+      if (Math.abs(currentCenter.lat - newLat) > 0.0001 || Math.abs(currentCenter.lng - newLng) > 0.0001 || zoomPropChanged) {
+        // Only change zoom if zoom prop explicitly changed from parent (e.g. search result clicked or GPS button).
+        // Otherwise, ALWAYS keep the user's current manual map zoom!
+        const targetZoom = zoomPropChanged ? zoom : mapInstanceRef.current.getZoom();
+        mapInstanceRef.current.setView(center, targetZoom);
         if (draggableMarkerRef.current) {
-          console.log('[MapView Center Effect] Updating draggable marker position to:', center);
           draggableMarkerRef.current.setLatLng(center);
         }
         if (coverageCircleRef.current) {
-          console.log('[MapView Center Effect] Updating coverage circle position to:', center);
           coverageCircleRef.current.setLatLng(center);
         }
-      } else {
-        console.log('[MapView Center Effect] Center is unchanged (within tolerance). Skipping setView.');
       }
     }
   }, [center, zoom]);

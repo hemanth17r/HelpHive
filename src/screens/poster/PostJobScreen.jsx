@@ -1,5 +1,5 @@
 import React, { useState, useContext, useRef } from 'react';
-import { ArrowLeft, Minus, Plus, IndianRupee, Radio, Info, Calendar, MapPin, Home, Briefcase, Wifi } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, IndianRupee, Radio, Info, Calendar, MapPin, Home, Briefcase, Wifi, X } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
 import IconLabel from '../../components/IconLabel';
@@ -279,8 +279,8 @@ const PostJobScreen = () => {
   const submitJob = async (address) => {
     const parsedAmount = parseFloat(amount);
     const coords = { 
-      lat: address.lat || realLocation?.lat || 12.9352, 
-      lng: address.lng || realLocation?.lng || 77.6245 
+      lat: address.lat || realLocation?.lat || 20.5937, 
+      lng: address.lng || realLocation?.lng || 78.9629 
     };
     setIsLoading(true);
     const result = await postJob({
@@ -785,15 +785,17 @@ const PostJobScreen = () => {
           {/* This prevents the camera-flash tile artifact caused by animating backdrop-blur */}
           <div className="absolute inset-0 bg-dark/50 animate-[overlayIn_180ms_ease-out]" />
           {/* Modal card: slides up independently on its own composited layer */}
-          <div className="relative bg-white rounded-[32px] w-full max-w-sm max-h-[90vh] shadow-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out]" onClick={e => e.stopPropagation()}>
-            <div className="p-5 border-b border-border relative flex items-center justify-between shrink-0">
-              <h3 className="font-extrabold text-sm text-dark tracking-wide">{!isAddingNewAddress ? 'Pick the task location' : 'Add a new task location'}</h3>
-              <button onClick={handleClosePopup} className="text-gray-400 hover:text-dark text-xl leading-none">&times;</button>
+          <div className="relative bg-white rounded-[32px] w-full max-w-sm sm:max-w-lg max-h-[90vh] shadow-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out]" onClick={e => e.stopPropagation()}>
+            <div className="px-6 pt-4 pb-1 relative flex items-center justify-between shrink-0">
+              <h3 className="font-black text-sm sm:text-base text-dark tracking-wide">{!isAddingNewAddress ? 'Pick the task location' : 'Add a new task location'}</h3>
+              <button onClick={handleClosePopup} className="p-1.5 -mr-1 rounded-full text-gray-400 hover:text-dark hover:bg-gray-100 transition-colors cursor-pointer" aria-label="Close modal">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            <div className="flex-1 overflow-y-auto px-6 pt-0 pb-0">
               {!isAddingNewAddress ? (
-                <div className="space-y-4">
+                <div className="pt-4 pb-4 space-y-4">
                   {savedAddresses.map((address) => (
                     <div 
                       key={address.id}
@@ -819,15 +821,15 @@ const PostJobScreen = () => {
                   
                   <button 
                     onClick={() => setIsAddingNewAddress(true)}
-                    className="w-full py-3 mt-2 rounded-xl border border-dashed border-gray-300 text-gray-500 hover:text-primary hover:border-primary hover:bg-primary/5 text-sm font-bold transition-all flex items-center justify-center space-x-2"
+                    className="w-full py-3 mt-2 rounded-xl border border-dashed border-gray-300 text-gray-500 hover:text-primary hover:border-primary hover:bg-primary/5 text-sm font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Add a new task location</span>
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-col space-y-4">
-                  <div className="h-[35vh] min-h-[200px] relative rounded-2xl overflow-hidden border border-border">
+                <div className="flex flex-col">
+                  <div className="h-[200px] sm:h-[240px] mt-4 mb-4 relative rounded-2xl overflow-hidden border border-border shrink-0">
                     <LocationPicker 
                       initialLat={lat}
                       initialLng={lng}
@@ -839,43 +841,45 @@ const PostJobScreen = () => {
                       onLocationGranted={(coords) => setRealLocation(coords)}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400">Nearest Landmark</label>
-                    <input
-                      type="text"
-                      value={landmark}
-                      onChange={(e) => setLandmark(e.target.value)}
-                      placeholder="e.g. Near Community Center, opposite park"
-                      className="bg-white border border-border focus:border-primary rounded-xl px-3 h-10 w-full text-xs font-semibold outline-none text-dark"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Save Location As</label>
-                    <div className="flex space-x-2 w-full">
-                      <button 
-                        type="button"
-                        onClick={() => setAddressType('Home')}
-                        className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Home' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
-                      >
-                        <Home className="w-3.5 h-3.5 mr-1" />
-                        <span className="text-[10px]">Home</span>
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setAddressType('Work')}
-                        className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Work' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
-                      >
-                        <Briefcase className="w-3.5 h-3.5 mr-1" />
-                        <span className="text-[10px]">Work</span>
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setAddressType('Other')}
-                        className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Other' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
-                      >
-                        <MapPin className="w-3.5 h-3.5 mr-1" />
-                        <span className="text-[10px]">Other</span>
-                      </button>
+                  <div className="space-y-4 mb-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400">Nearest Landmark</label>
+                      <input
+                        type="text"
+                        value={landmark}
+                        onChange={(e) => setLandmark(e.target.value)}
+                        placeholder="e.g. Near Community Center, opposite park"
+                        className="bg-white border border-border focus:border-primary rounded-xl px-3 h-10 w-full text-xs font-semibold outline-none text-dark"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Save Location As</label>
+                      <div className="flex space-x-2 w-full">
+                        <button 
+                          type="button"
+                          onClick={() => setAddressType('Home')}
+                          className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Home' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+                        >
+                          <Home className="w-3.5 h-3.5 mr-1" />
+                          <span className="text-[10px]">Home</span>
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setAddressType('Work')}
+                          className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Work' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+                        >
+                          <Briefcase className="w-3.5 h-3.5 mr-1" />
+                          <span className="text-[10px]">Work</span>
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setAddressType('Other')}
+                          className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Other' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+                        >
+                          <MapPin className="w-3.5 h-3.5 mr-1" />
+                          <span className="text-[10px]">Other</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -883,11 +887,11 @@ const PostJobScreen = () => {
             </div>
 
             {isAddingNewAddress && (
-              <div className="p-4 bg-white border-t border-border shrink-0">
+              <div className="px-6 pt-4 pb-4 bg-white shrink-0 flex flex-col items-center w-full">
                 <button 
                   onClick={handleSaveAddressAndPost} 
                   disabled={isSavingAddress}
-                  className="w-full flex justify-center items-center gap-2 bg-primary hover:bg-primary/95 text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-70"
+                  className="w-[84%] flex justify-center items-center gap-2 bg-primary hover:bg-primary/95 text-white font-black py-3 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-70 text-sm"
                 >
                   {isSavingAddress ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -897,7 +901,7 @@ const PostJobScreen = () => {
                 {savedAddresses.length > 0 && (
                   <button 
                     onClick={() => setIsAddingNewAddress(false)}
-                    className="w-full py-3 mt-2 text-sm font-bold text-gray-500 hover:text-dark transition-colors"
+                    className="w-[84%] py-2.5 mt-1.5 text-sm font-bold text-gray-500 hover:text-dark transition-colors cursor-pointer text-center"
                   >
                     Cancel
                   </button>

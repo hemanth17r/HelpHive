@@ -1,5 +1,5 @@
 const rawKey = import.meta.env.VITE_OLA_MAPS_API_KEY || '';
-const OLA_MAPS_API_KEY = (rawKey === 'bqcsB1TBFrzeZkMYdaLvnUUYJjOCZvmDh72yAw0h') ? '' : rawKey;
+const OLA_MAPS_API_KEY = rawKey;
 const OLA_MAPS_BASE_URL = 'https://api.olamaps.io/places/v1';
 
 // Delay tracking to prevent rapid firing during typing

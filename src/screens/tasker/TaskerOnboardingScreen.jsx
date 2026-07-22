@@ -9,10 +9,10 @@ import Tooltip from '../../components/Tooltip';
 import MapView from '../../components/MapView';
 import { api } from '../../services/api';
 import { searchAddress, reverseGeocode } from '../../utils/geocoding';
-import { getCurrentLocation } from '../../utils/location';
+import { getCurrentLocation, INDIA_CENTER } from '../../utils/location';
 
 const TaskerOnboardingScreen = () => {
-  const { setUserProfile, pushScreen, popScreen, userProfile, requireProfile, routeParams, userId } = useContext(AppContext);
+  const { setUserProfile, pushScreen, popScreen, userProfile, requireProfile, routeParams, userId, realLocation } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   
   const [step, setStep] = useState(() => routeParams?.editServiceAreaOnly ? 2 : 1); // 1: Skills, 2: Service Area
@@ -27,7 +27,7 @@ const TaskerOnboardingScreen = () => {
     if (userProfile?.serviceAreaLat && userProfile?.serviceAreaLng) {
       return { lat: userProfile.serviceAreaLat, lng: userProfile.serviceAreaLng };
     }
-    return { lat: 12.9716, lng: 77.5946 }; // Default to Bengaluru center
+    return realLocation || INDIA_CENTER; // Default to real location or India center
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,6 +106,23 @@ const TaskerOnboardingScreen = () => {
       setSearchResults(results);
       setIsSearching(false);
     }, 800); // 800ms debounce
+  };
+
+  const handleKeyDown = async (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (searchResults.length > 0) {
+        handleSelectResult(searchResults[0]);
+      } else if (searchQuery.trim().length >= 3) {
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        setIsSearching(true);
+        const results = await searchAddress(searchQuery.trim());
+        setIsSearching(false);
+        if (results && results.length > 0) {
+          handleSelectResult(results[0]);
+        }
+      }
+    }
   };
 
   const handleSelectResult = (result) => {
@@ -386,6 +403,7 @@ const TaskerOnboardingScreen = () => {
                       type="text" 
                       value={searchQuery}
                       onChange={handleSearchChange}
+                      onKeyDown={handleKeyDown}
                       onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
                       className="w-full bg-white border-none rounded-xl pl-11 pr-10 py-2.5 text-sm font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                       placeholder="Search for your location..."
@@ -427,13 +445,13 @@ const TaskerOnboardingScreen = () => {
                 <button 
                   onClick={handleUseCurrentLocation}
                   disabled={isLocating}
-                  className="absolute bottom-6 right-4 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer border border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed select-none"
+                  className="absolute bottom-5 right-4 z-20 w-10 h-10 bg-white text-primary rounded-full shadow-lg hover:bg-orange-50/50 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed select-none"
                   aria-label="Use current location"
                 >
                   {isLocating ? (
                     <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
                   ) : (
-                    <Navigation className="w-5 h-5 shrink-0" />
+                    <Navigation className="w-5 h-5 text-primary shrink-0" />
                   )}
                 </button>
               </div>

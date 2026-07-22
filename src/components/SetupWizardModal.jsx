@@ -77,7 +77,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
   
   // Service Area Map state
   const [serviceAreaLocation, setServiceAreaLocation] = useState(() => {
-    return realLocation || { lat: 12.9716, lng: 77.5946 };
+    return realLocation || INDIA_CENTER;
   });
   const [coverageRadius, setCoverageRadius] = useState(5000);
   const [searchQuery, setSearchQuery] = useState('');
@@ -103,8 +103,8 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
   // Address Setup State
   const [addressDetails, setAddressDetails] = useState(() => {
     return {
-      lat: realLocation?.lat || 12.9716,
-      lng: realLocation?.lng || 77.5946,
+      lat: realLocation?.lat || INDIA_CENTER.lat,
+      lng: realLocation?.lng || INDIA_CENTER.lng,
       completeAddress: '',
       landmark: ''
     };
@@ -117,13 +117,13 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
   useEffect(() => {
     if (realLocation) {
       setServiceAreaLocation(prev => {
-        if (prev.lat === 12.9716 && prev.lng === 77.5946) {
+        if (prev.lat === INDIA_CENTER.lat && prev.lng === INDIA_CENTER.lng) {
           return { lat: realLocation.lat, lng: realLocation.lng };
         }
         return prev;
       });
       setAddressDetails(prev => {
-        if (prev.lat === 12.9716 && prev.lng === 77.5946) {
+        if (prev.lat === INDIA_CENTER.lat && prev.lng === INDIA_CENTER.lng) {
           return { ...prev, lat: realLocation.lat, lng: realLocation.lng };
         }
         return prev;

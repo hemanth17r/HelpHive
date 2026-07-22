@@ -607,16 +607,18 @@ export const api = {
   },
 
   updateProfile: async (userId, updates) => {
-    // If updates contains locationStr but no city, resolve the city name
-    if (updates.locationStr && !updates.city) {
-      const match = updates.locationStr.match(/point\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
+    // If updates contains location or locationStr but no city, resolve the city name
+    const locString = updates.locationStr || updates.location;
+    if (locString && typeof locString === 'string' && !updates.city) {
+      const match = locString.match(/point\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
       if (match) {
         const lng = parseFloat(match[1]);
         const lat = parseFloat(match[2]);
         updates.city = await resolveCityFromLatLng(lat, lng);
       }
     }
-    const { data, error } = await supabase.from('profiles').update(updates).eq('id', userId).select().single();
+    const { locationStr, ...cleanUpdates } = updates;
+    const { data, error } = await supabase.from('profiles').update(cleanUpdates).eq('id', userId).select().single();
     if (error) console.error("updateProfile error:", error);
     return { data, error };
   },

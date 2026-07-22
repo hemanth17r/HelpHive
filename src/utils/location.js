@@ -1,3 +1,6 @@
+export const INDIA_CENTER = { lat: 20.5937, lng: 78.9629 };
+export const INDIA_MAP_ZOOM = 5;
+
 /**
  * Request the user's current GPS location.
  * 
@@ -30,55 +33,9 @@ export const getCurrentLocation = () => {
   });
 };
 
-async function fetchIpLocation() {
-  // Try ipapi.co first
-  try {
-    const response = await fetch('https://ipapi.co/json/');
-    if (response.ok) {
-      const data = await response.json();
-      if (data.latitude && data.longitude) {
-        return {
-          lat: data.latitude,
-          lng: data.longitude
-        };
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to fetch location from ipapi.co, trying ipinfo.io...', e);
-  }
-
-  // Try ipinfo.io as fallback
-  try {
-    const response = await fetch('https://ipinfo.io/json');
-    if (response.ok) {
-      const data = await response.json();
-      if (data.loc) {
-        const [lat, lng] = data.loc.split(',').map(Number);
-        if (lat && lng) {
-          return { lat, lng };
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to fetch location from ipinfo.io:', e);
-  }
-  return null;
-}
-
 function requestPosition(resolve, reject) {
-  const handleFailure = async (originalError) => {
-    console.warn('Native geolocation failed or denied, trying IP fallback...', originalError);
-    try {
-      const ipLoc = await fetchIpLocation();
-      if (ipLoc) {
-        resolve(ipLoc);
-        return;
-      }
-    } catch (ipErr) {
-      console.warn('IP Geolocation fallback failed:', ipErr);
-    }
-
-    // If IP fallback also fails, reject with original error
+  const handleFailure = (originalError) => {
+    console.warn('Native geolocation failed or denied:', originalError);
     let message;
     switch (originalError.code) {
       case originalError.PERMISSION_DENIED:

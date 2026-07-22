@@ -18,7 +18,7 @@ import { ToastContext } from '../store/ToastContext';
  *                              Useful for the parent to persist realLocation.
  */
 const LocationPicker = ({
-  initialLat = 20.5937,  // Geographic center of India — better than a city-specific default
+  initialLat = 20.5937,  // Geographic center of India
   initialLng = 78.9629,
   onLocationChange,
   onLocationError,
@@ -31,6 +31,9 @@ const LocationPicker = ({
 
   const [currentLat, setCurrentLat] = useState(initialLat);
   const [currentLng, setCurrentLng] = useState(initialLng);
+  const [mapZoom, setMapZoom] = useState(() => (
+    Math.abs(initialLat - 20.5937) < 0.01 && Math.abs(initialLng - 78.9629) < 0.01 ? 5 : 16
+  ));
 
   const [resolvedAddressText, setResolvedAddressText] = useState('Fetching address...');
   const [isGeocoding, setIsGeocoding] = useState(false);
@@ -51,8 +54,6 @@ const LocationPicker = ({
   }, []);
 
   // Track whether we've already applied the async parent update once.
-  // After the first prop-driven recenter, we ignore further prop changes so
-  // a user's manual drag or search selection is never overridden.
   const hasAppliedAsyncCenter = useRef(false);
 
   // If the parent updates initialLat/initialLng after mount (e.g. async fallback
@@ -64,6 +65,9 @@ const LocationPicker = ({
     hasAppliedAsyncCenter.current = true;
     setCurrentLat(initialLat);
     setCurrentLng(initialLng);
+    if (Math.abs(initialLat - 20.5937) > 0.01 || Math.abs(initialLng - 78.9629) > 0.01) {
+      setMapZoom(16);
+    }
     handleReverseGeocode(initialLat, initialLng);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLat, initialLng]);
@@ -100,10 +104,28 @@ const LocationPicker = ({
     }, 800); // 800ms debounce
   };
 
+  const handleKeyDown = async (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (searchResults.length > 0) {
+        handleSelectResult(searchResults[0]);
+      } else if (searchQuery.trim().length >= 3) {
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        setIsSearching(true);
+        const results = await searchAddress(searchQuery.trim());
+        setIsSearching(false);
+        if (results && results.length > 0) {
+          handleSelectResult(results[0]);
+        }
+      }
+    }
+  };
+
   const handleSelectResult = (result) => {
     setSearchQuery(result.displayName);
     setCurrentLat(result.lat);
     setCurrentLng(result.lng);
+    setMapZoom(16);
     setShowDropdown(false);
     setResolvedAddressText(result.displayName);
 
@@ -132,19 +154,20 @@ const LocationPicker = ({
   }
 
   const handleDragEnd = ({ lat, lng }) => {
+    hasAppliedAsyncCenter.current = true;
     setCurrentLat(lat);
     setCurrentLng(lng);
     handleReverseGeocode(lat, lng);
   };
 
   // Called ONLY when the user explicitly taps "Use my location".
-  // This is the one and only place a browser GPS permission dialog can appear.
   const handleUseCurrentLocation = async () => {
     setIsLocating(true);
     try {
       const loc = await getCurrentLocation();
       setCurrentLat(loc.lat);
       setCurrentLng(loc.lng);
+      setMapZoom(16);
       handleReverseGeocode(loc.lat, loc.lng);
 
       // Notify parent so it can persist realLocation for future use
@@ -167,14 +190,15 @@ const LocationPicker = ({
     <div className="flex flex-col relative w-full h-full rounded-2xl overflow-hidden shadow-inner">
 
       {/* Floating Search Bar */}
-      <div className="absolute top-2 left-2 right-12 z-20" ref={dropdownRef}>
+      <div className="absolute top-3 left-3 sm:left-4 max-w-[320px] sm:max-w-[400px] w-[calc(100%-80px)] z-20" ref={dropdownRef}>
         <div className="relative shadow-lg rounded-xl">
           <input
             type="text"
             value={searchQuery}
             onChange={handleSearchChange}
+            onKeyDown={handleKeyDown}
             onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
-            className="w-full bg-white border-none rounded-xl pl-9 pr-9 py-2 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+            className="w-full bg-white border border-border rounded-xl pl-9 pr-9 py-2 text-xs font-bold text-dark focus:outline-none focus:border-primary transition-all"
             placeholder="Search for your location..."
           />
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -205,7 +229,7 @@ const LocationPicker = ({
       <div className="w-full h-full flex-1 relative z-10">
         <MapView
           center={[currentLat, currentLng]}
-          zoom={16}
+          zoom={mapZoom}
           draggable={true}
           onDragEnd={handleDragEnd}
           height="100%"
@@ -217,13 +241,13 @@ const LocationPicker = ({
       <button
         onClick={handleUseCurrentLocation}
         disabled={isLocating}
-        className="absolute bottom-3 right-3 z-20 w-9 h-9 flex items-center justify-center bg-white rounded-full shadow-lg border border-gray-100 text-gray-600 hover:text-primary hover:border-primary/30 hover:shadow-xl active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none"
+        className="absolute bottom-5 right-4 z-20 w-10 h-10 flex items-center justify-center bg-white text-primary rounded-full shadow-lg hover:bg-orange-50/50 hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none"
         title="Use my current location"
         aria-label="Use my current location"
       >
         {isLocating
-          ? <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
-          : <Navigation className="w-4 h-4 text-gray-600 shrink-0" />
+          ? <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
+          : <Navigation className="w-5 h-5 text-primary shrink-0" />
         }
       </button>
     </div>

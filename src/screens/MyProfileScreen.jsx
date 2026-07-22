@@ -37,14 +37,15 @@ const MyProfileScreen = () => {
   }, []);
 
   const handleWhatsAppSupport = () => {
-    const uId = userProfile?.id || userId || 'N/A';
+    const rawId = userProfile?.id || userId || '';
+    const displayId = rawId ? (rawId.length > 10 ? `#${rawId.slice(-10).toUpperCase()}` : rawId) : 'N/A';
     const name = userProfile?.name || 'N/A';
     
     const message = `Hi HelpHive Support,
 
 I need help.
 
-User ID: ${uId}
+User ID: ${displayId}
 Name: ${name}
 
 Issue: `;
