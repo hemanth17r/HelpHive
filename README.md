@@ -1,28 +1,77 @@
-# HelpHive
+# HelpHive 🐝
 
-HelpHive is a platform connecting users (Posters) who need help with everyday tasks with individuals (Taskers) willing to complete those tasks.
+> **Hyperlocal Micro-Task Marketplace & On-Demand Service Dispatch Platform**
 
----
-
-### 🇮🇳 Version 2: Pan India Launch Upgrade
-
-HelpHive has been upgraded to **Version 2** with major architectural enhancements for scaling, location-aware dispatcher queues, secure waitlists, and PWA push notifications.
-
-For detailed architecture, databases, and setups, see [PAN_INDIA_LAUNCH_V2.md](file:///c:/Users/AKKALA%20HEMANTH%20REDDY/OneDrive/Desktop/HelpHive/PAN_INDIA_LAUNCH_V2.md).
+HelpHive is a production-grade, real-time Progressive Web Application (PWA) connecting individuals who need help with everyday tasks (**Posters**) with qualified nearby helpers (**Taskers**). Built for high concurrency, sub-second hyperlocal matching, and seamless mobile-first execution.
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## ⚡ Tech Stack & Architecture
+
+- **Frontend Core**: React 19, Vite 8, TailwindCSS 4
+- **State Management & Data**: React Context API, Supabase JS v2
+- **Backend & Database**: Supabase (PostgreSQL with GiST spatial indexing & Row Level Security)
+- **Real-time Engine**: Postgres Changes Broadcasts & RPC Dispatch Queues
+- **Edge Computing & Push Notifications**: Deno-based Supabase Edge Functions, W3C Web Push API, Service Workers
+- **PWA Capabilities**: Vite PWA (injectManifest strategy), offline caching, background push notifications
+
+---
+
+## 🏗 Key Features & System Architecture
+
+### 1. 🎯 Hyperlocal Wave Matching & Dispatching
+- **Spatial Indexing**: Leverages PostgreSQL `GiST` spatial indexing on PostGIS/geography columns for high-efficiency proximity queries.
+- **Multi-Helper Dispatch**: Supports single-helper and multi-helper crew matching with dynamic radius expansion and wave notifications.
+
+### 2. 🔐 Production Security & Access Control
+- **Strict Row Level Security (RLS)**: Enforced across all PostgreSQL tables (`profiles`, `jobs`, `job_offers`, `user_locations`, `help_reports`).
+- **PKCE Authentication**: Mobile-friendly PKCE flow using Supabase Auth.
+- **Zero-Hardcoded Backend Secrets**: Backend secrets (Service Role Keys, VAPID Private Keys) are stored in Deno Environment Variables and Supabase Secret Store.
+
+### 3. 📲 PWA & Native Web Push Experience
+- **Service Worker Caching**: Offline app shell caching with instant load performance.
+- **Push Notifications**: Native-like background notification handler for job offers, acceptances, and completion OTPs.
+
+---
+
+## 📁 Repository Structure
+
+```text
+HelpHive/
+├── .github/
+│   └── workflows/ci.yml         # Automated CI/CD pipeline (Lint, Build, Preview)
+├── public/                       # Static PWA icons, webmanifest, and public assets
+├── src/
+│   ├── components/               # Reusable UI components (MapView, JobCard, Modals, etc.)
+│   ├── config/                   # Constants, marketplace rules, and Supabase client
+│   ├── hooks/                    # Custom React hooks (useProfileCompletion, etc.)
+│   ├── screens/                  # Application screens (Poster & Tasker flows, Admin Dashboard)
+│   │   ├── poster/               # Poster-specific screens (PostJob, LiveStatus, Rating)
+│   │   └── tasker/               # Tasker-specific screens (TaskerHome, JobDetails, Onboarding)
+│   ├── services/                 # Abstraction layer for API calls and RPCs
+│   ├── store/                    # AppContext, NotificationContext, ToastContext
+│   ├── utils/                    # Event tracker, geocoding, location helpers
+│   ├── App.jsx                   # Primary router and app layout
+│   └── sw.js                     # PWA Service Worker push notification handler
+├── supabase/
+│   ├── functions/                # Deno Edge Functions (push-notification)
+│   └── migrations/               # Production SQL schema migrations & RLS policies
+├── eslint.config.js              # Modern ESLint v10 flat config
+├── index.html                    # PWA metadata and entry HTML
+├── pwa-assets.config.js          # PWA icon generator configuration
+├── README.md                     # Project documentation
+└── vite.config.js                # Vite build configuration with PWA plugin
+```
+
+---
+
+## 🚀 Local Development Setup
 
 ### Prerequisites
 - Node.js 20.x or later
-- npm (comes with Node.js)
-- A Supabase Project
+- npm v10 or later
 
 ### 1. Installation
-
-Clone the repository and install dependencies:
-
 ```bash
 git clone https://github.com/hemanth17r/HelpHive.git
 cd HelpHive
@@ -30,67 +79,27 @@ npm install
 ```
 
 ### 2. Environment Configuration
-
-Create a `.env.local` file in the root directory based on `.env.example`:
-
-```bash
-cp .env.example .env.local
-```
-
-Fill in the required environment variables in `.env.local`:
-
-```
-VITE_SUPABASE_URL=your_supabase_project_url_here
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+Create a `.env.local` file in the root directory:
+```env
+VITE_SUPABASE_URL=https://your-supabase-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_OLA_MAPS_API_KEY=your_ola_maps_key
 ```
 
 ### 3. Start Development Server
-
-Run the local development server:
-
 ```bash
 npm run dev
 ```
-
-The application will be available at `http://localhost:5173`.
-
----
-
-## 🛠 Project Structure & Branching Strategy
-
-This project follows a standard Git workflow:
-
-- `main`: The stable production branch. Code merged here is automatically deployed to production.
-- Feature branches (`feature/your-feature-name`): Used for developing new features.
-- Pull Requests (PRs): PRs created against `main` automatically trigger CI checks (linting, building) and deploy a Preview Environment to Firebase Hosting.
+The application will launch at `http://localhost:5173`.
 
 ---
 
-## 🚀 Deployment Process
+## 🧪 Testing & Code Quality
 
-We use GitHub Actions for continuous integration and continuous deployment (CI/CD) to Firebase Hosting.
-
-### Preview Deployments
-When you create a Pull Request to `main`, GitHub Actions will:
-1. Lint the code.
-2. Build the application.
-3. Deploy a temporary "Preview" channel on Firebase Hosting.
-4. Add a comment to the PR with the preview URL.
-
-### Production Deployments
-When code is merged into the `main` branch, GitHub Actions will:
-1. Build the application.
-2. Deploy directly to the `live` channel on Firebase Hosting.
-
-**Note:** For deployments to succeed, the GitHub repository must have the following secrets configured:
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-- `FIREBASE_SERVICE_ACCOUNT_VYRNO_52018`
+- **Production Build Check**: `npm run build`
+- **Linting & Code Formatting**: `npm run lint`
 
 ---
 
-## 🛡 Troubleshooting & Maintenance
-
-- **Build Failures:** Ensure your `.env.local` is correct and that you have no TypeScript/ESLint errors (`npm run lint`).
-- **Production Rollbacks:** If a bad deployment occurs, you can rollback via the Firebase Console (Hosting > View Release History > Rollback) or by reverting the commit on the `main` branch.
-- **Preview Channel Cleanup:** Preview channels automatically expire. You do not need to delete them manually.
+## 📜 License & Ownership
+Copyright © 2026 HelpHive. All rights reserved.
