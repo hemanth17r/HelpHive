@@ -674,8 +674,8 @@ Issue: `;
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between sm:justify-start gap-2 flex-wrap">
                     <h3 className="text-sm font-bold text-dark whitespace-nowrap">Refer & Earn</h3>
-                    <span className="sm:hidden text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-200/50 shrink-0">
-                      ₹{totalReferralEarnings.toFixed(2)} Total Earned
+                    <span className="sm:hidden text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200/50 shrink-0">
+                      ₹{totalReferralEarnings.toFixed(2)} Earned
                     </span>
                   </div>
                   <p className="text-xs font-medium text-gray-500 leading-snug mt-0.5">
@@ -683,8 +683,8 @@ Issue: `;
                   </p>
                 </div>
               </div>
-              <span className="hidden sm:inline-block text-xs font-bold text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-200/50 shrink-0 self-start sm:self-auto">
-                ₹{totalReferralEarnings.toFixed(2)} Total Earned
+              <span className="hidden sm:inline-block text-[10px] sm:text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 sm:px-2.5 rounded-full border border-emerald-200/50 shrink-0 self-start sm:self-auto">
+                ₹{totalReferralEarnings.toFixed(2)} Earned
               </span>
             </div>
 
@@ -1213,7 +1213,7 @@ Issue: `;
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between sm:justify-start gap-2 flex-wrap">
                     <h3 className="text-sm font-bold text-dark whitespace-nowrap">Platform Dues</h3>
-                    <span className="sm:hidden text-[11px] font-bold text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-full border border-amber-200/50 shrink-0">
+                    <span className="sm:hidden text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-200/50 shrink-0">
                       ₹{taskerDues.toFixed(2)} Dues
                     </span>
                   </div>
@@ -1222,7 +1222,7 @@ Issue: `;
                   </p>
                 </div>
               </div>
-              <span className="hidden sm:inline-block text-xs font-bold text-amber-800 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-200/50 shrink-0 self-start sm:self-auto">
+              <span className="hidden sm:inline-block text-[10px] sm:text-xs font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 sm:px-2.5 rounded-full border border-amber-200/50 shrink-0 self-start sm:self-auto">
                 ₹{taskerDues.toFixed(2)} Dues
               </span>
             </div>
@@ -1330,8 +1330,8 @@ Issue: `;
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between sm:justify-start gap-2 flex-wrap">
                     <h3 className="text-sm font-bold text-dark whitespace-nowrap">Refer & Earn</h3>
-                    <span className="sm:hidden text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-200/50 shrink-0">
-                      ₹{totalReferralEarnings.toFixed(2)} Total Earned
+                    <span className="sm:hidden text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200/50 shrink-0">
+                      ₹{totalReferralEarnings.toFixed(2)} Earned
                     </span>
                   </div>
                   <p className="text-xs font-medium text-gray-500 leading-snug mt-0.5">
@@ -1339,8 +1339,8 @@ Issue: `;
                   </p>
                 </div>
               </div>
-              <span className="hidden sm:inline-block text-xs font-bold text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-200/50 shrink-0 self-start sm:self-auto">
-                ₹{totalReferralEarnings.toFixed(2)} Total Earned
+              <span className="hidden sm:inline-block text-[10px] sm:text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 sm:px-2.5 rounded-full border border-emerald-200/50 shrink-0 self-start sm:self-auto">
+                ₹{totalReferralEarnings.toFixed(2)} Earned
               </span>
             </div>
 
