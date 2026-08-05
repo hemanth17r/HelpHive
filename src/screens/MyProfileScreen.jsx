@@ -665,23 +665,30 @@ Issue: `;
           </div>
 
           {/* Refer & Earn Hub Card */}
-          <div className="rounded-[24px] p-6 space-y-5 bg-gradient-to-br from-emerald-50/40 via-white to-emerald-50/20 border border-emerald-100/60 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
+          <div className="rounded-[24px] p-5 sm:p-6 space-y-4 sm:space-y-5 bg-gradient-to-br from-emerald-50/40 via-white to-emerald-50/20 border border-emerald-100/60 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start space-x-3 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-lg shrink-0">
                   🎁
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-dark">Refer & Earn</h3>
-                  <p className="text-xs font-medium text-gray-500">Earn from friend's first 5 tasks.</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between sm:justify-start gap-2 flex-wrap">
+                    <h3 className="text-sm font-bold text-dark whitespace-nowrap">Refer & Earn</h3>
+                    <span className="sm:hidden text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-200/50 shrink-0">
+                      ₹{totalReferralEarnings.toFixed(2)} Total Earned
+                    </span>
+                  </div>
+                  <p className="text-xs font-medium text-gray-500 leading-snug mt-0.5">
+                    Earn from friend's first 5 tasks.
+                  </p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-200/50 shrink-0">
+              <span className="hidden sm:inline-block text-xs font-bold text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-200/50 shrink-0 self-start sm:self-auto">
                 ₹{totalReferralEarnings.toFixed(2)} Total Earned
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 py-1 px-1">
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 py-1 px-1">
               <div>
                 <p className="text-xs font-medium text-gray-400">Available</p>
                 <p className="text-2xl font-bold text-emerald-600 tracking-tight mt-0.5">
@@ -696,39 +703,37 @@ Issue: `;
               </div>
             </div>
 
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-end space-x-3">
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-2 gap-3 items-center">
                 <button 
                   onClick={handleWhatsAppShare}
-                  className="flex-1 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs shadow-sm"
+                  className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-2.5 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs shadow-xs min-h-[40px]"
                 >
                   <WhatsAppIcon className="w-4 h-4 shrink-0" />
                   <span>Share</span>
                 </button>
 
-                <div className="flex-1 flex flex-col items-start">
-                  {availableReferralBalance < 100 && (
-                    <span className="text-[10px] text-gray-400 font-normal lowercase mb-1 pl-3">
-                      min. ₹100
-                    </span>
-                  )}
-                  <button
-                    onClick={() => {
-                      setWithdrawUpiId(profile.upiId || '');
-                      setShowWithdrawModal(true);
-                    }}
-                    disabled={availableReferralBalance < 100}
-                    className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
-                      availableReferralBalance >= 100 
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-sm active:scale-[0.98]'
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                    }`}
-                  >
-                    <ArrowUpRight className="w-4 h-4 shrink-0" />
-                    <span>Withdraw</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    setWithdrawUpiId(profile.upiId || '');
+                    setShowWithdrawModal(true);
+                  }}
+                  disabled={availableReferralBalance < 100}
+                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 min-h-[40px] ${
+                    availableReferralBalance >= 100 
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-xs active:scale-[0.98]'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                  }`}
+                >
+                  <ArrowUpRight className="w-4 h-4 shrink-0" />
+                  <span>Withdraw</span>
+                </button>
               </div>
+              {availableReferralBalance < 100 && (
+                <p className="text-[10px] text-gray-400 font-normal text-right pr-1">
+                  min. ₹100 required
+                </p>
+              )}
             </div>
 
             {/* Friends & Progress List */}
@@ -1199,18 +1204,25 @@ Issue: `;
           </div>
 
           {/* Platform Dues Card (Tasker Only) */}
-          <div className="rounded-[24px] p-6 space-y-5 bg-gradient-to-br from-amber-50/40 via-white to-amber-50/20 border border-amber-100/60 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
+          <div className="rounded-[24px] p-5 sm:p-6 space-y-4 sm:space-y-5 bg-gradient-to-br from-amber-50/40 via-white to-amber-50/20 border border-amber-100/60 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start space-x-3 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold text-lg shrink-0">
                   💼
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-dark">Platform Dues</h3>
-                  <p className="text-xs font-medium text-gray-500">Keep dues under ₹{taskerCreditLimit} to receive tasks smoothly.</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between sm:justify-start gap-2 flex-wrap">
+                    <h3 className="text-sm font-bold text-dark whitespace-nowrap">Platform Dues</h3>
+                    <span className="sm:hidden text-[11px] font-bold text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-full border border-amber-200/50 shrink-0">
+                      ₹{taskerDues.toFixed(2)} Dues
+                    </span>
+                  </div>
+                  <p className="text-xs font-medium text-gray-500 leading-snug mt-0.5">
+                    Keep dues under ₹{taskerCreditLimit} to receive tasks smoothly.
+                  </p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-amber-800 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-200/50 shrink-0">
+              <span className="hidden sm:inline-block text-xs font-bold text-amber-800 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-200/50 shrink-0 self-start sm:self-auto">
                 ₹{taskerDues.toFixed(2)} Dues
               </span>
             </div>
@@ -1243,7 +1255,7 @@ Issue: `;
                     const upiLink = `upi://pay?pa=adminmobilenumber@ybl&pn=${encodeURIComponent('HelpHive Admin')}&am=${payAmount}&cu=INR&tn=${encodeURIComponent('HelpHive Dues')}`;
                     window.location.assign(upiLink);
                   }}
-                  className="bg-primary hover:bg-primary/95 text-white font-bold py-2.5 px-5 rounded-xl inline-flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs shadow-sm"
+                  className="flex-1 sm:flex-none bg-primary hover:bg-primary/95 text-white font-bold py-2.5 px-5 rounded-xl inline-flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs shadow-xs min-h-[40px]"
                 >
                   <DollarSign className="w-4 h-4 text-white shrink-0" />
                   <span>Pay dues</span>
@@ -1254,7 +1266,7 @@ Issue: `;
                   <button 
                     onClick={handleCommissionPaymentSubmit}
                     disabled={isSubmittingPayment}
-                    className="bg-gray-100 hover:bg-gray-200 text-dark font-bold py-2.5 px-5 rounded-xl inline-flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs border border-gray-200"
+                    className="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 text-dark font-bold py-2.5 px-5 rounded-xl inline-flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs border border-gray-200 min-h-[40px]"
                   >
                     {isSubmittingPayment ? (
                       <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-gray-700 rounded-full animate-spin"></div>
@@ -1309,23 +1321,30 @@ Issue: `;
           </div>
 
           {/* Refer & Earn Hub Card */}
-          <div className="rounded-[24px] p-6 space-y-5 bg-gradient-to-br from-emerald-50/40 via-white to-emerald-50/20 border border-emerald-100/60 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
+          <div className="rounded-[24px] p-5 sm:p-6 space-y-4 sm:space-y-5 bg-gradient-to-br from-emerald-50/40 via-white to-emerald-50/20 border border-emerald-100/60 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start space-x-3 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-lg shrink-0">
                   🎁
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-dark">Refer & Earn</h3>
-                  <p className="text-xs font-medium text-gray-500">Earn from friend's first 5 tasks.</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between sm:justify-start gap-2 flex-wrap">
+                    <h3 className="text-sm font-bold text-dark whitespace-nowrap">Refer & Earn</h3>
+                    <span className="sm:hidden text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-200/50 shrink-0">
+                      ₹{totalReferralEarnings.toFixed(2)} Total Earned
+                    </span>
+                  </div>
+                  <p className="text-xs font-medium text-gray-500 leading-snug mt-0.5">
+                    Earn from friend's first 5 tasks.
+                  </p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-200/50 shrink-0">
+              <span className="hidden sm:inline-block text-xs font-bold text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-200/50 shrink-0 self-start sm:self-auto">
                 ₹{totalReferralEarnings.toFixed(2)} Total Earned
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 py-1 px-1">
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 py-1 px-1">
               <div>
                 <p className="text-xs font-medium text-gray-400">Available</p>
                 <p className="text-2xl font-bold text-emerald-600 tracking-tight mt-0.5">
@@ -1340,39 +1359,37 @@ Issue: `;
               </div>
             </div>
 
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-end space-x-3">
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-2 gap-3 items-center">
                 <button 
                   onClick={handleWhatsAppShare}
-                  className="flex-1 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs shadow-sm"
+                  className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-2.5 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs shadow-xs min-h-[40px]"
                 >
                   <WhatsAppIcon className="w-4 h-4 shrink-0" />
                   <span>Share</span>
                 </button>
 
-                <div className="flex-1 flex flex-col items-start">
-                  {availableReferralBalance < 100 && (
-                    <span className="text-[10px] text-gray-400 font-normal lowercase mb-1 pl-3">
-                      min. ₹100
-                    </span>
-                  )}
-                  <button
-                    onClick={() => {
-                      setWithdrawUpiId(profile.upiId || '');
-                      setShowWithdrawModal(true);
-                    }}
-                    disabled={availableReferralBalance < 100}
-                    className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
-                      availableReferralBalance >= 100 
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-sm active:scale-[0.98]'
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                    }`}
-                  >
-                    <ArrowUpRight className="w-4 h-4 shrink-0" />
-                    <span>Withdraw</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    setWithdrawUpiId(profile.upiId || '');
+                    setShowWithdrawModal(true);
+                  }}
+                  disabled={availableReferralBalance < 100}
+                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 min-h-[40px] ${
+                    availableReferralBalance >= 100 
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-xs active:scale-[0.98]'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                  }`}
+                >
+                  <ArrowUpRight className="w-4 h-4 shrink-0" />
+                  <span>Withdraw</span>
+                </button>
               </div>
+              {availableReferralBalance < 100 && (
+                <p className="text-[10px] text-gray-400 font-normal text-right pr-1">
+                  min. ₹100 required
+                </p>
+              )}
             </div>
 
             {/* Friends & Progress List */}
