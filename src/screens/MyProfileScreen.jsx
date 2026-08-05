@@ -703,8 +703,8 @@ Issue: `;
               </div>
             </div>
 
-            <div className="space-y-2 pt-1">
-              <div className="grid grid-cols-2 gap-3 items-center">
+            <div className="pt-1">
+              <div className="grid grid-cols-2 gap-3 items-end">
                 <button 
                   onClick={handleWhatsAppShare}
                   className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-2.5 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs shadow-xs min-h-[40px]"
@@ -713,27 +713,29 @@ Issue: `;
                   <span>Share</span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    setWithdrawUpiId(profile.upiId || '');
-                    setShowWithdrawModal(true);
-                  }}
-                  disabled={availableReferralBalance < 100}
-                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 min-h-[40px] ${
-                    availableReferralBalance >= 100 
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-xs active:scale-[0.98]'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                  }`}
-                >
-                  <ArrowUpRight className="w-4 h-4 shrink-0" />
-                  <span>Withdraw</span>
-                </button>
+                <div className="w-full flex flex-col items-start">
+                  {availableReferralBalance < 100 && (
+                    <span className="text-[10px] text-gray-400 font-normal lowercase mb-1 pl-1">
+                      min. ₹100
+                    </span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setWithdrawUpiId(profile.upiId || '');
+                      setShowWithdrawModal(true);
+                    }}
+                    disabled={availableReferralBalance < 100}
+                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 min-h-[40px] ${
+                      availableReferralBalance >= 100 
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-xs active:scale-[0.98]'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                    }`}
+                  >
+                    <ArrowUpRight className="w-4 h-4 shrink-0" />
+                    <span>Withdraw</span>
+                  </button>
+                </div>
               </div>
-              {availableReferralBalance < 100 && (
-                <p className="text-[10px] text-gray-400 font-normal text-right pr-1">
-                  min. ₹100 required
-                </p>
-              )}
             </div>
 
             {/* Friends & Progress List */}
@@ -1359,8 +1361,8 @@ Issue: `;
               </div>
             </div>
 
-            <div className="space-y-2 pt-1">
-              <div className="grid grid-cols-2 gap-3 items-center">
+            <div className="pt-1">
+              <div className="grid grid-cols-2 gap-3 items-end">
                 <button 
                   onClick={handleWhatsAppShare}
                   className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-2.5 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs shadow-xs min-h-[40px]"
@@ -1369,27 +1371,29 @@ Issue: `;
                   <span>Share</span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    setWithdrawUpiId(profile.upiId || '');
-                    setShowWithdrawModal(true);
-                  }}
-                  disabled={availableReferralBalance < 100}
-                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 min-h-[40px] ${
-                    availableReferralBalance >= 100 
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-xs active:scale-[0.98]'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                  }`}
-                >
-                  <ArrowUpRight className="w-4 h-4 shrink-0" />
-                  <span>Withdraw</span>
-                </button>
+                <div className="w-full flex flex-col items-start">
+                  {availableReferralBalance < 100 && (
+                    <span className="text-[10px] text-gray-400 font-normal lowercase mb-1 pl-1">
+                      min. ₹100
+                    </span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setWithdrawUpiId(profile.upiId || '');
+                      setShowWithdrawModal(true);
+                    }}
+                    disabled={availableReferralBalance < 100}
+                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 min-h-[40px] ${
+                      availableReferralBalance >= 100 
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-xs active:scale-[0.98]'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                    }`}
+                  >
+                    <ArrowUpRight className="w-4 h-4 shrink-0" />
+                    <span>Withdraw</span>
+                  </button>
+                </div>
               </div>
-              {availableReferralBalance < 100 && (
-                <p className="text-[10px] text-gray-400 font-normal text-right pr-1">
-                  min. ₹100 required
-                </p>
-              )}
             </div>
 
             {/* Friends & Progress List */}
