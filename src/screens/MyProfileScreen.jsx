@@ -668,14 +668,14 @@ Issue: `;
           <div className="rounded-[24px] p-5 sm:p-6 space-y-4 sm:space-y-5 bg-gradient-to-br from-emerald-50/40 via-white to-emerald-50/20 border border-emerald-100/60 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start space-x-3 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-lg shrink-0">
-                  🎁
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <Gift className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between sm:justify-start gap-2 flex-wrap">
                     <h3 className="text-sm font-bold text-dark whitespace-nowrap">Refer & Earn</h3>
                     <span className="sm:hidden text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200/50 shrink-0">
-                      ₹{totalReferralEarnings.toFixed(2)} Earned
+                      ₹{totalReferralEarnings.toFixed(2)} Lifetime
                     </span>
                   </div>
                   <p className="text-xs font-medium text-gray-500 leading-snug mt-0.5">
@@ -684,7 +684,7 @@ Issue: `;
                 </div>
               </div>
               <span className="hidden sm:inline-block text-[10px] sm:text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 sm:px-2.5 rounded-full border border-emerald-200/50 shrink-0 self-start sm:self-auto">
-                ₹{totalReferralEarnings.toFixed(2)} Earned
+                ₹{totalReferralEarnings.toFixed(2)} Lifetime
               </span>
             </div>
 
@@ -1207,8 +1207,8 @@ Issue: `;
           <div className="rounded-[24px] p-5 sm:p-6 space-y-4 sm:space-y-5 bg-gradient-to-br from-amber-50/40 via-white to-amber-50/20 border border-amber-100/60 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start space-x-3 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold text-lg shrink-0">
-                  💼
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <Briefcase className="w-4 h-4 text-amber-600" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between sm:justify-start gap-2 flex-wrap">
@@ -1324,14 +1324,14 @@ Issue: `;
           <div className="rounded-[24px] p-5 sm:p-6 space-y-4 sm:space-y-5 bg-gradient-to-br from-emerald-50/40 via-white to-emerald-50/20 border border-emerald-100/60 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start space-x-3 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-lg shrink-0">
-                  🎁
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <Gift className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between sm:justify-start gap-2 flex-wrap">
                     <h3 className="text-sm font-bold text-dark whitespace-nowrap">Refer & Earn</h3>
                     <span className="sm:hidden text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200/50 shrink-0">
-                      ₹{totalReferralEarnings.toFixed(2)} Earned
+                      ₹{totalReferralEarnings.toFixed(2)} Lifetime
                     </span>
                   </div>
                   <p className="text-xs font-medium text-gray-500 leading-snug mt-0.5">
@@ -1340,7 +1340,7 @@ Issue: `;
                 </div>
               </div>
               <span className="hidden sm:inline-block text-[10px] sm:text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 sm:px-2.5 rounded-full border border-emerald-200/50 shrink-0 self-start sm:self-auto">
-                ₹{totalReferralEarnings.toFixed(2)} Earned
+                ₹{totalReferralEarnings.toFixed(2)} Lifetime
               </span>
             </div>
 
