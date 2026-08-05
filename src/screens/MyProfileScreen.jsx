@@ -1,6 +1,7 @@
-import React, { useContext, useState, useEffect, useMemo } from 'react';
-import { Star, ShieldAlert, Shield, Lock, Award, Calendar, ArrowLeft, LogOut, LogIn, Clock, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2, ChevronDown, ExternalLink, Wifi, Flame, Zap } from 'lucide-react';
+import React, { useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { Star, ShieldAlert, Shield, Lock, Award, Calendar, ArrowLeft, LogOut, LogIn, Clock, User, Phone, Mail, Edit2, ChevronRight, Briefcase, HelpCircle, Check, X, PlusCircle, MapPin, CheckCircle2, ChevronDown, ExternalLink, Wifi, Flame, Zap, Copy, Gift, DollarSign, ArrowUpRight } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
+import { api } from '../services/api';
 import { SKILLS } from '../config/constants';
 import Tooltip from '../components/Tooltip';
 import BirdAvatar from '../components/BirdAvatars';
@@ -65,6 +66,168 @@ Issue: `;
   const [isAhrOpen, setIsAhrOpen] = useState(false);
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
+
+  // Referral & Commission State
+  const [referralSummary, setReferralSummary] = useState({ rewards: [], payouts: [], referredUsers: [] });
+  const [commissionPayments, setCommissionPayments] = useState([]);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [hasClickedPayDues, setHasClickedPayDues] = useState(false);
+  const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false);
+  const [withdrawUpiId, setWithdrawUpiId] = useState('');
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
+
+  useEffect(() => {
+    if (userId) {
+      try {
+        const clicked = localStorage.getItem(`helphive_pay_dues_clicked_${userId}`);
+        if (clicked === 'true') {
+          setHasClickedPayDues(true);
+        }
+      } catch (e) {
+        // ignore localStorage errors
+      }
+    }
+  }, [userId]);
+
+  const fetchReferralAndCommissionData = useCallback(async () => {
+    if (!userId) return;
+    const summary = await api.fetchReferralSummary(userId);
+    setReferralSummary({ rewards: summary.rewards || [], payouts: summary.payouts || [], referredUsers: summary.referredUsers || [] });
+    const { data: comms } = await api.fetchTaskerCommissionPayments(userId);
+    if (comms) setCommissionPayments(comms);
+  }, [userId]);
+
+  useEffect(() => {
+    fetchReferralAndCommissionData();
+  }, [fetchReferralAndCommissionData]);
+
+  const [recentlyApprovedPayment, setRecentlyApprovedPayment] = useState(null);
+
+  useEffect(() => {
+    const found = (commissionPayments || []).find(p => {
+      if (p.status !== 'approved') return false;
+      const approvedTime = new Date(p.updated_at || p.created_at).getTime();
+      return (Date.now() - approvedTime) < (24 * 60 * 60 * 1000);
+    });
+    setRecentlyApprovedPayment(found || null);
+  }, [commissionPayments]);
+
+  const groupedCommissionHistory = useMemo(() => {
+    const groups = {};
+    (commissionPayments || []).forEach(p => {
+      const date = new Date(p.created_at);
+      const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      if (!groups[monthYear]) groups[monthYear] = [];
+      groups[monthYear].push(p);
+    });
+    return groups;
+  }, [commissionPayments]);
+
+  // Derived Referral Metrics
+  const totalReferralEarnings = useMemo(() => {
+    return (referralSummary.rewards || []).reduce((sum, r) => sum + (parseFloat(r.reward_amount) || 0), 0);
+  }, [referralSummary.rewards]);
+
+  const totalPayoutsClaimed = useMemo(() => {
+    return (referralSummary.payouts || [])
+      .filter(p => p.status === 'pending_payout' || p.status === 'paid')
+      .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  }, [referralSummary.payouts]);
+
+  const availableReferralBalance = useMemo(() => {
+    return Math.max(0, totalReferralEarnings - totalPayoutsClaimed);
+  }, [totalReferralEarnings, totalPayoutsClaimed]);
+
+  const totalReferralsCount = useMemo(() => {
+    return (referralSummary.referredUsers || []).length;
+  }, [referralSummary.referredUsers]);
+
+  const friendProgressList = useMemo(() => {
+    const map = {};
+    (referralSummary.referredUsers || []).forEach(u => {
+      map[u.id] = { id: u.id, name: u.name || 'Friend', phone: u.phone, totalEarned: 0, count: 0 };
+    });
+    (referralSummary.rewards || []).forEach(r => {
+      const uid = r.referred_user_id;
+      if (!map[uid]) {
+        const uObj = r.referred_user || {};
+        map[uid] = { id: uid, name: uObj.name || 'Friend', phone: uObj.phone, totalEarned: 0, count: 0 };
+      }
+      map[uid].totalEarned += (parseFloat(r.reward_amount) || 0);
+      map[uid].count += 1;
+    });
+    return Object.values(map);
+  }, [referralSummary.referredUsers, referralSummary.rewards]);
+
+  // Tasker Commission & Credit Rules
+  const handleWhatsAppShare = () => {
+    const doShare = () => {
+      const activeId = userProfile?.id || userId;
+      const inviteLink = `${window.location.origin}/?ref=${activeId}`;
+      const msg = `💰 Discover a new way to earn.\n\n${inviteLink}`;
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    };
+    if (!userId) {
+      if (openLoginModal) {
+        openLoginModal(() => doShare());
+      } else {
+        setShowLoginModal(true);
+      }
+    } else {
+      doShare();
+    }
+  };
+
+  const pendingCommissionVerification = (commissionPayments || []).find(p => p.status === 'pending_verification');
+  const taskerDues = userProfile?.unpaidCommissionDues || 0;
+  const taskerCreditLimit = 200;
+
+  const handleCommissionPaymentSubmit = async () => {
+    const amountToPay = taskerDues > 0 ? taskerDues : 50;
+    if (!amountToPay || amountToPay <= 0) {
+      showToast('No outstanding dues to pay', 'info');
+      return;
+    }
+    setIsSubmittingPayment(true);
+    const { error } = await api.submitCommissionPayment(userId, amountToPay);
+    setIsSubmittingPayment(false);
+    if (!error) {
+      setHasClickedPayDues(false);
+      try {
+        localStorage.removeItem(`helphive_pay_dues_clicked_${userId}`);
+      } catch (e) {
+        // ignore localStorage errors
+      }
+      showToast('Payment submitted! Verification under progress.', 'success');
+      fetchReferralAndCommissionData();
+    } else {
+      showToast('Failed to submit payment. Try again.', 'error');
+    }
+  };
+
+  const handleWithdrawalSubmit = async () => {
+    const trimmedUpi = withdrawUpiId.trim();
+    if (!trimmedUpi || !trimmedUpi.includes('@')) {
+      showToast('Please enter a valid UPI ID (e.g. name@okaxis)', 'error');
+      return;
+    }
+    if (availableReferralBalance < 100) {
+      showToast('Minimum withdrawal amount is ₹100', 'error');
+      return;
+    }
+    setIsSubmittingWithdrawal(true);
+    const { error } = await api.requestReferralPayout(userId, availableReferralBalance, trimmedUpi);
+    setIsSubmittingWithdrawal(false);
+    if (!error) {
+      setShowWithdrawModal(false);
+      showToast('Withdrawal request submitted! Admin will transfer funds soon.', 'success');
+      fetchReferralAndCommissionData();
+    } else {
+      showToast(error.message || 'Failed to submit withdrawal request', 'error');
+    }
+  };
+
   
   // Hirer (Poster) Stats
   const posterJobs = useMemo(() => {
@@ -256,17 +419,17 @@ Issue: `;
             </Tooltip>
             
             <div className="flex flex-col items-center w-full">
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full mb-2 flex items-center gap-1">
+              <span className="text-xs font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full mb-2 flex items-center gap-1">
                 Hirer
               </span>
-              <h2 className="text-xl font-black text-dark leading-tight">{profile.name}</h2>
+              <h2 className="text-xl font-bold text-dark leading-tight">{profile.name}</h2>
             </div>
           </div>
 
           {/* Account Details Card */}
           <div className="m3-card rounded-[24px] p-6 space-y-5">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Account Details</h3>
+              <h3 className="text-xs font-semibold text-gray-500">Account details</h3>
               {!isEditingAccount ? (
                 <Tooltip text="Edit account details" position="left">
                   <button 
@@ -359,8 +522,8 @@ Issue: `;
                   </div>
                   <div className="flex-1 border-b border-gray-100 pb-3 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Full Name</p>
-                      <p className="font-bold text-dark">{profile.name}</p>
+                      <p className="text-xs font-semibold text-gray-500">Full name</p>
+                      <p className="font-semibold text-dark">{profile.name}</p>
                     </div>
                   </div>
                 </div>
@@ -370,8 +533,8 @@ Issue: `;
                     <Phone className="w-4 h-4 text-gray-500" />
                   </div>
                   <div className="flex-1 border-b border-gray-100 pb-3">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Phone Number</p>
-                    <p className="font-bold text-dark">{profile.phone}</p>
+                    <p className="text-xs font-semibold text-gray-500">Phone number</p>
+                    <p className="font-semibold text-dark">{profile.phone}</p>
                   </div>
                 </div>
 
@@ -380,8 +543,8 @@ Issue: `;
                       <Mail className="w-4 h-4 text-gray-500" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Email</p>
-                      <p className="font-bold text-dark">{profile.email}</p>
+                      <p className="text-xs font-semibold text-gray-500">Email</p>
+                      <p className="font-semibold text-dark">{profile.email}</p>
                     </div>
                   </div>
               </>
@@ -394,26 +557,26 @@ Issue: `;
               onClick={() => { setJobHistoryTab('active'); pushScreen('job_history'); }}
               className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
-              <span className="text-xl font-black text-dark">{activePosterJobs}</span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Active Tasks</span>
+              <span className="text-xl font-bold text-dark">{activePosterJobs}</span>
+              <span className="text-xs font-medium text-gray-500 mt-1 text-center">Active tasks</span>
             </div>
             <div 
               onClick={() => { setJobHistoryTab('completed'); pushScreen('job_history'); }}
               className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
-              <span className="text-xl font-black text-dark">{completedPosterJobsCount}</span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Completed</span>
+              <span className="text-xl font-bold text-dark">{completedPosterJobsCount}</span>
+              <span className="text-xs font-medium text-gray-500 mt-1 text-center">Completed</span>
             </div>
           </div>
 
           {/* Reputation Section */}
           <div className="m3-card rounded-[24px] p-6 space-y-6">
             <div className="flex items-center justify-between pb-1 border-b border-gray-100">
-              <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Reputation</h3>
+              <h3 className="text-xs font-semibold text-gray-500">Reputation</h3>
               {showVerifiedLocal && (
                 <div className="flex items-center space-x-1.5 bg-green-50 text-green-700 border border-green-200/50 px-2.5 py-1 rounded-lg">
                   <Award className="w-3 h-3" />
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider">Verified Hirer</span>
+                  <span className="text-xs font-medium">Verified hirer</span>
                 </div>
               )}
             </div>
@@ -447,8 +610,8 @@ Issue: `;
                   })}
                 </div>
                 
-                <span className="text-[10px] font-bold text-gray-400 mt-1.5 uppercase tracking-wider text-center">
-                  {totalReviews > 0 ? `${totalReviews} Ratings` : 'No reviews yet'}
+                <span className="text-xs font-semibold text-gray-500 mt-1.5 text-center">
+                  {totalReviews > 0 ? `${totalReviews} ratings` : 'No reviews yet'}
                 </span>
               </div>
 
@@ -476,14 +639,14 @@ Issue: `;
             </div>
 
             <div className="flex justify-between items-center text-xs font-bold text-dark border-t border-gray-100 pt-3">
-              <span className="text-gray-400 font-bold uppercase text-[10px] tracking-wider">Interactions</span>
-              <span className="text-base font-black text-dark">{profile.tasksCompleted}</span>
+              <span className="text-xs font-semibold text-gray-500">Tasks completed</span>
+              <span className="text-base font-bold text-dark">{profile.tasksCompleted}</span>
             </div>
 
             {/* Trust Badges - Hirer specific */}
             {Array.isArray(profile.badges) && profile.badges.length > 0 && (
               <div className="space-y-2 pt-3 border-t border-gray-100">
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Trust Badges</h4>
+                <h4 className="text-xs font-semibold text-gray-500 mb-2">Trust badges</h4>
                 <div className="flex flex-wrap gap-2">
                   {groupedBadges.map(({ badge, count }, idx) => (
                     <span key={idx} className="text-[10px] font-black uppercase tracking-widest text-green-700 bg-green-50 px-2.5 py-1.5 rounded-xl border border-green-200/50 flex items-center space-x-1 shadow-xs">
@@ -501,13 +664,111 @@ Issue: `;
             )}
           </div>
 
+          {/* Refer & Earn Hub Card */}
+          <div className="rounded-[24px] p-6 space-y-5 bg-gradient-to-br from-emerald-50/40 via-white to-emerald-50/20 border border-emerald-100/60 shadow-sm">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-lg shrink-0">
+                  🎁
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-dark">Refer & Earn</h3>
+                  <p className="text-xs font-medium text-gray-500">Earn from friend's first 5 tasks.</p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-200/50 shrink-0">
+                ₹{totalReferralEarnings.toFixed(2)} Total Earned
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 py-1 px-1">
+              <div>
+                <p className="text-xs font-medium text-gray-400">Available</p>
+                <p className="text-2xl font-bold text-emerald-600 tracking-tight mt-0.5">
+                  ₹{availableReferralBalance.toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-400">Invited</p>
+                <p className="text-2xl font-bold text-dark tracking-tight mt-0.5">
+                  {totalReferralsCount}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-end space-x-3">
+                <button 
+                  onClick={handleWhatsAppShare}
+                  className="flex-1 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs shadow-sm"
+                >
+                  <WhatsAppIcon className="w-4 h-4 shrink-0" />
+                  <span>Share</span>
+                </button>
+
+                <div className="flex-1 flex flex-col items-start">
+                  {availableReferralBalance < 100 && (
+                    <span className="text-[10px] text-gray-400 font-normal lowercase mb-1 pl-3">
+                      min. ₹100
+                    </span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setWithdrawUpiId(profile.upiId || '');
+                      setShowWithdrawModal(true);
+                    }}
+                    disabled={availableReferralBalance < 100}
+                    className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
+                      availableReferralBalance >= 100 
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-sm active:scale-[0.98]'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                    }`}
+                  >
+                    <ArrowUpRight className="w-4 h-4 shrink-0" />
+                    <span>Withdraw</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Friends & Progress List */}
+            {friendProgressList.length > 0 && (
+              <div className="pt-2 border-t border-emerald-100/80 space-y-2">
+                <p className="text-xs font-semibold text-gray-500">Your invited friends</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {friendProgressList.map((f, idx) => (
+                    <div key={idx} className="bg-white rounded-xl p-3 border border-gray-100 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-dark flex items-center space-x-1.5">
+                          <span>👤 {f.name}</span>
+                          {f.count >= 5 && (
+                            <span className="bg-green-100 text-green-700 text-[9px] font-black px-2 py-0.5 rounded-full border border-green-200">
+                              5/5 Completed 🎉
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-extrabold text-emerald-600 text-[11px]">
+                          Total Earned: ₹{f.totalEarned.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-gray-400 font-semibold">
+                        <span>Progress: {f.count} of 5 tasks completed</span>
+                        <span>{f.count < 5 ? `${5 - f.count} tasks remaining` : 'Done'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Action Menu */}
           <div className="m3-card rounded-[24px] p-2">
             <div className="space-y-0.5">
-              <button onClick={() => switchRole('tasker', true)} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
+              <button onClick={() => switchRole('tasker', true)} className="w-full flex items-center justify-between text-left text-sm font-semibold text-primary hover:bg-primary/5 py-2.5 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
                 <div className="flex items-center space-x-3">
                   <Briefcase className="w-4 h-4 text-primary" />
-                  <span>Switch to Tasker</span>
+                  <span>Switch to helper</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-primary" />
               </button>
@@ -516,11 +777,11 @@ Issue: `;
 
               <button 
                 onClick={() => pushScreen('address_book')} 
-                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between text-left text-sm font-semibold text-dark hover:bg-gray-50 py-2.5 px-3 rounded-xl transition-colors cursor-pointer"
               >
                 <div className="flex items-center space-x-3">
                   <MapPin className="w-4 h-4 text-gray-400" />
-                  <span>Address Book</span>
+                  <span>Address book</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
@@ -529,10 +790,10 @@ Issue: `;
 
               {isAdmin && (
                 <>
-                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-gray-800 hover:bg-gray-100 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-sm font-semibold text-gray-800 hover:bg-gray-100 py-2.5 px-3 rounded-xl transition-colors cursor-pointer">
                     <div className="flex items-center space-x-3">
                       <Shield className="w-4 h-4 text-gray-600" />
-                      <span>Admin Dashboard</span>
+                      <span>Admin dashboard</span>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-300" />
                   </button>
@@ -540,10 +801,10 @@ Issue: `;
                 </>
               )}
 
-              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-sm font-semibold text-dark hover:bg-gray-50 py-2.5 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
                   <Star className="w-4 h-4 text-gray-400" />
-                  <span>About Us</span>
+                  <span>About us</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
@@ -551,17 +812,17 @@ Issue: `;
               <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
               {userId ? (
-                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-red-500 hover:bg-red-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-sm font-semibold text-red-500 hover:bg-red-50 py-2.5 px-3 rounded-xl transition-colors cursor-pointer">
                   <div className="flex items-center space-x-3">
                     <LogOut className="w-4 h-4 text-red-500" />
-                    <span>Sign Out</span>
+                    <span>Sign out</span>
                   </div>
                 </button>
               ) : (
-                <button onClick={() => openLoginModal()} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                <button onClick={() => openLoginModal()} className="w-full flex items-center justify-between text-left text-sm font-semibold text-primary hover:bg-primary/5 py-2.5 px-3 rounded-xl transition-colors cursor-pointer">
                   <div className="flex items-center space-x-3">
                     <LogIn className="w-4 h-4 text-primary" />
-                    <span>Sign In / Sign Up</span>
+                    <span>Sign in / sign up</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-primary" />
                 </button>
@@ -570,13 +831,13 @@ Issue: `;
               <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
               <div className="px-3 py-0.5 text-left">
-                <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Need Help?</span>
+                <span className="text-xs font-semibold text-gray-500">Need help?</span>
               </div>
 
-              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-sm font-semibold text-dark hover:bg-gray-50 py-2.5 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
                   <WhatsAppIcon className="w-4 h-4 text-green-600 shrink-0" />
-                  <span>WhatsApp Support</span>
+                  <span>WhatsApp support</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
@@ -586,7 +847,7 @@ Issue: `;
               {/* Also from ahr dropdown section merged inside card */}
               <button 
                 onClick={() => setIsAhrOpen(!isAhrOpen)} 
-                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between text-left text-sm font-semibold text-dark hover:bg-gray-50 py-2.5 px-3 rounded-xl transition-colors cursor-pointer"
               >
                 <div className="flex items-center space-x-1.5">
                   <span>Also from</span>
@@ -637,17 +898,17 @@ Issue: `;
             </Tooltip>
             
             <div className="flex flex-col items-center w-full">
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full mb-2 flex items-center gap-1">
-                Tasker
+              <span className="text-xs font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full mb-2 flex items-center gap-1">
+                Helper
               </span>
-              <h2 className="text-xl font-black text-dark leading-tight">{profile.name}</h2>
+              <h2 className="text-xl font-bold text-dark leading-tight">{profile.name}</h2>
             </div>
           </div>
 
           {/* Account Details Card */}
           <div className="m3-card rounded-[24px] p-6 space-y-5">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Account Details</h3>
+              <h3 className="text-xs font-semibold text-gray-500">Account details</h3>
               {!isEditingAccount ? (
                 <Tooltip text="Edit account details" position="left">
                   <button 
@@ -737,8 +998,8 @@ Issue: `;
                   </div>
                   <div className="flex-1 border-b border-gray-100 pb-3 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Full Name</p>
-                      <p className="font-bold text-dark">{profile.name}</p>
+                      <p className="text-xs font-semibold text-gray-500">Full name</p>
+                      <p className="font-semibold text-dark">{profile.name}</p>
                     </div>
                   </div>
                 </div>
@@ -748,8 +1009,8 @@ Issue: `;
                     <Phone className="w-4 h-4 text-gray-500" />
                   </div>
                   <div className="flex-1 border-b border-gray-100 pb-3">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Phone Number</p>
-                    <p className="font-bold text-dark">{profile.phone}</p>
+                    <p className="text-xs font-semibold text-gray-500">Phone number</p>
+                    <p className="font-semibold text-dark">{profile.phone}</p>
                   </div>
                 </div>
 
@@ -758,8 +1019,8 @@ Issue: `;
                       <Mail className="w-4 h-4 text-gray-500" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Email</p>
-                      <p className="font-bold text-dark">{profile.email}</p>
+                      <p className="text-xs font-semibold text-gray-500">Email</p>
+                      <p className="font-semibold text-dark">{profile.email}</p>
                     </div>
                   </div>
               </>
@@ -775,8 +1036,8 @@ Issue: `;
               }}
               className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
-              <span className="text-xl font-black text-dark">{activeTaskerJobs}</span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Active Tasks</span>
+              <span className="text-xl font-bold text-dark">{activeTaskerJobs}</span>
+              <span className="text-xs font-medium text-gray-500 mt-1 text-center">Active tasks</span>
             </div>
             <div 
               onClick={() => {
@@ -785,19 +1046,19 @@ Issue: `;
               }}
               className="m3-card rounded-[20px] p-4 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
             >
-              <span className="text-xl font-black text-dark">{completedTaskerJobsCount}</span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">Completed</span>
+              <span className="text-xl font-bold text-dark">{completedTaskerJobsCount}</span>
+              <span className="text-xs font-medium text-gray-500 mt-1 text-center">Completed</span>
             </div>
           </div>
 
           {/* Reputation Section (Tasker) */}
           <div className="m3-card rounded-[24px] p-6 space-y-6 mt-4">
             <div className="flex items-center justify-between pb-1 border-b border-gray-100">
-              <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Reputation</h3>
+              <h3 className="text-xs font-semibold text-gray-500">Reputation</h3>
               {showVerifiedLocal && (
                 <div className="flex items-center space-x-1.5 bg-green-50 text-green-700 border border-green-200/50 px-2.5 py-1 rounded-lg">
                   <Award className="w-3 h-3" />
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider">Verified Helper</span>
+                  <span className="text-xs font-medium">Verified helper</span>
                 </div>
               )}
             </div>
@@ -831,8 +1092,8 @@ Issue: `;
                   })}
                 </div>
                 
-                <span className="text-[10px] font-bold text-gray-400 mt-1.5 uppercase tracking-wider text-center">
-                  {totalReviews > 0 ? `${totalReviews} Ratings` : 'No reviews yet'}
+                <span className="text-xs font-semibold text-gray-500 mt-1.5 text-center">
+                  {totalReviews > 0 ? `${totalReviews} ratings` : 'No reviews yet'}
                 </span>
               </div>
 
@@ -860,14 +1121,14 @@ Issue: `;
             </div>
 
             <div className="flex justify-between items-center text-xs font-bold text-dark border-t border-gray-100 pt-3">
-              <span className="text-gray-400 font-bold uppercase text-[10px] tracking-wider">Tasks Completed</span>
-              <span className="text-base font-black text-dark">{profile.tasksCompleted}</span>
+              <span className="text-xs font-semibold text-gray-500">Tasks completed</span>
+              <span className="text-base font-bold text-dark">{profile.tasksCompleted}</span>
             </div>
 
             {/* Trust Badges - Tasker specific */}
             {Array.isArray(profile.badges) && profile.badges.length > 0 && (
               <div className="space-y-2 pt-3 border-t border-gray-100">
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Trust Badges</h4>
+                <h4 className="text-xs font-semibold text-gray-500 mb-2">Trust badges</h4>
                 <div className="flex flex-wrap gap-2">
                   {groupedBadges.map(({ badge, count }, idx) => (
                     <span key={idx} className="text-[10px] font-black uppercase tracking-widest text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-xl border border-blue-200/50 flex items-center space-x-1 shadow-xs">
@@ -888,7 +1149,7 @@ Issue: `;
           {/* Secondary Info (Area) */}
           <div className="m3-card rounded-[20px] p-5 mt-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Service Scope</h3>
+              <h3 className="text-xs font-semibold text-gray-500">Service scope</h3>
               <Tooltip text="Change service area" position="left">
                 <button
                   onClick={() => pushScreen('tasker_onboarding', false, { editServiceAreaOnly: true })}
@@ -898,7 +1159,7 @@ Issue: `;
                 </button>
               </Tooltip>
             </div>
-            <div className="flex items-center space-x-2 text-xs font-bold text-dark">
+            <div className="flex items-center space-x-2 text-xs font-semibold text-dark">
               <Calendar className="w-4.5 h-4.5 text-primary" />
               <span>Active in {userProfile?.serviceAreaName || 'No service area selected'}</span>
             </div>
@@ -907,7 +1168,7 @@ Issue: `;
           {/* Skill tags (Tasker Only) */}
           <div className="m3-card rounded-[20px] p-5 mt-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Your Skills</h3>
+              <h3 className="text-xs font-semibold text-gray-500">Your skills</h3>
               <Tooltip text="Edit skills" position="left">
                 <button 
                   onClick={() => {
@@ -937,13 +1198,221 @@ Issue: `;
             </div>
           </div>
 
+          {/* Platform Dues Card (Tasker Only) */}
+          <div className="rounded-[24px] p-6 space-y-5 bg-gradient-to-br from-amber-50/40 via-white to-amber-50/20 border border-amber-100/60 shadow-sm">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold text-lg shrink-0">
+                  💼
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-dark">Platform Dues</h3>
+                  <p className="text-xs font-medium text-gray-500">Keep dues under ₹{taskerCreditLimit} to receive tasks smoothly.</p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-amber-800 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-200/50 shrink-0">
+                ₹{taskerDues.toFixed(2)} Dues
+              </span>
+            </div>
+
+            {/* Status Banners: Pending Verification or Recently Verified */}
+            {pendingCommissionVerification ? (
+              <div className="bg-blue-50/80 border border-blue-200/60 rounded-xl p-3 text-center text-xs font-medium text-blue-700 flex items-center justify-center space-x-2">
+                <Clock className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
+                <span>Verification under progress (usually &lt; 30 mins)</span>
+              </div>
+            ) : recentlyApprovedPayment ? (
+              <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-xl p-3 text-center text-xs font-medium text-emerald-700 flex items-center justify-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Payment Verified (₹{parseFloat(recentlyApprovedPayment.amount_paid).toFixed(2)})</span>
+              </div>
+            ) : null}
+
+            {/* Inline Action Buttons (No Modal!) */}
+            {!pendingCommissionVerification && (
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <button 
+                  onClick={() => {
+                    setHasClickedPayDues(true);
+                    try {
+                      localStorage.setItem(`helphive_pay_dues_clicked_${userId}`, 'true');
+                    } catch (e) {
+                      // ignore localStorage errors
+                    }
+                    const payAmount = taskerDues > 0 ? taskerDues : 50;
+                    const upiLink = `upi://pay?pa=adminmobilenumber@ybl&pn=${encodeURIComponent('HelpHive Admin')}&am=${payAmount}&cu=INR&tn=${encodeURIComponent('HelpHive Dues')}`;
+                    window.location.assign(upiLink);
+                  }}
+                  className="bg-primary hover:bg-primary/95 text-white font-bold py-2.5 px-5 rounded-xl inline-flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs shadow-sm"
+                >
+                  <DollarSign className="w-4 h-4 text-white shrink-0" />
+                  <span>Pay dues</span>
+                </button>
+
+                {/* "I have paid" button appears AFTER clicking "Pay dues" */}
+                {hasClickedPayDues && (
+                  <button 
+                    onClick={handleCommissionPaymentSubmit}
+                    disabled={isSubmittingPayment}
+                    className="bg-gray-100 hover:bg-gray-200 text-dark font-bold py-2.5 px-5 rounded-xl inline-flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs border border-gray-200"
+                  >
+                    {isSubmittingPayment ? (
+                      <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-gray-700 rounded-full animate-spin"></div>
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    )}
+                    <span>I have paid</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Recent Payment History Preview */}
+            {commissionPayments && commissionPayments.length > 0 && (
+              <div className="pt-3 border-t border-amber-100/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-400">Recent Payments</span>
+                  {commissionPayments.length > 2 && (
+                    <button 
+                      onClick={() => setShowPaymentHistoryModal(true)}
+                      className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                    >
+                      See all
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  {commissionPayments.slice(0, 2).map((pay) => (
+                    <div key={pay.id} className="flex items-center justify-between text-xs py-1.5 px-3 bg-white/70 rounded-xl border border-amber-100/50">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold text-dark">₹{parseFloat(pay.amount_paid).toFixed(2)}</span>
+                        <span className="text-gray-400">•</span>
+                        <span className="text-gray-500 text-[11px]">
+                          {new Date(pay.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                        pay.status === 'approved' 
+                          ? 'bg-emerald-100 text-emerald-700' 
+                          : pay.status === 'pending_verification' 
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {pay.status === 'approved' ? '✓ Verified' : pay.status === 'pending_verification' ? 'Pending' : pay.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Refer & Earn Hub Card */}
+          <div className="rounded-[24px] p-6 space-y-5 bg-gradient-to-br from-emerald-50/40 via-white to-emerald-50/20 border border-emerald-100/60 shadow-sm">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-lg shrink-0">
+                  🎁
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-dark">Refer & Earn</h3>
+                  <p className="text-xs font-medium text-gray-500">Earn from friend's first 5 tasks.</p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-200/50 shrink-0">
+                ₹{totalReferralEarnings.toFixed(2)} Total Earned
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 py-1 px-1">
+              <div>
+                <p className="text-xs font-medium text-gray-400">Available</p>
+                <p className="text-2xl font-bold text-emerald-600 tracking-tight mt-0.5">
+                  ₹{availableReferralBalance.toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-400">Invited</p>
+                <p className="text-2xl font-bold text-dark tracking-tight mt-0.5">
+                  {totalReferralsCount}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-end space-x-3">
+                <button 
+                  onClick={handleWhatsAppShare}
+                  className="flex-1 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer text-xs shadow-sm"
+                >
+                  <WhatsAppIcon className="w-4 h-4 shrink-0" />
+                  <span>Share</span>
+                </button>
+
+                <div className="flex-1 flex flex-col items-start">
+                  {availableReferralBalance < 100 && (
+                    <span className="text-[10px] text-gray-400 font-normal lowercase mb-1 pl-3">
+                      min. ₹100
+                    </span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setWithdrawUpiId(profile.upiId || '');
+                      setShowWithdrawModal(true);
+                    }}
+                    disabled={availableReferralBalance < 100}
+                    className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
+                      availableReferralBalance >= 100 
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-sm active:scale-[0.98]'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                    }`}
+                  >
+                    <ArrowUpRight className="w-4 h-4 shrink-0" />
+                    <span>Withdraw</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Friends & Progress List */}
+            {friendProgressList.length > 0 && (
+              <div className="pt-2 border-t border-emerald-100/80 space-y-2">
+                <p className="text-xs font-semibold text-gray-500">Your invited friends</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {friendProgressList.map((f, idx) => (
+                    <div key={idx} className="bg-white rounded-xl p-3 border border-gray-100 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-dark flex items-center space-x-1.5">
+                          <span>👤 {f.name}</span>
+                          {f.count >= 5 && (
+                            <span className="bg-green-100 text-green-700 text-[9px] font-black px-2 py-0.5 rounded-full border border-green-200">
+                              5/5 Completed 🎉
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-extrabold text-emerald-600 text-[11px]">
+                          Total Earned: ₹{f.totalEarned.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-gray-400 font-semibold">
+                        <span>Progress: {f.count} of 5 tasks completed</span>
+                        <span>{f.count < 5 ? `${5 - f.count} tasks remaining` : 'Done'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Action Menu */}
           <div className="m3-card rounded-[24px] p-2">
             <div className="space-y-0.5">
-              <button onClick={() => switchRole('poster', true)} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
+              <button onClick={() => switchRole('poster', true)} className="w-full flex items-center justify-between text-left text-sm font-semibold text-primary hover:bg-primary/5 py-2.5 px-3 rounded-xl transition-colors cursor-pointer border border-primary/20 bg-primary/5">
                 <div className="flex items-center space-x-3">
                   <PlusCircle className="w-4 h-4 text-primary" />
-                  <span>Switch to Hirer</span>
+                  <span>Switch to hirer</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-primary" />
               </button>
@@ -952,14 +1421,14 @@ Issue: `;
 
               <button 
                 onClick={() => pushScreen('tasker_activity')} 
-                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between text-left text-sm font-semibold text-dark hover:bg-gray-50 py-2.5 px-3 rounded-xl transition-colors cursor-pointer"
               >
                 <div className="flex items-center space-x-3">
                   <Briefcase className="w-4 h-4 text-gray-400" />
                   <span>Earnings</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
                     ₹{(thisMonthEarnings || 0).toLocaleString('en-IN')}
                   </span>
                   <ChevronRight className="w-4 h-4 text-gray-300" />
@@ -970,10 +1439,10 @@ Issue: `;
 
               {isAdmin && (
                 <>
-                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-gray-800 hover:bg-gray-100 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                  <button onClick={() => pushScreen('admin_dashboard')} className="w-full flex items-center justify-between text-left text-sm font-semibold text-gray-800 hover:bg-gray-100 py-2.5 px-3 rounded-xl transition-colors cursor-pointer">
                     <div className="flex items-center space-x-3">
                       <Shield className="w-4 h-4 text-gray-600" />
-                      <span>Admin Dashboard</span>
+                      <span>Admin dashboard</span>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-300" />
                   </button>
@@ -981,10 +1450,10 @@ Issue: `;
                 </>
               )}
 
-              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+              <button onClick={() => pushScreen('about_us')} className="w-full flex items-center justify-between text-left text-sm font-semibold text-dark hover:bg-gray-50 py-2.5 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
                   <Star className="w-4 h-4 text-gray-400" />
-                  <span>About Us</span>
+                  <span>About us</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
@@ -992,17 +1461,17 @@ Issue: `;
               <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
               {userId ? (
-                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-red-500 hover:bg-red-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                <button onClick={handleLogout} className="w-full flex items-center justify-between text-left text-sm font-semibold text-red-500 hover:bg-red-50 py-2.5 px-3 rounded-xl transition-colors cursor-pointer">
                   <div className="flex items-center space-x-3">
                     <LogOut className="w-4 h-4 text-red-500" />
-                    <span>Sign Out</span>
+                    <span>Sign out</span>
                   </div>
                 </button>
               ) : (
-                <button onClick={() => setShowLoginModal(true)} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-primary hover:bg-primary/5 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+                <button onClick={() => setShowLoginModal(true)} className="w-full flex items-center justify-between text-left text-sm font-semibold text-primary hover:bg-primary/5 py-2.5 px-3 rounded-xl transition-colors cursor-pointer">
                   <div className="flex items-center space-x-3">
                     <LogIn className="w-4 h-4 text-primary" />
-                    <span>Sign In / Sign Up</span>
+                    <span>Sign in / sign up</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-primary" />
                 </button>
@@ -1011,13 +1480,13 @@ Issue: `;
               <div className="h-px bg-gray-100 my-1.5 mx-2"></div>
 
               <div className="px-3 py-0.5 text-left">
-                <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Need Help?</span>
+                <span className="text-xs font-semibold text-gray-500">Need help?</span>
               </div>
 
-              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer">
+              <button onClick={handleWhatsAppSupport} className="w-full flex items-center justify-between text-left text-sm font-semibold text-dark hover:bg-gray-50 py-2.5 px-3 rounded-xl transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
                   <WhatsAppIcon className="w-4 h-4 text-green-600 shrink-0" />
-                  <span>WhatsApp Support</span>
+                  <span>WhatsApp support</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
@@ -1027,7 +1496,7 @@ Issue: `;
               {/* Also from ahr dropdown section merged inside card */}
               <button 
                 onClick={() => setIsAhrOpen(!isAhrOpen)} 
-                className="w-full flex items-center justify-between text-left text-[13px] font-bold text-dark hover:bg-gray-50 py-2 px-3 rounded-xl transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between text-left text-sm font-semibold text-dark hover:bg-gray-50 py-2.5 px-3 rounded-xl transition-colors cursor-pointer"
               >
                 <div className="flex items-center space-x-1.5">
                   <span>Also from</span>
@@ -1230,6 +1699,112 @@ Issue: `;
                 <span>{isSavingSkills ? 'Saving...' : 'Save Services'}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment History Modal */}
+      {showPaymentHistoryModal && (
+        <div 
+          onClick={() => setShowPaymentHistoryModal(false)}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 modal-backdrop-open"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full sm:max-w-md sm:rounded-[32px] rounded-t-[32px] p-6 space-y-4 shadow-2xl modal-content-open max-h-[80vh] flex flex-col"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 shrink-0">
+              <div>
+                <h3 className="text-base font-bold text-dark">Payment History</h3>
+                <p className="text-xs text-gray-500 font-medium mt-0.5">All past dues payments</p>
+              </div>
+              <button onClick={() => setShowPaymentHistoryModal(false)} className="p-2 text-gray-400 hover:text-dark rounded-full hover:bg-gray-100 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto space-y-4 pr-1 flex-1">
+              {Object.keys(groupedCommissionHistory).length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-6">No payment history found.</p>
+              ) : (
+                Object.entries(groupedCommissionHistory).map(([month, payments]) => (
+                  <div key={month} className="space-y-2">
+                    <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{month}</h4>
+                    <div className="space-y-2">
+                      {payments.map(pay => (
+                        <div key={pay.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs">
+                          <div>
+                            <p className="font-bold text-dark text-sm">₹{parseFloat(pay.amount_paid).toFixed(2)}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              {new Date(pay.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                          </div>
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full capitalize ${
+                            pay.status === 'approved' 
+                              ? 'bg-emerald-100 text-emerald-700' 
+                              : pay.status === 'pending_verification' 
+                              ? 'bg-blue-100 text-blue-700' 
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {pay.status === 'approved' ? '✓ Verified' : pay.status === 'pending_verification' ? 'Pending' : pay.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Referral Withdrawal Modal */}
+      {showWithdrawModal && (
+        <div 
+          onClick={() => setShowWithdrawModal(false)}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 modal-backdrop-open"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full sm:max-w-md sm:rounded-[32px] rounded-t-[32px] p-6 space-y-5 shadow-2xl modal-content-open"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-dark">Withdraw referral rewards</h3>
+                <p className="text-xs text-emerald-600 font-semibold mt-0.5">Available balance: ₹{availableReferralBalance.toFixed(2)}</p>
+              </div>
+              <button onClick={() => setShowWithdrawModal(false)} className="p-2 text-gray-400 hover:text-dark rounded-full hover:bg-gray-100 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-gray-500">
+                Your UPI ID (e.g. name@okaxis)
+              </label>
+              <input
+                type="text"
+                value={withdrawUpiId}
+                onChange={(e) => setWithdrawUpiId(e.target.value)}
+                placeholder="name@upi or phone@paytm"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-dark focus:outline-none focus:border-emerald-500"
+              />
+              <p className="text-[11px] text-gray-500 font-medium">
+                Admin will transfer ₹{availableReferralBalance.toFixed(2)} to this UPI ID via PhonePe / GPay.
+              </p>
+            </div>
+
+            <button
+              onClick={handleWithdrawalSubmit}
+              disabled={isSubmittingWithdrawal || availableReferralBalance < 100}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-2xl text-xs shadow-md transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center space-x-2 text-center"
+            >
+              {isSubmittingWithdrawal ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : null}
+              <span>Request ₹{availableReferralBalance.toFixed(2)} payout</span>
+            </button>
           </div>
         </div>
       )}

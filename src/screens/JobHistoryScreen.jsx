@@ -206,7 +206,7 @@ const JobHistoryScreen = () => {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <span className="text-sm font-black text-dark ml-2">Task History</span>
+        <span className="text-base font-semibold text-dark ml-2">Task history</span>
       </div>
 
       <div className="flex-1 overflow-y-auto w-full">
@@ -216,15 +216,15 @@ const JobHistoryScreen = () => {
         <div ref={activeRef} className="space-y-4 pt-4 scroll-m-4" id="active-section">
           <div className="flex items-center space-x-2 px-1">
             <Clock className="w-4 h-4 text-blue-500" />
-            <span className="text-sm font-black uppercase tracking-widest text-dark">
-              Active Tasks
+            <span className="text-sm font-semibold text-dark">
+              Active tasks
             </span>
           </div>
           <div className="space-y-3">
             {displayActive.length > 0 ? (
               displayActive.map(job => renderJobCard(job, 'active'))
             ) : (
-              <p className="text-xs font-bold text-gray-400 px-2">No active tasks.</p>
+              <p className="text-xs font-medium text-gray-500 px-2">No active tasks.</p>
             )}
           </div>
         </div>
@@ -233,15 +233,15 @@ const JobHistoryScreen = () => {
         <div ref={completedRef} className="space-y-4 pt-4 scroll-m-4" id="completed-section">
           <div className="flex items-center space-x-2 px-1">
             <CheckCircle className="w-4 h-4 text-green-500" />
-            <span className="text-sm font-black uppercase tracking-widest text-dark">
-              Completed Tasks
+            <span className="text-sm font-semibold text-dark">
+              Completed tasks
             </span>
           </div>
           <div className="space-y-3">
             {displayCompleted.length > 0 ? (
               displayCompleted.map(job => renderJobCard(job, 'completed'))
             ) : (
-              <p className="text-xs font-bold text-gray-400 px-2">No completed tasks.</p>
+              <p className="text-xs font-medium text-gray-500 px-2">No completed tasks.</p>
             )}
           </div>
         </div>
@@ -251,8 +251,8 @@ const JobHistoryScreen = () => {
           <div ref={expiredRef} className="space-y-4 pt-4 scroll-m-4" id="expired-section">
             <div className="flex items-center space-x-2 px-1">
               <Clock className="w-4 h-4 text-red-500" />
-              <span className="text-sm font-black uppercase tracking-widest text-dark">
-                Expired Tasks
+              <span className="text-sm font-semibold text-dark">
+                Expired tasks
               </span>
             </div>
             <div className="space-y-3">
@@ -266,8 +266,8 @@ const JobHistoryScreen = () => {
           <div ref={cancelledRef} className="space-y-4 pt-4 scroll-m-4" id="cancelled-section">
             <div className="flex items-center space-x-2 px-1">
               <XCircle className="w-4 h-4 text-red-500" />
-              <span className="text-sm font-black uppercase tracking-widest text-dark">
-                Cancelled Tasks
+              <span className="text-sm font-semibold text-dark">
+                Cancelled tasks
               </span>
             </div>
             <div className="space-y-3">

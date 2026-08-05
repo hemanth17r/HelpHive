@@ -152,8 +152,8 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
           <div className="flex-1 overflow-y-auto px-6 py-6 bg-gray-50/50 space-y-4">
             
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                Name
+              <label className="block text-xs font-semibold text-gray-500">
+                Full name
               </label>
               <div className="flex items-center bg-white border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
                 <User className="w-4 h-4 text-gray-400 shrink-0" />
@@ -168,8 +168,8 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                Phone Number
+              <label className="block text-xs font-semibold text-gray-500">
+                Phone number
               </label>
               <div className="flex items-center bg-white border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
                 <Phone className="w-4 h-4 text-gray-400 shrink-0" />

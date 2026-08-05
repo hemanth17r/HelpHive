@@ -381,8 +381,8 @@ const PostJobScreen = () => {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">
-            Post a Task
+          <span className="text-xs font-semibold text-gray-500">
+            Post a task
           </span>
           <div className="w-10"></div>
         </div>
@@ -397,15 +397,15 @@ const PostJobScreen = () => {
                 <MapPin className="w-4 h-4 text-orange-500" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Task Location</p>
-                <p className="text-xs font-black text-dark line-clamp-1 mt-0.5">
+                <p className="text-xs font-semibold text-primary">Task location</p>
+                <p className="text-xs font-semibold text-dark line-clamp-1 mt-0.5">
                   {selectedJobLocation.completeAddress?.startsWith('Location at') && selectedJobLocation.landmark 
                     ? selectedJobLocation.landmark 
                     : selectedJobLocation.completeAddress}
                 </p>
               </div>
             </div>
-            <button className="text-[10px] font-bold text-orange-600 bg-white px-2 py-1 rounded-md shadow-sm border border-orange-100 shrink-0">Change</button>
+            <button className="text-xs font-medium text-primary bg-white px-2.5 py-1 rounded-md shadow-xs border border-orange-100 shrink-0">Change</button>
           </div>
         </div>
       )}
@@ -517,13 +517,13 @@ const PostJobScreen = () => {
             {/* Description Section */}
             <div className="space-y-4">
               <div>
-                <h2 className="text-xl font-black text-dark tracking-tight mb-1">
+                <h2 className="text-lg font-bold text-dark tracking-tight mb-1">
                   Describe what you need
                 </h2>
               </div>
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                  <label className="block text-xs font-semibold text-gray-600">
                     Description
                   </label>
                   <span className={`text-[10px] font-bold ${description.length > 130 ? 'text-red-500' : 'text-gray-400'}`}>
@@ -544,13 +544,13 @@ const PostJobScreen = () => {
             {/* When do you need it? Section */}
             <div className="space-y-4">
               <div>
-                <h2 className="text-xl font-black text-dark tracking-tight mb-1">
+                <h2 className="text-lg font-bold text-dark tracking-tight mb-1">
                   When do you need it?
                 </h2>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5 overflow-hidden">
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                  <label className="block text-xs font-semibold text-gray-600">
                     Date
                   </label>
                   <div className="flex overflow-x-auto no-scrollbar bg-gray-100 p-1 rounded-xl h-[52px] snap-x">
@@ -575,7 +575,7 @@ const PostJobScreen = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                  <label className="block text-xs font-semibold text-gray-600">
                     Time
                   </label>
                   <div className="flex items-center gap-1.5 w-full">
@@ -630,8 +630,8 @@ const PostJobScreen = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                    Helpers Needed
+                  <label className="block text-xs font-semibold text-gray-600">
+                    Helpers needed
                   </label>
                   <div className="flex items-center justify-between bg-gray-50 border border-border rounded-xl p-1.5 w-full">
                     <Tooltip text="Decrease crew count">
@@ -639,7 +639,7 @@ const PostJobScreen = () => {
                         <Minus className="w-4 h-4" />
                       </button>
                     </Tooltip>
-                    <span className="text-base font-black text-dark">{peopleNeeded}</span>
+                    <span className="text-base font-semibold text-dark">{peopleNeeded}</span>
                     <Tooltip text="Increase crew count">
                       <button type="button" onClick={incrementPeople} className="p-2.5 rounded-lg bg-white border border-border hover:bg-gray-50 active:scale-95 text-gray-500 cursor-pointer">
                         <Plus className="w-4 h-4" />
@@ -649,8 +649,8 @@ const PostJobScreen = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                    Payout Per Helper (₹)
+                  <label className="block text-xs font-semibold text-gray-600">
+                    Payout per helper (₹)
                   </label>
                   <div className="flex items-center bg-gray-50 border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
                     <IndianRupee className="w-4 h-4 text-gray-400 shrink-0" />
@@ -678,7 +678,7 @@ const PostJobScreen = () => {
             <button
               onClick={handlePost}
               disabled={isPostDisabled}
-              className={`w-full max-w-md h-14 flex items-center justify-center space-x-2 font-black rounded-2xl shadow-lg active:scale-[0.99] transition-all cursor-pointer text-base ${
+              className={`w-full max-w-md h-14 flex items-center justify-center space-x-2 font-bold rounded-2xl shadow-lg active:scale-[0.99] transition-all cursor-pointer text-base ${
                 isPostDisabled 
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
                   : 'bg-primary hover:bg-primary/95 text-white shadow-primary/20'
@@ -704,7 +704,7 @@ const PostJobScreen = () => {
           {/* Modal card: slides up independently */}
           <div className="relative bg-white rounded-[32px] w-full max-w-xs shadow-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out]" onClick={e => e.stopPropagation()}>
             <div className="bg-gray-50 p-6 text-center border-b border-border relative">
-              <h3 className="font-extrabold text-xs text-gray-400 uppercase tracking-widest">Select Time</h3>
+              <h3 className="font-semibold text-xs text-gray-500">Select time</h3>
               <div className="text-4xl font-black text-dark mt-2 tracking-tight">
                 {hour}:{minute} 
                 <span 
@@ -806,8 +806,8 @@ const PostJobScreen = () => {
                         <MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                         <div>
                           <div className="flex items-center space-x-2">
-                            <h4 className="text-sm font-black text-dark uppercase">{address.type || 'Location'}</h4>
-                            {address.isDefault && <span className="text-[9px] font-bold bg-primary/10 text-primary px-1.5 rounded-sm uppercase tracking-wider">Default</span>}
+                            <h4 className="text-sm font-semibold text-dark">{address.type || 'Location'}</h4>
+                            {address.isDefault && <span className="text-[10px] font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-md">Default</span>}
                           </div>
                           <p className="text-xs font-semibold text-gray-500 mt-1 line-clamp-2">
                             {address.completeAddress?.startsWith('Location at') && address.landmark 
@@ -843,7 +843,7 @@ const PostJobScreen = () => {
                   </div>
                   <div className="space-y-4 mb-4">
                     <div className="space-y-1.5">
-                      <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400">Nearest Landmark</label>
+                      <label className="block text-xs font-semibold text-gray-600">Nearest landmark</label>
                       <input
                         type="text"
                         value={landmark}
@@ -853,7 +853,7 @@ const PostJobScreen = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Save Location As</label>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Save location as</label>
                       <div className="flex space-x-2 w-full">
                         <button 
                           type="button"

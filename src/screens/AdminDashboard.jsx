@@ -116,8 +116,24 @@ const AdminDashboard = () => {
   const [failedExperiences, setFailedExperiences] = useState([]);
   const [cityLeaderboard, setCityLeaderboard] = useState([]);
 
+  // Pending Commission & Referral Approvals
+  const [pendingCommissionPayments, setPendingCommissionPayments] = useState([]);
+  const [pendingReferralPayouts, setPendingReferralPayouts] = useState([]);
+
+  const fetchPendingApprovals = useCallback(async () => {
+    try {
+      const { data: comms } = await api.fetchPendingCommissionPayments();
+      const { data: payouts } = await api.fetchPendingReferralPayouts();
+      if (comms) setPendingCommissionPayments(comms);
+      if (payouts) setPendingReferralPayouts(payouts);
+    } catch (err) {
+      console.error('Error fetching pending approvals:', err);
+    }
+  }, []);
+
   const fetchAllData = useCallback(async () => {
     try {
+      fetchPendingApprovals();
       const [statsRes, countsRes, timeseriesRes, eventsRes, hotspotsRes, gapsRes, failedRes, leaderboardRes] = await Promise.all([
         api.getDashboardStats(),
         api.getEventCounts(),
@@ -827,6 +843,138 @@ const AdminDashboard = () => {
               </div>
 
 
+
+              {/* Commission Payment Approvals */}
+              <div className="bg-white rounded-2xl p-5 border border-amber-200/80 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-dark flex items-center gap-2">
+                    <span>💼 Pending Commission Payments</span>
+                    <span className="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                      {pendingCommissionPayments.length}
+                    </span>
+                  </h3>
+                </div>
+
+                {pendingCommissionPayments.length === 0 ? (
+                  <p className="text-xs text-gray-400 font-semibold py-1">No pending commission payments to verify.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingCommissionPayments.map((p) => {
+                      const tObj = p.tasker || {};
+                      return (
+                        <div key={p.id} className="bg-amber-50/50 border border-amber-100 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="space-y-1 text-xs">
+                            <div className="font-bold text-dark flex items-center gap-2">
+                              <span>👤 {tObj.name || 'Tasker'}</span>
+                              <span className="text-gray-500 font-normal">({tObj.phone || 'No phone'})</span>
+                            </div>
+                            <p className="text-gray-600 font-medium">
+                              Claimed Paid Amount: <span className="font-black text-amber-700">₹{parseFloat(p.amount_paid).toFixed(2)}</span>
+                            </p>
+                            <p className="text-[10px] text-gray-400">
+                              Current Pending Dues: ₹{parseFloat(tObj.unpaid_commission_dues || 0).toFixed(2)} • Submitted: {timeAgo(p.created_at)}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center space-x-2 shrink-0">
+                            <button
+                              onClick={async () => {
+                                const { error } = await api.approveCommissionPayment(p.id);
+                                if (!error) fetchPendingApprovals();
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer transition-colors shadow-xs"
+                            >
+                              Approve Payment (₹{parseFloat(p.amount_paid).toFixed(0)})
+                            </button>
+
+                            <button
+                              onClick={async () => {
+                                const { error } = await api.declineCommissionPayment(p.id);
+                                if (!error) fetchPendingApprovals();
+                              }}
+                              className="bg-gray-100 hover:bg-red-50 text-red-600 font-bold text-xs px-3 py-2 rounded-xl cursor-pointer transition-colors"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Referral Payout Requests */}
+              <div className="bg-white rounded-2xl p-5 border border-emerald-200/80 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-dark flex items-center gap-2">
+                    <span>🎁 Pending Referral Payout Requests</span>
+                    <span className="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                      {pendingReferralPayouts.length}
+                    </span>
+                  </h3>
+                </div>
+
+                {pendingReferralPayouts.length === 0 ? (
+                  <p className="text-xs text-gray-400 font-semibold py-1">No pending referral payout requests.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingReferralPayouts.map((p) => {
+                      const rObj = p.referrer || {};
+                      return (
+                        <div key={p.id} className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="space-y-1 text-xs">
+                            <div className="font-bold text-dark flex items-center gap-2">
+                              <span>👤 {rObj.name || 'User'}</span>
+                              <span className="text-gray-500 font-normal">({rObj.phone || 'No phone'})</span>
+                            </div>
+                            <p className="text-gray-600 font-medium">
+                              UPI ID: <span className="font-black text-dark bg-white px-2 py-0.5 rounded border border-gray-200">{p.upi_id || rObj.upi_id}</span>
+                            </p>
+                            <p className="text-gray-600 font-medium">
+                              Requested Payout: <span className="font-black text-emerald-700">₹{parseFloat(p.amount).toFixed(2)}</span>
+                            </p>
+                            <p className="text-[10px] text-gray-400">
+                              Submitted: {timeAgo(p.created_at)}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center space-x-2 shrink-0">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${p.upi_id || rObj.upi_id} ${p.amount}`);
+                              }}
+                              className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs px-3 py-2 rounded-xl cursor-pointer transition-colors flex items-center space-x-1"
+                            >
+                              <span>Copy UPI</span>
+                            </button>
+
+                            <button
+                              onClick={async () => {
+                                const { error } = await api.approveReferralPayout(p.id);
+                                if (!error) fetchPendingApprovals();
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer transition-colors shadow-xs"
+                            >
+                              Mark Paid (₹{parseFloat(p.amount).toFixed(0)})
+                            </button>
+
+                            <button
+                              onClick={async () => {
+                                const { error } = await api.declineReferralPayout(p.id);
+                                if (!error) fetchPendingApprovals();
+                              }}
+                              className="bg-gray-100 hover:bg-red-50 text-red-600 font-bold text-xs px-3 py-2 rounded-xl cursor-pointer transition-colors"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               {/* System Info */}
               <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">

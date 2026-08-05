@@ -247,8 +247,8 @@ const TaskerHomeScreen = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center space-x-2">
-                    <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-                      Tasks Matching Your Skills
+                    <span className="text-xs font-semibold text-gray-500">
+                      Tasks matching your skills
                     </span>
                     <button
                       onClick={handleRefresh}
@@ -259,8 +259,8 @@ const TaskerHomeScreen = () => {
                       <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                     </button>
                   </div>
-                  <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                    {matchingSkillsJobs.length} Live
+                  <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                    {matchingSkillsJobs.length} live
                   </span>
                 </div>
                 {matchingSkillsJobs.map((job, idx) => (
@@ -278,8 +278,8 @@ const TaskerHomeScreen = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center space-x-2">
-                    <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-                      Other Tasks in Your Area
+                    <span className="text-xs font-semibold text-gray-500">
+                      Other tasks in your area
                     </span>
                     {matchingSkillsJobs.length === 0 && (
                       <button
@@ -292,8 +292,8 @@ const TaskerHomeScreen = () => {
                       </button>
                     )}
                   </div>
-                  <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                    {otherLocalJobs.length} Live
+                  <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                    {otherLocalJobs.length} live
                   </span>
                 </div>
                 {otherLocalJobs.map((job, idx) => (

@@ -218,6 +218,9 @@ export const api = {
 
   updateJob: async (jobId, updates) => {
     const { data, error } = await supabase.from('jobs').update(updates).eq('id', jobId).select().single();
+    if (data && (updates.status === 'completed' || updates.v2_status === 'completed')) {
+      supabase.rpc('record_job_completion_commission', { p_job_id: jobId }).then();
+    }
     return { data, error };
   },
 
@@ -787,5 +790,105 @@ export const api = {
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id);
     return { data, error };
+  },
+
+  // --- Commission & Referral API ---
+  submitCommissionPayment: async (taskerId, amount) => {
+    const { data, error } = await supabase.rpc('submit_commission_payment', {
+      p_tasker_id: taskerId,
+      p_amount: amount
+    });
+    return { data, error };
+  },
+
+  fetchTaskerCommissionPayments: async (taskerId) => {
+    const { data, error } = await supabase
+      .from('commission_payments')
+      .select('*')
+      .eq('tasker_id', taskerId)
+      .order('created_at', { ascending: false });
+    return { data: data || [], error };
+  },
+
+  fetchPendingCommissionPayments: async () => {
+    const { data, error } = await supabase
+      .from('commission_payments')
+      .select('*, tasker:profiles!commission_payments_tasker_id_fkey(id, name, phone, email, unpaid_commission_dues)')
+      .eq('status', 'pending_verification')
+      .order('created_at', { ascending: false });
+    return { data: data || [], error };
+  },
+
+  approveCommissionPayment: async (paymentId) => {
+    const { data, error } = await supabase.rpc('approve_commission_payment', {
+      p_payment_id: paymentId
+    });
+    return { data, error };
+  },
+
+  declineCommissionPayment: async (paymentId) => {
+    const { data, error } = await supabase.rpc('decline_commission_payment', {
+      p_payment_id: paymentId
+    });
+    return { data, error };
+  },
+
+  fetchReferralSummary: async (userId) => {
+    const { data: rewards, error: rewardErr } = await supabase
+      .from('referral_rewards')
+      .select('*, referred_user:profiles!referral_rewards_referred_user_id_fkey(id, name, phone, tasks_completed)')
+      .eq('referrer_id', userId)
+      .order('created_at', { ascending: false });
+
+    const { data: payouts, error: payoutErr } = await supabase
+      .from('referral_payouts')
+      .select('*')
+      .eq('referrer_id', userId)
+      .order('created_at', { ascending: false });
+
+    const { data: referredUsers, error: usersErr } = await supabase
+      .from('profiles')
+      .select('id, name, phone, created_at, tasks_completed')
+      .eq('referred_by', userId);
+
+    return {
+      rewards: rewards || [],
+      payouts: payouts || [],
+      referredUsers: referredUsers || [],
+      error: rewardErr || payoutErr || usersErr
+    };
+  },
+
+  requestReferralPayout: async (userId, amount, upiId) => {
+    const { data, error } = await supabase.rpc('request_referral_payout', {
+      p_referrer_id: userId,
+      p_amount: amount,
+      p_upi_id: upiId
+    });
+    return { data, error };
+  },
+
+  fetchPendingReferralPayouts: async () => {
+    const { data, error } = await supabase
+      .from('referral_payouts')
+      .select('*, referrer:profiles!referral_payouts_referrer_id_fkey(id, name, phone, email, upi_id)')
+      .eq('status', 'pending_payout')
+      .order('created_at', { ascending: false });
+    return { data: data || [], error };
+  },
+
+  approveReferralPayout: async (payoutId) => {
+    const { data, error } = await supabase.rpc('approve_referral_payout', {
+      p_payout_id: payoutId
+    });
+    return { data, error };
+  },
+
+  declineReferralPayout: async (payoutId) => {
+    const { data, error } = await supabase.rpc('decline_referral_payout', {
+      p_payout_id: payoutId
+    });
+    return { data, error };
   }
 };
+

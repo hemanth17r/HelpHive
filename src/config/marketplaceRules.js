@@ -30,6 +30,10 @@ export const MARKETPLACE_RULES = {
     others_remote: 'flexible'
   },
   
+  // Feature Flag: Master switch for hirer waitlist & category locking
+  // Set to false to disable category locking across all areas. Set to true to re-enable waitlist logic.
+  ENABLE_WAITLIST: false,
+
   // Base waitlist activation threshold (if supply is strictly < this, activate waitlist)
   // For pre-launch, even 1 tasker is enough. So waitlist only if 0 taskers.
   MIN_SUPPLY_FOR_ACTIVATION: 1,

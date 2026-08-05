@@ -111,7 +111,7 @@ const JobCard = ({ job, onDecline }) => {
           <Icon className="w-6 h-6" />
         </div>
         <div className="flex-1 text-left">
-          <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider text-primary bg-primary/5 px-2 py-0.5 rounded-full mb-1">
+          <span className="inline-block text-[11px] font-medium text-primary bg-primary/10 px-2.5 py-0.5 rounded-md mb-1">
             {skill ? skill.label : 'General'}
           </span>
           <p className="text-sm font-semibold text-dark leading-snug line-clamp-2">

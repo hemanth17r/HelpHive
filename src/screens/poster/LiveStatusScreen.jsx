@@ -127,9 +127,9 @@ const LiveStatusScreen = () => {
           <div className="bg-gray-50 border border-border rounded-2xl p-3 text-center w-32 shadow-xs">
             <div className="flex items-center justify-center space-x-1.5 text-gray-500 mb-1">
               <Users className="w-3.5 h-3.5 shrink-0 text-primary" />
-              <span className="text-[9px] font-black uppercase tracking-wider">Accepted</span>
+              <span className="text-xs font-medium text-gray-500">Accepted</span>
             </div>
-            <span className="text-lg font-black text-dark">
+            <span className="text-lg font-semibold text-dark">
               {crewTaskers.length} / {currentPostedJob.peopleNeeded}
             </span>
           </div>
@@ -137,18 +137,18 @@ const LiveStatusScreen = () => {
 
         {/* Job Details Card */}
         <div className="bg-gray-50 border border-border rounded-2xl p-4 w-full text-left space-y-2">
-          <div className="flex items-center space-x-2 text-[10px] font-black uppercase text-gray-400">
+          <div className="flex items-center space-x-2 text-xs font-medium text-gray-500">
             <Icon className="w-4 h-4 text-primary" />
             <span>{skill?.label}</span>
           </div>
           <div className="pb-2">
-            <p className="text-xs font-bold text-dark leading-relaxed">
+            <p className="text-xs font-semibold text-dark leading-relaxed">
               {currentPostedJob.description}
             </p>
             {currentPostedJob.address?.completeAddress && (
               <div className="flex items-start mt-1.5 space-x-1">
                 <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
-                <span className="text-xs font-bold text-gray-500 leading-snug">
+                <span className="text-xs font-normal text-gray-500 leading-snug">
                   {currentPostedJob.address.completeAddress?.startsWith('Location at') && currentPostedJob.address.landmark 
                     ? currentPostedJob.address.landmark 
                     : currentPostedJob.address.completeAddress}

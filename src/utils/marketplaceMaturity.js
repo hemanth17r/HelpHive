@@ -20,6 +20,15 @@ export const evaluateMarketplaceMaturity = async (categoryId, lat, lng) => {
     };
   }
 
+  // Feature Flag: If waitlist is disabled, treat all categories & locations as active
+  if (!MARKETPLACE_RULES.ENABLE_WAITLIST) {
+    return {
+      stage: MARKETPLACE_RULES.MATURITY_THRESHOLDS.MATURE.label,
+      supplyCount: 99,
+      isActive: true
+    };
+  }
+
   try {
     // Determine the max radius we should check for this category
     // For maturity, we can look at the flexible radius (20km) to see total potential supply

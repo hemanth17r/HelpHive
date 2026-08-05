@@ -126,6 +126,20 @@ const AppContent = () => {
 
   const lastActiveWriteRef = React.useRef(0);
 
+  // Capture Referral Link (?ref=USER_ID or ?referral=USER_ID)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const refId = params.get('ref') || params.get('referral');
+      if (refId && refId.length > 5) {
+        localStorage.setItem('helphive_referred_by', refId);
+        console.log('[Referral] Captured referral link from user:', refId);
+      }
+    } catch (e) {
+      console.error('[Referral] Error parsing URL referral param:', e);
+    }
+  }, []);
+
   // Compulsory Onboarding Wizard for Authenticated Users
   useEffect(() => {
     if (userId && !isProfileLoading) {
@@ -463,10 +477,10 @@ const AppContent = () => {
             {role === 'poster' && (
               <button
                 onClick={handlePostTaskClick}
-                className="flex items-center space-x-1.5 px-4 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-black rounded-full shadow-md shadow-primary/10 active-scale cursor-pointer mr-2"
+                className="flex items-center space-x-1.5 px-4 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-full shadow-md shadow-primary/10 active-scale cursor-pointer mr-2"
               >
                 <Plus className="w-4 h-4" />
-                <span>Post a Task</span>
+                <span>Post a task</span>
               </button>
             )}
 
@@ -637,11 +651,11 @@ const AppContent = () => {
                 {/* Role switch */}
                 <button 
                   onClick={() => switchRole(role === 'tasker' ? 'poster' : 'tasker')}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] font-semibold text-primary hover:bg-[#FCE8DB]/50 transition-colors duration-200 cursor-pointer active-scale whitespace-nowrap overflow-hidden"
-                  title={role === 'tasker' ? 'Switch to Hirer' : 'Switch to Tasker'}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-semibold text-primary hover:bg-[#FCE8DB]/50 transition-colors duration-200 cursor-pointer active-scale whitespace-nowrap overflow-hidden"
+                  title={role === 'tasker' ? 'Switch to hirer' : 'Switch to helper'}
                 >
                   <ArrowLeftRight className="w-5 h-5 shrink-0" />
-                  <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>{role === 'tasker' ? 'Switch to Hirer' : 'Switch to Tasker'}</span>
+                  <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>{role === 'tasker' ? 'Switch to hirer' : 'Switch to helper'}</span>
                 </button>
 
                 {/* Secondary Navigation Links */}
@@ -651,7 +665,7 @@ const AppContent = () => {
                       onClick={() => {
                         pushScreen('tasker_activity');
                       }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] font-semibold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-semibold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
                         isEarningsActive 
                           ? 'bg-[#FCE8DB] text-[#C4521A]' 
                           : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
@@ -666,15 +680,15 @@ const AppContent = () => {
                       onClick={() => {
                         pushScreen('address_book');
                       }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] font-semibold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-semibold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
                         isAddressBookActive 
                           ? 'bg-[#FCE8DB] text-[#C4521A]' 
                           : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
                       }`}
-                      title="Address Book"
+                      title="Address book"
                     >
                       <MapPin className="w-5 h-5 shrink-0" />
-                      <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Address Book</span>
+                      <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Address book</span>
                     </button>
                   ) : null}
                 </div>
@@ -684,11 +698,11 @@ const AppContent = () => {
               {userId && (
                 <button 
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] font-semibold text-red-500 hover:bg-red-50 transition-colors duration-200 cursor-pointer active-scale whitespace-nowrap overflow-hidden"
-                  title="Sign Out"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-semibold text-red-500 hover:bg-red-50 transition-colors duration-200 cursor-pointer active-scale whitespace-nowrap overflow-hidden"
+                  title="Sign out"
                 >
                   <LogOut className="w-5 h-5 shrink-0" />
-                  <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Sign Out</span>
+                  <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Sign out</span>
                 </button>
               )}
             </aside>

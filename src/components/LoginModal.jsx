@@ -133,14 +133,14 @@ const LoginModal = ({ isOpen, onClose }) => {
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200"></div>
                 </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-3 bg-gray-50/50 text-gray-400 font-bold text-[10px] uppercase tracking-wider">or</span>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-3 bg-gray-50/50 text-gray-400 font-medium text-xs">or</span>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                  Email Address
+                <label className="block text-xs font-semibold text-gray-500">
+                  Email address
                 </label>
                 <div className="flex items-center bg-white border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
                   <Mail className="w-4 h-4 text-gray-400 shrink-0" />

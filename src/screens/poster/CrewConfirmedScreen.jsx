@@ -277,9 +277,9 @@ const CrewConfirmedScreen = () => {
         
         {/* Connection / Real-time Tracking Map */}
         <div className="space-y-1.5">
-          <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
-            <span>{isRemote ? 'Remote Connection' : 'Live Location'}</span>
-            <span className="text-primary animate-pulse uppercase tracking-wider">
+          <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
+            <span>{isRemote ? 'Remote connection' : 'Live location'}</span>
+            <span className="text-primary animate-pulse font-medium">
               Active
             </span>
           </div>
@@ -331,17 +331,17 @@ const CrewConfirmedScreen = () => {
                 <BirdAvatar birdName={tasker.bird || 'falcon'} size={48} />
               </div>
               <div>
-                <h3 className="text-sm font-black text-dark leading-tight">{tasker.name}</h3>
+                <h3 className="text-sm font-semibold text-dark leading-tight">{tasker.name}</h3>
                 
                 {/* OTP Verification Badge */}
                 <div className="mt-1 flex flex-wrap gap-1 items-center">
                   {tasker.status === 'rejected' ? (
-                    <span className="inline-flex items-center text-[9px] font-black uppercase px-2 py-0.5 rounded-md border text-red-600 bg-red-50 border-red-200">
+                    <span className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md border text-red-600 bg-red-50 border-red-200">
                       Cancelled
                     </span>
                   ) : (
                     <>
-                      <span className={`inline-flex items-center text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                      <span className={`inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md border ${
                         tasker.otpVerified 
                           ? 'text-green-600 bg-green-50 border-green-200' 
                           : 'text-amber-600 bg-amber-50 border-amber-200'
@@ -349,8 +349,8 @@ const CrewConfirmedScreen = () => {
                         {tasker.otpVerified ? 'OTP Verified' : 'Awaiting OTP'}
                       </span>
                       {tasker.completedByTasker && (
-                        <span className="inline-flex items-center text-[9px] font-black uppercase px-2 py-0.5 rounded-md border text-green-600 bg-green-50 border-green-200">
-                          Marked Complete
+                        <span className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md border text-green-600 bg-green-50 border-green-200">
+                          Marked complete
                         </span>
                       )}
                     </>
@@ -367,7 +367,7 @@ const CrewConfirmedScreen = () => {
                     </span>
                   </div>
                 ) : (
-                  <div className="inline-flex items-center mt-1 text-[10px] font-black tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase">
+                  <div className="inline-flex items-center mt-1 text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                     New Helper
                   </div>
                 )}
@@ -447,8 +447,8 @@ const CrewConfirmedScreen = () => {
 
         {/* Payment Options */}
         <div className="bg-gray-50 border border-border rounded-2xl p-5 space-y-4">
-          <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-            Payment Method
+          <label className="block text-xs font-semibold text-gray-500">
+            Payment method
           </label>
           
           <div className="space-y-2.5">
@@ -468,8 +468,8 @@ const CrewConfirmedScreen = () => {
                   {paymentOption === 'online' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
                 </div>
                 <div>
-                  <span className="text-xs font-black text-dark block">Pay Online</span>
-                  <span className="text-[9px] font-bold text-gray-400 mt-0.5 block">Pay instantly using PhonePe, GPay, Paytm, etc.</span>
+                  <span className="text-xs font-semibold text-dark block">Pay online</span>
+                  <span className="text-[10px] font-medium text-gray-500 mt-0.5 block">Pay instantly using PhonePe, GPay, Paytm, etc.</span>
                 </div>
               </div>
             </button>
@@ -490,15 +490,15 @@ const CrewConfirmedScreen = () => {
                   {paymentOption === 'offline' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
                 </div>
                 <div>
-                  <span className="text-xs font-black text-dark block">Pay Offline</span>
-                  <span className="text-[9px] font-bold text-gray-400 mt-0.5 block">Pay cash directly or through other offline methods.</span>
+                  <span className="text-xs font-semibold text-dark block">Pay offline</span>
+                  <span className="text-[10px] font-medium text-gray-500 mt-0.5 block">Pay cash directly or through other offline methods.</span>
                 </div>
               </div>
             </button>
           </div>
 
-          <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400 pt-2">
-            Payment & Completion
+          <label className="block text-xs font-semibold text-gray-500 pt-2">
+            Payment & completion
           </label>
 
           {paymentOption === 'online' ? (
@@ -604,7 +604,7 @@ const CrewConfirmedScreen = () => {
 
           {/* Need Help Section */}
           <div className="space-y-2">
-            <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
+            <h4 className="text-xs font-semibold text-gray-500">
               Need Help?
             </h4>
             <button

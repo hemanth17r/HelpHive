@@ -122,11 +122,11 @@ const JobReceiptScreen = () => {
               <Icon className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase text-gray-400 block leading-none mb-1">
+              <span className="text-xs font-semibold text-gray-500 block leading-none mb-1">
                 Category
               </span>
-              <span className="text-sm font-extrabold text-dark capitalize">
-                {skill?.label || 'General Task'}
+              <span className="text-sm font-semibold text-dark capitalize">
+                {skill?.label || 'General task'}
               </span>
             </div>
           </div>
@@ -151,8 +151,8 @@ const JobReceiptScreen = () => {
 
         {/* Order Info Card */}
         <div className="bg-white border border-border rounded-3xl p-5 shadow-xs space-y-4">
-          <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-3 flex items-center">
-            <FileText className="w-4 h-4 mr-1.5" /> Order Details
+          <h3 className="text-xs font-semibold text-gray-500 border-b border-gray-100 pb-3 flex items-center">
+            <FileText className="w-4 h-4 mr-1.5" /> Order details
           </h3>
           
           <div className="space-y-3 pt-1">
@@ -191,44 +191,44 @@ const JobReceiptScreen = () => {
         {/* Bill Summary */}
         {isJobCancelled && role === 'tasker' && currentPostedJob.isCancelledByMe ? (
           <div className="bg-white border border-border rounded-3xl p-5 shadow-xs">
-             <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-3 mb-3">
-               Bill Summary
+             <h3 className="text-xs font-semibold text-gray-500 border-b border-gray-100 pb-3 mb-3">
+               Bill summary
              </h3>
              <div className="flex flex-col items-center justify-center py-2 text-center">
                <XCircle className="w-8 h-8 text-red-500 mb-2" />
-               <span className="text-xs font-extrabold text-gray-500">Cancelled Assignment</span>
-               <span className="text-[10px] text-gray-400 font-bold mt-1">No payment is due for cancelled assignments.</span>
+               <span className="text-xs font-bold text-gray-500">Cancelled assignment</span>
+               <span className="text-[10px] text-gray-400 font-semibold mt-1">No payment is due for cancelled assignments.</span>
              </div>
           </div>
         ) : (
           <div className="bg-white border border-border rounded-3xl p-5 shadow-xs">
-             <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-3 mb-3">
-               Bill Summary
+             <h3 className="text-xs font-semibold text-gray-500 border-b border-gray-100 pb-3 mb-3">
+               Bill summary
              </h3>
               <div className="flex items-center justify-between mt-2">
-                <span className="text-xs font-bold text-gray-500">Amount Per Helper</span>
-                <span className="text-sm font-black text-dark">₹{currentPostedJob.amount || 0}</span>
+                <span className="text-xs font-medium text-gray-500">Amount per helper</span>
+                <span className="text-sm font-semibold text-dark">₹{currentPostedJob.amount || 0}</span>
               </div>
               {role === 'poster' && (
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs font-bold text-gray-500">Helpers Paid</span>
-                  <span className="text-sm font-black text-dark">{crew.filter(c => c.status === 'accepted').length || 1}</span>
+                  <span className="text-xs font-medium text-gray-500">Helpers paid</span>
+                  <span className="text-sm font-semibold text-dark">{crew.filter(c => c.status === 'accepted').length || 1}</span>
                 </div>
               )}
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                <span className="text-sm font-extrabold text-dark">Total Amount</span>
-                <span className="text-xl font-black text-primary">
+                <span className="text-sm font-semibold text-dark">Total amount</span>
+                <span className="text-xl font-bold text-primary">
                   ₹{(currentPostedJob.amount || 0) * (role === 'poster' ? (crew.filter(c => c.status === 'accepted').length || 1) : 1)}
                 </span>
               </div>
              <div className="mt-4 pt-3 border-t border-dashed border-gray-200 flex items-center justify-between">
                {isJobCancelled ? (
-                 <div className="inline-flex items-center space-x-1.5 text-[10px] font-black tracking-widest text-red-600 bg-red-50 px-2.5 py-1 rounded-full uppercase border border-red-200">
+                 <div className="inline-flex items-center space-x-1.5 text-[10px] font-medium text-red-600 bg-red-50 px-2.5 py-1 rounded-full border border-red-200">
                     <XCircle className="w-3 h-3" />
                     <span>Cancelled</span>
                   </div>
                ) : (
-                 <div className="inline-flex items-center space-x-1.5 text-[10px] font-black tracking-widest text-green-600 bg-green-50 px-2.5 py-1 rounded-full uppercase border border-green-200">
+                 <div className="inline-flex items-center space-x-1.5 text-[10px] font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">
                     <CheckCircle2 className="w-3 h-3" />
                     <span>Paid</span>
                   </div>
@@ -240,26 +240,26 @@ const JobReceiptScreen = () => {
         {/* Feedback Prompt */}
         {!currentPostedJob.hasBeenRated ? (
           <div className="bg-white border border-border rounded-3xl p-5 shadow-xs mb-6">
-            <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-3 mb-3">
-              Rate Your Experience
+            <h3 className="text-xs font-semibold text-gray-500 border-b border-gray-100 pb-3 mb-3">
+              Rate your experience
             </h3>
             <div className="flex flex-col items-center justify-center text-center py-1 space-y-3">
-              <p className="text-xs font-semibold text-gray-500 leading-relaxed">
+              <p className="text-xs font-medium text-gray-500 leading-relaxed">
                 Your feedback helps us maintain a safe and reliable community.
               </p>
               <button
                 onClick={() => pushScreen(role === 'poster' ? 'rating_screen' : 'tasker_rating')}
-                className="flex items-center justify-center space-x-2 w-full bg-orange-50 hover:bg-orange-100 text-primary font-black py-3.5 rounded-xl border border-primary/20 active:scale-[0.99] transition-all cursor-pointer mt-2"
+                className="flex items-center justify-center space-x-2 w-full bg-orange-50 hover:bg-orange-100 text-primary font-semibold py-3 rounded-xl border border-primary/20 active:scale-[0.99] transition-all cursor-pointer mt-2 text-xs"
               >
                 <Star className="w-4 h-4 fill-primary/20" />
-                <span>{role === 'poster' ? 'Rate Tasker' : 'Rate Hirer'}</span>
+                <span>{role === 'poster' ? 'Rate tasker' : 'Rate hirer'}</span>
               </button>
             </div>
           </div>
         ) : (
           <div className="bg-white border border-border rounded-3xl p-5 shadow-xs mb-6">
-            <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-3 mb-3">
-              Your Feedback
+            <h3 className="text-xs font-semibold text-gray-500 border-b border-gray-100 pb-3 mb-3">
+              Your feedback
             </h3>
             <div className="flex flex-col py-1 space-y-2">
               <div className="flex items-center space-x-1">
@@ -285,8 +285,8 @@ const JobReceiptScreen = () => {
 
         {/* Need Help Section */}
         <div className="bg-white border border-border rounded-3xl p-5 shadow-xs space-y-3 mb-8">
-          <h4 className="text-[11px] font-black uppercase text-gray-400 tracking-wider flex items-center">
-            <HelpCircle className="w-4 h-4 mr-1.5" /> Need Help?
+          <h4 className="text-xs font-semibold text-gray-500 flex items-center">
+            <HelpCircle className="w-4 h-4 mr-1.5" /> Need help?
           </h4>
           <p className="text-xs font-semibold text-gray-500 leading-relaxed">
             Have an issue with this completed order? Our support team is here to help.

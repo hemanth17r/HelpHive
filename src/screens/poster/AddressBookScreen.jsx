@@ -68,9 +68,9 @@ const AddressBookScreen = () => {
                         <MapPin className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-black text-dark uppercase tracking-wide">{address.type || 'Location'}</h4>
+                        <h4 className="text-sm font-semibold text-dark">{address.type || 'Location'}</h4>
                         {address.isDefault && (
-                          <span className="text-[9px] font-black uppercase text-primary tracking-widest bg-primary/10 px-2 py-0.5 rounded-sm mt-1 inline-block">Default</span>
+                          <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md mt-1 inline-block">Default</span>
                         )}
                       </div>
                     </div>

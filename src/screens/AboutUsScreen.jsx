@@ -16,7 +16,7 @@ const AboutUsScreen = () => {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-lg font-black text-dark ml-2">About Us</h2>
+        <h2 className="text-lg font-bold text-dark ml-2">About us</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 pb-20">
@@ -25,7 +25,7 @@ const AboutUsScreen = () => {
             <h1 className="text-[22px] font-black text-dark tracking-tight">
               Help<span className="text-primary">Hive</span>
             </h1>
-            <span className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Version 7.2.0</span>
+            <span className="text-xs font-medium text-gray-500 mt-1">Version 7.2.0</span>
           </div>
         </div>
 

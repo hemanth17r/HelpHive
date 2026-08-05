@@ -457,16 +457,16 @@ const TaskerJobDetailsScreen = () => {
 
         {/* Connection / Live Map */}
         <div className="space-y-2">
-          <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
-            <span>{isRemote ? 'Remote Connection' : 'Live Location'}</span>
+          <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
+            <span>{isRemote ? 'Remote connection' : 'Live location'}</span>
             {!isRemote && (
               trackingLocationError ? (
-                <span className="text-red-500 font-extrabold uppercase flex items-center space-x-1">
+                <span className="text-red-500 font-medium flex items-center space-x-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
                   <span>Error</span>
                 </span>
               ) : (
-                <span className="text-primary animate-pulse font-extrabold uppercase">
+                <span className="text-primary animate-pulse font-medium">
                   Active
                 </span>
               )

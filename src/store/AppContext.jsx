@@ -76,6 +76,9 @@ const parseProfileData = (data, currentRole) => {
 
     bird: data.bird,
     upiId: data.upi_id || '',
+    unpaidCommissionDues: parseFloat(data.unpaid_commission_dues || 0),
+    referredBy: data.referred_by || null,
+    totalTasksCompletedCount: parseInt(data.total_tasks_completed_count || 0, 10),
     coverageRadius: data.coverage_radius,
     coverageLevel: data.coverage_level,
     serviceAreaName: data.service_area_name,
@@ -719,6 +722,11 @@ export const AppProvider = ({ children }) => {
         service_area_name: profileData.serviceAreaName !== undefined ? profileData.serviceAreaName : userProfile?.serviceAreaName,
         verified_phones: roleSpecificUpdates.verifiedPhones !== undefined ? roleSpecificUpdates.verifiedPhones : (profileData.verifiedPhones || userProfile?.verifiedPhones || [])
       };
+
+      const pendingRef = localStorage.getItem('helphive_referred_by');
+      if (pendingRef && pendingRef !== currentUserId && !userProfile?.referredBy) {
+        updatesPayload.referred_by = pendingRef;
+      }
 
       if (profileData.locationStr !== undefined) {
         updatesPayload.location = profileData.locationStr;
@@ -1376,7 +1384,7 @@ export const AppProvider = ({ children }) => {
     }
     acceptingJobIdsRef.current.add(jobId);
 
-    // 1. Optimistic Update Phase
+    // 1. Prepare job update details
     const originalJobs = [...jobs];
     const targetJob = jobs.find(j => j.id === jobId);
     if (!targetJob) {
@@ -1384,7 +1392,6 @@ export const AppProvider = ({ children }) => {
       return;
     }
 
-    // Create an optimistically accepted version of the job
     const optimisticJob = {
       ...targetJob,
       status: 'accepted',
@@ -1395,17 +1402,17 @@ export const AppProvider = ({ children }) => {
       taskerBird: tBird
     };
 
-    // Instantly transition local state and screen for a butter-smooth response
-    setAcceptedJob(optimisticJob);
-    setJobs(prevJobs => prevJobs.map(j => j.id === jobId ? optimisticJob : j));
-    pushScreen('tasker_accepted_job', true);
-
-    // 2. Async Execution Phase (Background database updates)
+    // 2. Execution Phase: Await database confirmation BEFORE navigating screens to prevent UI jumping
     try {
       const { data: success } = await api.acceptJobOffer(jobId, tId);
       if (!success) {
         throw new Error('not_available');
       }
+
+      // Successfully confirmed by database: Update state and navigate
+      setAcceptedJob(optimisticJob);
+      setJobs(prevJobs => prevJobs.map(j => j.id === jobId ? optimisticJob : j));
+      pushScreen('tasker_accepted_job', true);
 
       // Fetch latest job details directly from DB to get the true status
       const { data: updatedJobs } = await api.fetchJobs();
@@ -1460,7 +1467,7 @@ export const AppProvider = ({ children }) => {
       }).catch(err => console.error("Failed to upload initial tracking position", err));
 
     } catch (err) {
-      console.warn("Optimistic accept failed, reverting state:", err);
+      console.warn("Accept failed:", err);
       if (showToast) {
         if (err.message === 'not_available') {
           showToast('This task is no longer available.', 'error');
@@ -1468,10 +1475,6 @@ export const AppProvider = ({ children }) => {
           showToast('Could not accept task. Please check your connection.', 'error');
         }
       }
-      // Revert state smoothly
-      setAcceptedJob(null);
-      setJobs(originalJobs);
-      pushScreen('tasker_home', true);
     } finally {
       acceptingJobIdsRef.current.delete(jobId);
     }

@@ -633,13 +633,13 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
         {/* Header */}
         <div className="px-6 py-5 border-b border-border bg-white shrink-0 flex flex-col space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase text-primary tracking-widest">
-              {role === 'tasker' ? 'Helper Setup' : 'Hirer Setup'}
+            <span className="text-xs font-semibold text-primary">
+              {role === 'tasker' ? 'Helper setup' : 'Hirer setup'}
             </span>
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleRoleSwitch}
-                className="text-[10px] font-extrabold uppercase bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+                className="text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
               >
                 Switch to {role === 'tasker' ? 'Hirer' : 'Helper'}
               </button>
@@ -707,14 +707,14 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                     <div className="w-full border-t border-gray-200"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-3 bg-gray-50 text-gray-400 font-bold text-[10px] uppercase tracking-wider">or</span>
+                    <span className="px-3 bg-gray-50 text-gray-400 font-medium text-xs">or</span>
                   </div>
                 </div>
 
                 {authView === 'main' ? (
                   <div className="space-y-1.5">
-                    <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                      Email Address
+                    <label className="block text-xs font-semibold text-gray-500">
+                      Email address
                     </label>
                     <div className="flex items-center bg-white border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
                       <Mail className="w-4 h-4 text-gray-400 shrink-0" />
@@ -977,7 +977,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
 
                   {/* Radius Selection */}
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-2">Coverage Radius</label>
+                    <label className="text-xs font-semibold text-gray-500 block mb-2">Coverage radius</label>
                     <div className="flex space-x-2">
                       {[
                         { val: 5000, label: '5 km', desc: 'Nearby' },
@@ -1016,39 +1016,39 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                   <div className="space-y-3.5 pt-1">
                     {/* Name */}
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">Full Name</label>
-                      <div className="flex items-center bg-white border border-border focus-within:border-primary rounded-xl px-3 h-12">
+                      <label className="block text-xs font-semibold text-gray-500">Full name</label>
+                      <div className="flex items-center bg-gray-50 border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
                         <User className="w-4 h-4 text-gray-400 shrink-0" />
                         <input
                           type="text"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          placeholder="e.g. Ramesh Kumar"
-                          className="w-full bg-transparent border-0 px-2.5 text-xs font-semibold outline-none text-dark"
+                          placeholder="e.g. Alex Johnson"
+                          className="w-full bg-transparent border-0 px-2 py-2 text-sm font-semibold outline-hidden text-dark h-full"
                         />
                       </div>
                     </div>
 
                     {/* Phone */}
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">Phone Number</label>
-                      <div className="flex items-center bg-white border border-border focus-within:border-primary rounded-xl px-3 h-12">
+                      <label className="block text-xs font-semibold text-gray-500">Phone number</label>
+                      <div className="flex items-center bg-gray-50 border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
                         <Phone className="w-4 h-4 text-gray-400 shrink-0" />
                         <input
                           type="tel"
                           value={phone}
                           maxLength={12}
                           onChange={handlePhoneChange}
-                          placeholder="e.g. 987-654-3210"
-                          className="w-full bg-transparent border-0 px-2.5 text-xs font-semibold outline-none text-dark"
+                          placeholder="e.g. 9876543210"
+                          className="w-full bg-transparent border-0 px-2 py-2 text-sm font-semibold outline-hidden text-dark h-full"
                         />
                       </div>
                     </div>
 
                     {/* UPI Payout ID */}
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 flex items-center justify-between">
-                        <span>UPI ID (For payouts)</span>
+                      <label className="block text-xs font-semibold text-gray-500 flex items-center justify-between">
+                        <span>Payout UPI ID</span>
                         <span className="text-[9px] text-green-600 font-extrabold normal-case bg-green-50 px-1.5 py-0.5 rounded-md">Direct Bank Transfer</span>
                       </label>
                       <div className="flex items-center bg-white border border-border focus-within:border-primary rounded-xl px-3 h-12">
@@ -1161,7 +1161,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                   <div className="space-y-3.5 pt-1">
                     {/* Name */}
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">Full Name</label>
+                      <label className="block text-xs font-semibold text-gray-500">Full name</label>
                       <div className="flex items-center bg-white border border-border focus-within:border-primary rounded-xl px-3 h-12">
                         <User className="w-4 h-4 text-gray-400 shrink-0" />
                         <input
@@ -1176,7 +1176,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
 
                     {/* Phone */}
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">Phone Number</label>
+                      <label className="block text-xs font-semibold text-gray-500">Phone number</label>
                       <div className="flex items-center bg-white border border-border focus-within:border-primary rounded-xl px-3 h-12">
                         <Phone className="w-4 h-4 text-gray-400 shrink-0" />
                         <input
@@ -1219,7 +1219,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
 
                    {/* Landmark detail */}
                   <div className="space-y-1.5">
-                    <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400">Nearest Landmark</label>
+                    <label className="block text-xs font-semibold text-gray-500">Nearest landmark</label>
                     <input
                       type="text"
                       value={addressDetails.landmark}
@@ -1242,10 +1242,10 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
               type="button"
               onClick={handleLogout}
               disabled={isSubmitting}
-              className="py-3 px-4 rounded-xl border border-red-100 bg-red-50/50 hover:bg-red-50 text-red-500 font-extrabold transition-all flex items-center justify-center space-x-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+              className="py-3 px-4 rounded-xl border border-red-100 bg-red-50/50 hover:bg-red-50 text-red-500 font-semibold transition-all flex items-center justify-center space-x-1.5 cursor-pointer shrink-0 disabled:opacity-50"
             >
               <LogOut className="w-4 h-4 text-red-500" />
-              <span className="text-xs font-black uppercase tracking-wider">Sign Out</span>
+              <span className="text-xs font-semibold">Sign out</span>
             </button>
           ) : (
             (activeStep > 2 || (activeStep === 2 && !userId)) && (
@@ -1253,10 +1253,10 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                 type="button"
                 onClick={handleBack}
                 disabled={isSubmitting}
-                className="py-3 px-4 rounded-xl border border-border font-extrabold text-gray-500 hover:bg-gray-50 transition-all flex items-center justify-center space-x-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                className="py-3 px-4 rounded-xl border border-border font-semibold text-gray-500 hover:bg-gray-50 transition-all flex items-center justify-center space-x-1.5 cursor-pointer shrink-0 disabled:opacity-50"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span className="text-xs font-black uppercase tracking-wider">Back</span>
+                <span className="text-xs font-semibold">Back</span>
               </button>
             )
           )}
@@ -1264,16 +1264,16 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
           <button
             onClick={handleNext}
             disabled={isSubmitting || (activeStep === 1 && !userId)}
-            className="flex-1 bg-primary hover:bg-primary/95 text-white py-3 px-6 rounded-xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all font-black flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-80 disabled:cursor-not-allowed"
+            className="flex-1 bg-primary hover:bg-primary/95 text-white py-3 px-6 rounded-xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all font-bold flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-80 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
             ) : (
               <>
-                <span className="text-xs font-black uppercase tracking-wider">
+                <span className="text-xs font-bold">
                   {((role === 'tasker' && activeStep === 5) || (role === 'poster' && activeStep === 4)) 
-                    ? 'Complete & Continue' 
-                    : 'Save & Next'}
+                    ? 'Complete & continue' 
+                    : 'Save & next'}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </>

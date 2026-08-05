@@ -186,7 +186,7 @@ const AddEditAddressScreen = () => {
           <div className="max-w-2xl mx-auto w-full flex flex-col space-y-4">
             {/* Landmark Input */}
             <div>
-              <label className="text-[10px] font-black text-gray-400 tracking-widest uppercase mb-1.5 block">Nearest Landmark</label>
+              <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Nearest landmark</label>
               <input
                 type="text"
                 value={landmark}
@@ -198,7 +198,7 @@ const AddEditAddressScreen = () => {
 
             {/* Address Type Selector */}
             <div>
-              <h3 className="text-[10px] font-black text-gray-400 tracking-widest uppercase mb-2 text-center">Save Location As</h3>
+              <h3 className="text-xs font-semibold text-gray-600 mb-2 text-center">Save location as</h3>
               <div className="flex space-x-2 max-w-sm mx-auto w-full">
                 <button
                   type="button"

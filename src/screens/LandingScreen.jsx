@@ -67,7 +67,7 @@ const LandingScreen = () => {
       </div>
 
       {/* Footer Branding */}
-      <div className="text-center text-[9px] font-black text-gray-400 tracking-wider uppercase shrink-0 pt-2 border-t border-border/10">
+      <div className="text-center text-xs font-semibold text-gray-500 shrink-0 pt-2 border-t border-border/10">
         Connect • Help • Earn
       </div>
     </div>
