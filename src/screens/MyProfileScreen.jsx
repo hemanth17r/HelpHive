@@ -715,7 +715,7 @@ Issue: `;
 
                 <div className="w-full flex flex-col items-start">
                   {availableReferralBalance < 100 && (
-                    <span className="text-[10px] text-gray-400 font-normal lowercase mb-1 pl-1">
+                    <span className="text-[10px] text-gray-400 font-normal lowercase mb-0.5 pl-3.5">
                       min. ₹100
                     </span>
                   )}
@@ -1373,7 +1373,7 @@ Issue: `;
 
                 <div className="w-full flex flex-col items-start">
                   {availableReferralBalance < 100 && (
-                    <span className="text-[10px] text-gray-400 font-normal lowercase mb-1 pl-1">
+                    <span className="text-[10px] text-gray-400 font-normal lowercase mb-0.5 pl-3.5">
                       min. ₹100
                     </span>
                   )}
