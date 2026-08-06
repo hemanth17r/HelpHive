@@ -164,7 +164,8 @@ Issue: `;
   const handleWhatsAppShare = () => {
     const doShare = () => {
       const activeId = userProfile?.id || userId;
-      const inviteLink = `${window.location.origin}/?ref=${activeId}`;
+      const shortRef = activeId ? (activeId.includes('-') ? activeId.split('-')[0] : activeId) : '';
+      const inviteLink = `${window.location.origin}/?ref=${shortRef}`;
       const msg = `💰 Discover a new way to earn.\n\n${inviteLink}`;
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     };

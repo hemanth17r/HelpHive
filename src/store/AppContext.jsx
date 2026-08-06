@@ -725,7 +725,10 @@ export const AppProvider = ({ children }) => {
 
       const pendingRef = localStorage.getItem('helphive_referred_by');
       if (pendingRef && pendingRef !== currentUserId && !userProfile?.referredBy) {
-        updatesPayload.referred_by = pendingRef;
+        const { data: resolvedId } = await api.resolveReferralCode(pendingRef);
+        if (resolvedId && resolvedId !== currentUserId) {
+          updatesPayload.referred_by = resolvedId;
+        }
       }
 
       if (profileData.locationStr !== undefined) {

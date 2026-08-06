@@ -889,6 +889,18 @@ export const api = {
       p_payout_id: payoutId
     });
     return { data, error };
+  },
+
+  resolveReferralCode: async (ref) => {
+    if (!ref) return { data: null, error: null };
+    if (ref.length === 36 && ref.includes('-')) {
+      return { data: ref, error: null };
+    }
+    const { data, error } = await supabase.rpc('resolve_referral_code', { p_ref: ref });
+    if (data && data.length > 0 && data[0].profile_id) {
+      return { data: data[0].profile_id, error: null };
+    }
+    return { data: ref, error };
   }
 };
 
