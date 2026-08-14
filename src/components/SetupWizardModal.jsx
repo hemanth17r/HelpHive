@@ -28,7 +28,7 @@ import { ToastContext } from '../store/ToastContext';
 import { useProfileCompletion } from '../hooks/useProfileCompletion';
 import { SKILLS } from '../config/constants';
 import { searchAddress, reverseGeocode } from '../utils/geocoding';
-import { getCurrentLocation } from '../utils/location';
+import { getCurrentLocation, INDIA_CENTER } from '../utils/location';
 import { api } from '../services/api';
 import MapView from './MapView';
 import LocationPicker from './LocationPicker';
