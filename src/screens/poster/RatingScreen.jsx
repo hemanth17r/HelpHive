@@ -36,9 +36,9 @@ const RatingScreen = () => {
   const taskersList = localCrew;
 
   const taskerBadges = [
-    { id: 'reliable', label: 'Reliable Helper', icon: Check, color: 'green' },
-    { id: 'on_time', label: 'On Time', icon: Award, color: 'blue' },
-    { id: 'professional', label: 'Professional', icon: Star, color: 'purple' }
+    { id: 'reliable', label: 'Apex Operator', icon: Check, color: 'green' },
+    { id: 'on_time', label: 'Zero-Lag Execution', icon: Award, color: 'blue' },
+    { id: 'professional', label: 'Master Tactician', icon: Star, color: 'purple' }
   ];
 
   const getBadgeStyle = (color, isSelected) => {
@@ -90,13 +90,13 @@ const RatingScreen = () => {
           badgeGiven = true;
           const badgeObj = taskerBadges.find(b => b.id === badge);
           trackEvent(EVENTS.BADGE_SENT, { userId: userProfile?.id, role, entityId: tasker.id, metadata: { badge_type: badge } });
-          showToast(`🏅 ${tasker.name} will receive your "${badgeObj?.label}" badge!`, 'success');
+          showToast(`🏅 ${tasker.name} was awarded your "${badgeObj?.label}" badge!`, 'success');
 
           // Send notification to the Tasker
           await api.sendNotification(
             tasker.id,
-            "New Badge Earned! 🏅",
-            `You received a ${star}-star rating and the "${badgeObj?.label}" badge for your recent task!`,
+            "New Combat Badge Earned! 🏅",
+            `You received a ${star}-star rating and the "${badgeObj?.label}" commendation badge for your recent contract!`,
             'my_profile',
             'badge_received',
             'tasker'
@@ -105,8 +105,8 @@ const RatingScreen = () => {
           // Send rating-only notification to the Tasker
           await api.sendNotification(
             tasker.id,
-            "Task Rated!",
-            `You received a ${star}-star rating for your recent task.`,
+            "Contract Street Cred Awarded!",
+            `You received a ${star}-star Street Cred rating for your recent contract.`,
             'tasker_activity',
             'rating_received',
             'tasker'
@@ -116,7 +116,7 @@ const RatingScreen = () => {
       await Promise.all(promises);
 
       if (!badgeGiven) {
-        showToast('Rating submitted!', 'success');
+        showToast('Commendation submitted!', 'success');
       }
 
       pushScreen('poster_home');
@@ -156,7 +156,7 @@ const RatingScreen = () => {
               <div className="space-y-1.5 w-full text-center">
                 <div className="flex justify-center space-x-2 py-1">
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <Tooltip key={star} text={`Rate ${star} Stars`}>
+                    <Tooltip key={star} text={`Award ${star} Star Cred`}>
                       <button
                         onClick={() => handleRatingChange(tasker.id, star)}
                         className="cursor-pointer transition-transform hover:scale-125 focus:outline-hidden"
@@ -199,7 +199,7 @@ const RatingScreen = () => {
       </div>
 
       <div className="w-full pt-4 border-t border-border shrink-0 lg:px-8 flex justify-center">
-        <Tooltip text="Submit helper feedback">
+        <Tooltip text="Submit operator commendations">
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
@@ -210,7 +210,7 @@ const RatingScreen = () => {
             ) : (
               <Send className="w-5 h-5" />
             )}
-            <span>{isSubmitting ? 'Submitting...' : 'Submit Feedback'}</span>
+            <span>{isSubmitting ? 'Submitting...' : 'Submit Commendation'}</span>
           </button>
         </Tooltip>
       </div>

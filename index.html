@@ -8,60 +8,206 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#ffffff" id="theme-color-meta" />
     <meta name="google-site-verification" content="TLzjdOfrmkYqJ8WwcxxlLAn8wwLQk1M0smX0BJrVtUI" />
-    <meta name="description" content="HelpHive connects you with trusted local helpers and flexible side hustles in your neighborhood. Post tasks or find quick services on demand." />
-    <meta name="keywords" content="side hustle, local help, quick help, hyperlocal, gig economy, micro jobs, neighbor help, task runner, local service, HelpHive" />
-    <title>HelpHive | Local Help, Side Hustles & Quick Tasks</title>
+    <meta name="description" content="HelpHive is a global real-world game and hyperlocal task network. Level up your agent, complete live neighborhood bounties, monetize underrated hobbies and skills, and earn cash through real-life quests worldwide." />
+    <meta name="keywords" content="HelpHive, real-world game, real life RPG, GTA in real life, monetize hobbies, underrated skills, side hustle, local help, neighborhood bounties, quick tasks, gig economy, micro jobs, earn money locally, errand runner, tasker app, open world tasks" />
+    <title>HelpHive | The Real-World Game Where You Monetize Your Skills</title>
     
     <!-- Canonical Link -->
     <link rel="canonical" href="https://helphive.me/" />
 
-    <!-- Open Graph / WhatsApp / Facebook -->
+    <!-- Open Graph / WhatsApp / Facebook / LinkedIn -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://helphive.me/" />
-    <meta property="og:title" content="HelpHive" />
-    <meta property="og:description" content="" />
+    <meta property="og:title" content="HelpHive — The Real-World Game Where You Monetize Your Skills" />
+    <meta property="og:description" content="Turn your city into an open-world RPG. Complete real-life task bounties, monetize your creative hobbies and underrated skills, earn instant direct cash, or hire trusted local help." />
     <meta property="og:image" content="https://helphive.me/og-banner.png?v=2" />
     <meta property="og:image:secure_url" content="https://helphive.me/og-banner.png?v=2" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1024" />
     <meta property="og:image:height" content="526" />
     <meta property="og:site_name" content="HelpHive" />
+    <meta property="og:locale" content="en_US" />
 
-    <!-- Twitter -->
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://helphive.me/" />
-    <meta name="twitter:title" content="HelpHive" />
-    <meta name="twitter:description" content="" />
+    <meta name="twitter:title" content="HelpHive — The Real-World Game Where You Monetize Your Skills" />
+    <meta name="twitter:description" content="Level up in real life. Accept neighborhood bounties, turn your hobbies into income, and earn instant money." />
     <meta name="twitter:image" content="https://helphive.me/og-banner.png?v=2" />
 
-    <!-- JSON-LD Structured Data for Search Engine & AI Crawler indexing -->
+    <!-- Multi-Entity JSON-LD Structured Data Graph for Search Engines & AI Crawlers -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "HelpHive",
-        "url": "https://helphive.me",
-        "logo": "https://helphive.me/favicon.svg",
-        "description": "HelpHive is a hyperlocal community platform connecting users with trusted local helpers for tasks, side hustles, quick chores, and micro-jobs.",
-        "applicationCategory": "BusinessApplication, UtilitiesApplication",
-        "operatingSystem": "All",
-        "keywords": "side hustle, local help, quick help, hyperlocal, gig economy, micro jobs, neighbor help, task runner, local service",
-        "creator": {
-          "@type": "Organization",
-          "name": "HelpHive Community",
-          "url": "https://helphive.me"
-        },
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "INR",
-          "description": "Free platform to connect and find helper jobs."
-        }
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "@id": "https://helphive.me/#app",
+            "name": "HelpHive",
+            "url": "https://helphive.me",
+            "logo": "https://helphive.me/favicon.svg",
+            "image": "https://helphive.me/og-banner.png?v=2",
+            "description": "HelpHive is a global real-world open-world game and hyperlocal task network connecting users with trusted local helpers, flexible side hustles, and hobby monetization worldwide.",
+            "applicationCategory": "GameApplication, UtilitiesApplication, BusinessApplication, LifestyleApplication",
+            "operatingSystem": "Web, Android, iOS, Windows, macOS",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD",
+              "description": "Free global platform to play, post tasks, monetize skills, and complete local bounties."
+            }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://helphive.me/#organization",
+            "name": "HelpHive",
+            "url": "https://helphive.me",
+            "logo": "https://helphive.me/favicon.svg",
+            "sameAs": [
+              "https://github.com/hemanth17r/HelpHive"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://helphive.me/#website",
+            "url": "https://helphive.me",
+            "name": "HelpHive",
+            "publisher": {
+              "@id": "https://helphive.me/#organization"
+            }
+          },
+          {
+            "@type": "HowTo",
+            "@id": "https://helphive.me/#howto-complete-bounty",
+            "name": "How to Complete a Real-World Task Bounty on HelpHive",
+            "description": "Step-by-step guide to finding local quests, completing tasks, gaining XP, and earning money on HelpHive.",
+            "step": [
+              {
+                "@type": "HowToStep",
+                "name": "Explore the Live Radar",
+                "text": "Open the HelpHive app and view active task bounties around your current GPS location anywhere in the world."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Accept the Operation",
+                "text": "Select a bounty matching your skills (errand, sketch, delivery, quick chore, tech help) and accept the mission."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Complete the Task & Verify",
+                "text": "Execute the task in person and request the completion OTP code from the task poster."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Receive Payment & XP",
+                "text": "Submit the OTP code to complete the operation, gain XP towards your Agent Level, and receive instant direct payment."
+              }
+            ]
+          },
+          {
+            "@type": "HowTo",
+            "@id": "https://helphive.me/#howto-post-task",
+            "name": "How to Hire a Local Helper or Post a Task on HelpHive",
+            "description": "Step-by-step guide to broadcasting on-demand tasks to verified neighborhood helpers on HelpHive.",
+            "step": [
+              {
+                "@type": "HowToStep",
+                "name": "Describe Your Task",
+                "text": "Provide clear task details, location requirements, and preferred completion timeline."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Set the Bounty Reward",
+                "text": "Specify the payment amount for completing the task."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Broadcast to Local Helpers",
+                "text": "Publish the bounty to notify verified operatives nearby in real time."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Confirm with Secure OTP",
+                "text": "Once the operative finishes the work to your satisfaction, share your completion OTP to release the payment."
+              }
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://helphive.me/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is HelpHive?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "HelpHive (helphive.me) is a global real-world game and hyperlocal task network. It turns neighborhood chores, errands, creative talents, and community assistance into gamified bounties where users earn money, gain XP, and level up their player avatars."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is HelpHive like GTA or an open-world RPG in real life?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes! HelpHive brings the open-world mission loop of sandbox games to reality. Instead of grinding virtual coins on a screen, players use a live GPS radar map to complete real-life neighborhood missions and earn actual direct cash."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I monetize my creative hobbies and underrated skills on HelpHive?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Absolutely. HelpHive lets you monetize hobbies and talents that traditional platforms ignore, including cooking, baking, sketching, custom PC builds, singing, stand-up comedy, dog training, crafting, and handy fixes without bidding wars or platform cuts."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How does the real-world game mechanic work in HelpHive?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "In HelpHive, everyday tasks become real-world quests. Users choose their operative avatar (Robin, Falcon, Owl, etc.), take on local missions, gain XP, advance their Agent Rank from Rookie Scout to Master Operative, and build verified reputation badges."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How can I earn money through side hustles on HelpHive?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Browse the live radar map on HelpHive to view open bounties nearby. Accept tasks such as errands, deliveries, light assembly, or quick assistance, complete the mission, and receive direct instant payouts with 0% platform commission during beta."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How do I get quick help or hire a local helper on HelpHive?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Simply describe the task, set the bounty reward, and broadcast it to verified helpers nearby. You can track task status in real time and verify helpers through community reviews and reputation badges."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Where is HelpHive available?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "HelpHive operates globally across any city, town, or neighborhood using dynamic GPS proximity radar to connect users with nearby tasks anywhere on Earth."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is HelpHive safe and verified?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. HelpHive incorporates verified mobile authentication, two-factor OTP mission completion codes, optional photo evidence submission, and transparent community rating badges."
+                }
+              }
+            ]
+          }
+        ]
       }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900;1000&display=swap" rel="stylesheet">
     
     <!-- Leaflet.js CDN Links -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -77,7 +223,166 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Crawler-Accessible Semantic Structure (Hydrated/Replaced by React on boot) -->
+    <div id="root">
+      <main style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.25rem; font-family: 'Nunito', sans-serif; color: #1E293B; line-height: 1.6;">
+        
+        <!-- Main Header -->
+        <header style="text-align: center; margin-bottom: 2.5rem;">
+          <h1 style="font-size: 2.5rem; font-weight: 900; color: #F26419; margin-bottom: 0.5rem; letter-spacing: -0.02em;">HelpHive</h1>
+          <p style="font-size: 1.25rem; font-weight: 800; color: #334155; margin-bottom: 0.5rem;">The Real-World Game Where You Monetize Your Skills</p>
+          <p style="font-size: 1rem; color: #64748B;">Turn any city into an open-world RPG. Accept live bounties, monetize your creative hobbies and underrated skills, earn cash, or post tasks for instant local help worldwide.</p>
+        </header>
+
+        <!-- Section 1: GTA & Open-World Sandbox Analogy -->
+        <section style="margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin-bottom: 0.75rem;">1. Real-World Open-World Gaming (GTA in Real Life)</h2>
+          <p style="color: #334155; margin-bottom: 1rem;">
+            Why spend 500 hours grinding virtual missions in video games for fake coins? HelpHive brings the open-world sandbox to the real world:
+          </p>
+          <ul style="line-height: 1.8; color: #334155; padding-left: 1.25rem;">
+            <li><strong>Live GPS Radar:</strong> Scan your neighborhood in real time to locate active quest markers and bounties.</li>
+            <li><strong>Tactical Operative Classes:</strong> Pick your bird avatar (Robin, Falcon, Owl, Swift, Raven, Hummingbird) to match your playstyle.</li>
+            <li><strong>XP & Progression Tiers:</strong> Level up from Rookie Scout to Master Operative as you complete community operations.</li>
+            <li><strong>Real Financial Loot:</strong> Every completed mission pays actual cash directly upon task completion.</li>
+          </ul>
+        </section>
+
+        <!-- Section 2: Monetize Underrated Skills & Hobbies -->
+        <section style="margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin-bottom: 0.75rem;">2. Monetize Your Underrated Talents & Hobbies (The Real-Life Skill Tree)</h2>
+          <p style="color: #334155; margin-bottom: 1rem;">
+            Everyone has exceptional hobbies and talents that society never provided a way to monetize. HelpHive provides a frictionless way to get paid for what you love doing:
+          </p>
+          <ul style="line-height: 1.8; color: #334155; padding-left: 1.25rem;">
+            <li><strong>Artistic & Creative:</strong> Custom sketching, calligraphy, greeting cards, portraits, DIY craft, origami.</li>
+            <li><strong>Culinary & Baking:</strong> Home-cooked specialty dishes, baking, custom meal prep for neighbors.</li>
+            <li><strong>Music & Entertainment:</strong> Acoustic guitar performances, singing for birthdays/events, stand-up comedy.</li>
+            <li><strong>Tech & PC Specialist:</strong> Custom gaming PC assembly, WiFi setup, elder tech assistance, phone setup.</li>
+            <li><strong>Handiwork & Repairs:</strong> Furniture assembly, organizing, shelf mounting, quick home fixes.</li>
+            <li><strong>Pet Handling & Fitness:</strong> Dog walking, pet sitting, running buddy, neighborhood sports sparring.</li>
+          </ul>
+        </section>
+
+        <!-- Section 3: Hyperlocal Gig Economy -->
+        <section style="margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin-bottom: 0.75rem;">3. Hyperlocal Gig Economy & Instant Side Hustles</h2>
+          <p style="color: #334155; margin-bottom: 1rem;">
+            Earn money on your own schedule without vehicle requirements or high barrier entries.
+          </p>
+          <ul style="line-height: 1.8; color: #334155; padding-left: 1.25rem;">
+            <li><strong>Micro-Tasks:</strong> Grocery runs, urgent parcel pickups, quick handyman fixes, tech setup, pet walking.</li>
+            <li><strong>0% Platform Commission:</strong> Keep 100% of your earnings during the public beta.</li>
+            <li><strong>Instant Direct Settlement:</strong> Payouts transferred directly upon task completion.</li>
+          </ul>
+        </section>
+
+        <!-- Section 4: On-Demand Help & Safety -->
+        <section style="margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin-bottom: 0.75rem;">4. On-Demand Local Help & Safety Protocols</h2>
+          <p style="color: #334155; margin-bottom: 1rem;">
+            Need help fast? Broadcast your task to verified community members in seconds.
+          </p>
+          <ul style="line-height: 1.8; color: #334155; padding-left: 1.25rem;">
+            <li><strong>Two-Party OTP Code:</strong> Task payment is only released when you provide the unique completion OTP.</li>
+            <li><strong>Photo Verification:</strong> Operatives provide before/after proof for complete transparency.</li>
+            <li><strong>Verified Community Profiles:</strong> View full operative track records and ratings before assigning tasks.</li>
+          </ul>
+        </section>
+
+        <!-- Section 5: Comparison Table -->
+        <section style="margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin-bottom: 1rem;">5. How HelpHive Compares</h2>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
+              <thead>
+                <tr style="background-color: #F8FAFC; border-bottom: 2px solid #E2E8F0;">
+                  <th style="padding: 0.75rem 1rem;">Feature</th>
+                  <th style="padding: 0.75rem 1rem; color: #F26419;">HelpHive</th>
+                  <th style="padding: 0.75rem 1rem;">Video Games (GTA / Free Fire)</th>
+                  <th style="padding: 0.75rem 1rem;">Traditional Freelance (Fiverr/Upwork)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px solid #E2E8F0;">
+                  <td style="padding: 0.75rem 1rem; font-weight: 700;">Real Money Earnings</td>
+                  <td style="padding: 0.75rem 1rem; color: #16A34A; font-weight: 700;">Yes (Instant Direct Pay)</td>
+                  <td style="padding: 0.75rem 1rem; color: #DC2626;">No (Virtual Currency)</td>
+                  <td style="padding: 0.75rem 1rem;">Yes (Delayed Payouts)</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #E2E8F0;">
+                  <td style="padding: 0.75rem 1rem; font-weight: 700;">Gamification & XP</td>
+                  <td style="padding: 0.75rem 1rem; color: #16A34A; font-weight: 700;">Yes (Agent Levels)</td>
+                  <td style="padding: 0.75rem 1rem; color: #16A34A;">Yes</td>
+                  <td style="padding: 0.75rem 1rem; color: #DC2626;">No</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #E2E8F0;">
+                  <td style="padding: 0.75rem 1rem; font-weight: 700;">Platform Fee</td>
+                  <td style="padding: 0.75rem 1rem; color: #16A34A; font-weight: 700;">0% Commission (Beta)</td>
+                  <td style="padding: 0.75rem 1rem;">In-App Microtransactions</td>
+                  <td style="padding: 0.75rem 1rem; color: #DC2626;">20% Cut</td>
+                </tr>
+                <tr>
+                  <td style="padding: 0.75rem 1rem; font-weight: 700;">Hobby Monetization</td>
+                  <td style="padding: 0.75rem 1rem; color: #16A34A; font-weight: 700;">Frictionless & Local</td>
+                  <td style="padding: 0.75rem 1rem; color: #DC2626;">No</td>
+                  <td style="padding: 0.75rem 1rem;">Global Bidding Wars</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Section 6: Global Reach & Hyperlocal Proximity -->
+        <section style="margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin-bottom: 0.75rem;">6. Global Reach & Worldwide Hyperlocal Proximity</h2>
+          <p style="color: #334155; margin-bottom: 0.5rem;">
+            HelpHive works in any city, town, or neighborhood worldwide. Using GPS live radar, operatives and task posters connect with real-time distance calculations anywhere across the globe.
+          </p>
+        </section>
+
+        <!-- Section 7: Comprehensive FAQ -->
+        <section style="margin-bottom: 2rem;">
+          <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin-bottom: 1rem;">7. Frequently Asked Questions</h2>
+          
+          <article style="margin-bottom: 1.25rem;">
+            <h3 style="font-size: 1.125rem; font-weight: 700; color: #1E293B;">What is HelpHive?</h3>
+            <p style="color: #475569;">HelpHive is a global real-world game and hyperlocal task network connecting users with live neighborhood bounties, trusted local helpers, and flexible side hustles.</p>
+          </article>
+
+          <article style="margin-bottom: 1.25rem;">
+            <h3 style="font-size: 1.125rem; font-weight: 700; color: #1E293B;">Is HelpHive like GTA in real life?</h3>
+            <p style="color: #475569;">Yes! HelpHive brings the open-world mission loop of sandbox games to reality. Instead of grinding virtual coins on a screen, players use a live GPS radar map to complete real-life neighborhood missions and earn actual direct cash.</p>
+          </article>
+
+          <article style="margin-bottom: 1.25rem;">
+            <h3 style="font-size: 1.125rem; font-weight: 700; color: #1E293B;">Can I monetize my creative hobbies and skills on HelpHive?</h3>
+            <p style="color: #475569;">Yes! Whether you are great at cooking, drawing, singing, organizing, tech setup, or running quick errands, you can set your skills, accept matching local bounties, and get paid directly with 0% platform commission during beta.</p>
+          </article>
+
+          <article style="margin-bottom: 1.25rem;">
+            <h3 style="font-size: 1.125rem; font-weight: 700; color: #1E293B;">How do I start playing and earning on HelpHive?</h3>
+            <p style="color: #475569;">Launch the app, set up your profile, select your avatar bird, and explore live bounties in your area. Accept an operation, complete it, and get paid.</p>
+          </article>
+
+          <article style="margin-bottom: 1.25rem;">
+            <h3 style="font-size: 1.125rem; font-weight: 700; color: #1E293B;">Is HelpHive free to use?</h3>
+            <p style="color: #475569;">Yes, HelpHive is 100% free to join, play, post tasks, and accept bounties with zero registration or hidden fees.</p>
+          </article>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- Fallback for non-JS scrapers & text crawlers -->
+    <noscript>
+      <div style="padding: 20px; text-align: center; font-family: sans-serif;">
+        <h2>HelpHive — The Real-World Game Where You Monetize Your Skills</h2>
+        <p>Please enable JavaScript to launch the full interactive HelpHive experience.</p>
+      </div>
+    </noscript>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
+

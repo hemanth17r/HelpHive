@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { User, MapPin, Bell, Briefcase, IndianRupee, Navigation, Mail } from 'lucide-react';
+import { User, MapPin, Bell, Briefcase, Navigation, Mail } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { NotificationContext } from '../store/NotificationContext';
 import { ToastContext } from '../store/ToastContext';
@@ -75,11 +75,6 @@ const ActionItemsCarousel = () => {
     pushScreen('tasker_onboarding');
   };
 
-  const handleUpiRequest = () => {
-    setTaskerActivityScrollTarget('upi');
-    pushScreen('tasker_activity');
-  };
-
   const CARDS = {
     profile: {
       id: 'profile',
@@ -120,14 +115,6 @@ const ActionItemsCarousel = () => {
       desc: 'Select your tasks',
       color: 'bg-orange-50 text-orange-500 border-orange-200',
       action: handleSkillsRequest
-    },
-    upi: {
-      id: 'upi',
-      icon: IndianRupee,
-      title: 'Add UPI ID',
-      desc: 'Receive payments',
-      color: 'bg-green-50 text-green-600 border-green-200',
-      action: handleUpiRequest
     }
   };
 

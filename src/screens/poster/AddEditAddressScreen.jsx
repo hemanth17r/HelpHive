@@ -155,24 +155,29 @@ const AddEditAddressScreen = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50/50 h-full relative z-20 overflow-hidden">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 shrink-0 z-30 relative">
-        <div className="max-w-4xl mx-auto flex items-center px-4 py-3.5">
-          <button
-            onClick={() => { setEditAddressData(null); popScreen(); }}
-            className="p-2 -ml-2 rounded-full hover:bg-gray-100 text-dark transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h2 className="text-lg font-black text-dark ml-2">{isEdit ? 'Edit Location' : 'Pin Location'}</h2>
-        </div>
+    <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full relative z-20 overflow-hidden select-none">
+      {/* Frameless Top Header */}
+      <div 
+        className="flex items-center justify-between px-4 pb-2 pt-3 bg-transparent shrink-0 z-30 max-w-md lg:max-w-xl mx-auto w-full"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}
+      >
+        <button
+          onClick={() => { setEditAddressData(null); popScreen(); }}
+          className="p-2 -ml-2 rounded-full hover:bg-slate-200/60 text-slate-700 transition-colors cursor-pointer active-scale"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">
+          {isEdit ? 'Edit Location' : 'Pin Drop Location'}
+        </h2>
+        <div className="w-9" />
       </div>
 
-      {/* Main Container — Centered on Desktop like Tasker Service Area */}
-      <div className="flex-1 max-w-4xl mx-auto w-full flex flex-col min-h-0 p-3 sm:p-5 space-y-4 overflow-y-auto">
+      {/* Main Container */}
+      <div className="flex-1 max-w-md lg:max-w-xl mx-auto w-full flex flex-col min-h-0 px-4 pb-6 space-y-3 overflow-y-auto no-scrollbar">
         {/* Map Card */}
-        <div className="flex-1 relative w-full rounded-2xl overflow-hidden border border-border shadow-sm min-h-[350px] sm:min-h-[420px] bg-white">
+        <div className="flex-1 relative w-full rounded-[28px] overflow-hidden border border-slate-200 shadow-2xs min-h-[300px] sm:min-h-[380px] bg-white">
           <LocationPicker
             initialLat={lat}
             initialLng={lng}
@@ -182,60 +187,58 @@ const AddEditAddressScreen = () => {
         </div>
 
         {/* Bottom Form Card */}
-        <div className="bg-white rounded-2xl border border-border shadow-sm p-4 sm:p-5 shrink-0">
-          <div className="max-w-2xl mx-auto w-full flex flex-col space-y-4">
-            {/* Landmark Input */}
-            <div>
-              <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Nearest landmark</label>
-              <input
-                type="text"
-                value={landmark}
-                onChange={(e) => setLandmark(e.target.value)}
-                placeholder="e.g. Near Metro Station, Beside Mall"
-                className="w-full px-4 py-3 border border-border rounded-xl text-sm font-semibold text-dark placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
-              />
-            </div>
-
-            {/* Address Type Selector */}
-            <div>
-              <h3 className="text-xs font-semibold text-gray-600 mb-2 text-center">Save location as</h3>
-              <div className="flex space-x-2 max-w-sm mx-auto w-full">
-                <button
-                  type="button"
-                  onClick={() => setAddressType('Home')}
-                  className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all ${addressType === 'Home' ? 'border-primary bg-primary/5 text-primary shadow-sm font-black' : 'border-border bg-white text-gray-500 hover:bg-gray-50 font-bold'}`}
-                >
-                  <Home className="w-4 h-4 mr-1.5" />
-                  <span className="text-xs">Home</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAddressType('Work')}
-                  className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all ${addressType === 'Work' ? 'border-primary bg-primary/5 text-primary shadow-sm font-black' : 'border-border bg-white text-gray-500 hover:bg-gray-50 font-bold'}`}
-                >
-                  <Briefcase className="w-4 h-4 mr-1.5" />
-                  <span className="text-xs">Work</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAddressType('Other')}
-                  className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all ${addressType === 'Other' ? 'border-primary bg-primary/5 text-primary shadow-sm font-black' : 'border-border bg-white text-gray-500 hover:bg-gray-50 font-bold'}`}
-                >
-                  <MapPin className="w-4 h-4 mr-1.5" />
-                  <span className="text-xs">Other</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Save Button */}
-            <button
-              type="button"
-              onClick={handleSave}
-              className="w-full flex items-center justify-center bg-primary hover:bg-primary/95 text-white py-3.5 rounded-xl shadow-lg shadow-primary/20 font-black tracking-wide cursor-pointer active:scale-[0.99] transition-all text-sm"
-            >
-              Confirm Location
-            </button>
+        <div className="bg-white/95 backdrop-blur-md rounded-[28px] border border-slate-200/80 shadow-xs p-4 sm:p-5 shrink-0 space-y-4">
+          {/* Landmark Input */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-extrabold text-slate-600 block">Nearest landmark</label>
+            <input
+              type="text"
+              value={landmark}
+              onChange={(e) => setLandmark(e.target.value)}
+              placeholder="e.g. Near Metro Station, Beside Mall"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-primary focus:bg-white transition-all"
+            />
           </div>
+
+          {/* Address Type Selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-extrabold text-slate-600 block text-center">Save location as</label>
+            <div className="flex space-x-2 w-full">
+              <button
+                type="button"
+                onClick={() => setAddressType('Home')}
+                className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all active-scale ${addressType === 'Home' ? 'border-primary bg-primary/10 text-primary shadow-xs font-black' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 font-bold'}`}
+              >
+                <Home className="w-4 h-4 mr-1.5" />
+                <span className="text-xs">Home</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddressType('Work')}
+                className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all active-scale ${addressType === 'Work' ? 'border-primary bg-primary/10 text-primary shadow-xs font-black' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 font-bold'}`}
+              >
+                <Briefcase className="w-4 h-4 mr-1.5" />
+                <span className="text-xs">Work</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddressType('Other')}
+                className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all active-scale ${addressType === 'Other' ? 'border-primary bg-primary/10 text-primary shadow-xs font-black' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 font-bold'}`}
+              >
+                <MapPin className="w-4 h-4 mr-1.5" />
+                <span className="text-xs">Other</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <button
+            type="button"
+            onClick={handleSave}
+            className="w-full flex items-center justify-center bg-primary hover:bg-primary/95 text-white py-3.5 rounded-2xl shadow-lg shadow-primary/25 font-black tracking-wide cursor-pointer active-scale transition-all text-xs uppercase"
+          >
+            Confirm Location
+          </button>
         </div>
       </div>
     </div>

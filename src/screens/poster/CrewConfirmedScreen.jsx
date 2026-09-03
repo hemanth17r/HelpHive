@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { Sparkles, Star, ShieldCheck, KeyRound, ArrowRight, ArrowLeft, Phone, Check, MapPin, Compass, ShieldAlert } from 'lucide-react';
+import { Star, ShieldCheck, KeyRound, ArrowRight, ArrowLeft, Phone, Check, MapPin, Compass, ShieldAlert } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
 import Tooltip from '../../components/Tooltip';
@@ -7,6 +7,7 @@ import MapView from '../../components/MapView';
 import BirdAvatar from '../../components/BirdAvatars';
 import { api } from '../../services/api';
 import { SKILLS } from '../../config/constants';
+import { formatCurrency } from '../../utils/currency';
 
 const WhatsAppIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -26,7 +27,8 @@ const CrewConfirmedScreen = () => {
     popScreen,
     trackingTaskerPos, 
     userId,
-    userProfile
+    userProfile,
+    currency
   } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const skill = SKILLS.find(s => s.id === currentPostedJob?.skillId || s.id === currentPostedJob?.skill_id);
@@ -35,15 +37,10 @@ const CrewConfirmedScreen = () => {
   const [localCrewTaskers, setLocalCrewTaskers] = useState(crewTaskers || []);
   const [isLoadingCrew, setIsLoadingCrew] = useState(false);
   const [otpVisible, setOtpVisible] = useState(false);
-  const [paymentOption, setPaymentOption] = useState('online'); // 'online' or 'offline'
-  const [paymentInitiated, setPaymentInitiated] = useState(() => {
-    return localStorage.getItem(`payment_initiated_${currentPostedJob?.id}`) === 'true';
-  });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [paymentsTracker, setPaymentsTracker] = useState({});
   const [hasDecidedToContinue, setHasDecidedToContinue] = useState(false);
 
   const [crewLocations, setCrewLocations] = useState({});
@@ -159,24 +156,6 @@ const CrewConfirmedScreen = () => {
     }
   }, [currentPostedJob, pushScreen, showToast]);
 
-  const handlePayOnlineForTasker = (tasker) => {
-    const taskerUpi = tasker?.upiId || 'helphive@upi';
-    const amount = currentPostedJob?.amount || 0;
-    const taskTitle = currentPostedJob?.description || 'Task';
-    
-    // Construct UPI Deep Link
-    const upiLink = `upi://pay?pa=${taskerUpi}&pn=${encodeURIComponent(tasker?.name || 'Helper')}&am=${amount}&cu=INR&tn=${encodeURIComponent('HelpHive Task: ' + taskTitle.substring(0, 20))}`;
-    
-    // Save to localStorage
-    if (currentPostedJob?.id) {
-      localStorage.setItem(`payment_initiated_${currentPostedJob.id}_${tasker.id}`, 'true');
-      setPaymentsTracker(prev => ({ ...prev, [tasker.id]: true }));
-    }
-
-    // Open link
-    window.location.assign(upiLink);
-  };
-
   const handleCompleteTask = async () => {
     if (!currentPostedJob) return;
     setIsCompleting(true);
@@ -212,9 +191,9 @@ const CrewConfirmedScreen = () => {
 
   const handleWhatsAppSupport = () => {
     const skill = SKILLS.find(s => s.id === currentPostedJob?.skillId);
-    const taskTitle = skill?.label || 'General Task';
+    const taskTitle = skill?.label || 'General Operation';
     
-    const message = `Hi HelpHive Support,\n\nI need help with a task.\n\nTask ID: ${currentPostedJob?.id || 'N/A'}\nTask Title: ${taskTitle}\nAmount: ₹${currentPostedJob?.amount || 0}\nStatus: ${currentPostedJob?.status || 'N/A'}\n\nHirer ID: ${currentPostedJob?.posterId || userId || 'N/A'}\nTasker ID(s): ${localCrewTaskers.map(t => t.id).join(', ') || 'N/A'}\n\nIssue: `;
+    const message = `Hi HelpHive Support,\n\nI need assistance with an active operation.\n\nOperation ID: ${currentPostedJob?.id || 'N/A'}\nOperation Title: ${taskTitle}\nBounty Reward: ${formatCurrency(currentPostedJob?.amount || 0, currentPostedJob?.currency || currency?.code)}\nStatus: ${currentPostedJob?.status || 'N/A'}\n\nIssuer ID: ${currentPostedJob?.posterId || userId || 'N/A'}\nOperative ID(s): ${localCrewTaskers.map(t => t.id).join(', ') || 'N/A'}\n\nIssue: `;
 
     const whatsappUrl = `https://wa.me/919347442426?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
@@ -222,12 +201,12 @@ const CrewConfirmedScreen = () => {
 
   const handleWhatsAppHelper = (tasker) => {
     if (!tasker) return;
-    const taskTitle = currentPostedJob?.description || 'Task';
-    const message = `Hi ${tasker?.name || 'Helper'},\n\nI'm contacting you regarding our HelpHive task.\n\nTask ID: ${currentPostedJob?.id || 'N/A'}\nTask: ${taskTitle}\n\nMessage: `;
+    const taskTitle = currentPostedJob?.description || 'Operation';
+    const message = `Hi ${tasker?.name || 'Operative'},\n\nI'm contacting you regarding our HelpHive quest operation.\n\nOperation ID: ${currentPostedJob?.id || 'N/A'}\nQuest: ${taskTitle}\n\nMessage: `;
     const taskerPhone = tasker?.phone;
     
     if (!taskerPhone) {
-      showToast('Helper phone number is unavailable.', 'error');
+      showToast('Operative phone number is unavailable.', 'error');
       return;
     }
 
@@ -244,18 +223,6 @@ const CrewConfirmedScreen = () => {
     setShowCancelModal(true);
   };
 
-  const allOnlinePaymentsInitiated = activeCrew.every(tasker => {
-    return paymentsTracker[tasker.id] || localStorage.getItem(`payment_initiated_${currentPostedJob?.id}_${tasker.id}`) === 'true';
-  });
-
-  const handleConfirmPaymentsClick = () => {
-    if (paymentOption === 'online' && currentPostedJob?.amount > 0 && !allOnlinePaymentsInitiated) {
-      showToast('Please initiate online payment for all crew helpers first.', 'error');
-      return;
-    }
-    setShowConfirmModal(true);
-  };
-
   return (
     <div className="flex-1 flex flex-col justify-between bg-white px-6 py-6 overflow-y-auto select-none">
       
@@ -268,7 +235,7 @@ const CrewConfirmedScreen = () => {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <span className="text-xs font-semibold text-gray-400">
-          {currentPostedJob?.status === 'in_progress' ? 'Your helper is working...' : 'Your crew is set!'}
+          {currentPostedJob?.status === 'in_progress' ? 'Operation In Progress • Sector Active' : 'Strike Team Assembled'}
         </span>
       </div>
 
@@ -278,7 +245,7 @@ const CrewConfirmedScreen = () => {
         {/* Connection / Real-time Tracking Map */}
         <div className="space-y-1.5">
           <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
-            <span>{isRemote ? 'Remote connection' : 'Live location'}</span>
+            <span>{isRemote ? 'Cyber Link' : 'Live GPS Uplink & Radar'}</span>
             <span className="text-primary animate-pulse font-medium">
               Active
             </span>
@@ -321,7 +288,7 @@ const CrewConfirmedScreen = () => {
         {isLoadingCrew && localCrewTaskers.length === 0 && (
           <div className="flex items-center justify-center py-6 bg-gray-50 border border-border rounded-2xl">
             <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin mr-2" />
-            <span className="text-xs font-semibold text-gray-400">Loading helpers...</span>
+            <span className="text-xs font-semibold text-gray-400">Loading Strike Team...</span>
           </div>
         )}
         {localCrewTaskers.map((tasker) => (
@@ -337,7 +304,7 @@ const CrewConfirmedScreen = () => {
                 <div className="mt-1 flex flex-wrap gap-1 items-center">
                   {tasker.status === 'rejected' ? (
                     <span className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md border text-red-600 bg-red-50 border-red-200">
-                      Cancelled
+                      Aborted
                     </span>
                   ) : (
                     <>
@@ -346,11 +313,11 @@ const CrewConfirmedScreen = () => {
                           ? 'text-green-600 bg-green-50 border-green-200' 
                           : 'text-amber-600 bg-amber-50 border-amber-200'
                       }`}>
-                        {tasker.otpVerified ? 'OTP Verified' : 'Awaiting OTP'}
+                        {tasker.otpVerified ? 'Keycode Verified' : 'Awaiting Clearance'}
                       </span>
                       {tasker.completedByTasker && (
                         <span className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md border text-green-600 bg-green-50 border-green-200">
-                          Marked complete
+                          Execution Completed
                         </span>
                       )}
                     </>
@@ -363,18 +330,18 @@ const CrewConfirmedScreen = () => {
                       <span>{Number(tasker.rating).toFixed(1)}</span>
                     </div>
                     <span className="text-[10px] text-gray-400 font-bold">
-                      • {tasker.tasksCompleted} tasks completed
+                      • {tasker.tasksCompleted} contracts solved
                     </span>
                   </div>
                 ) : (
                   <div className="inline-flex items-center mt-1 text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                    New Helper
+                    Novice Operator
                   </div>
                 )}
               </div>
             </div>
 
-            <Tooltip text="WhatsApp Helper">
+            <Tooltip text="Direct Channel (WhatsApp)">
               <button onClick={() => handleWhatsAppHelper(tasker)} className="p-3 rounded-full bg-white border border-border text-green-600 hover:bg-green-50 hover:border-green-200 cursor-pointer transition-colors">
                 <WhatsAppIcon className="w-4 h-4" />
               </button>
@@ -386,11 +353,11 @@ const CrewConfirmedScreen = () => {
         {localCrewTaskers.length > 0 && (
           <div className="bg-gray-50 border border-border rounded-3xl p-5 text-center w-full shadow-xs space-y-3">
             <div className="flex items-center justify-center space-x-2 text-xs font-bold text-dark">
-              <span>Task Starting Progress</span>
+              <span>Mission Clearance Progress</span>
             </div>
             
             <div className="text-2xl font-black text-green-600 tracking-tight">
-              {verifiedCount} / {localCrewTaskers.length} {localCrewTaskers.length === 1 ? 'Helper' : 'Helpers'} Started Work
+              {verifiedCount} / {localCrewTaskers.length} {localCrewTaskers.length === 1 ? 'Operator' : 'Operators'} Deployed
             </div>
 
             {/* Custom progress bar */}
@@ -401,10 +368,10 @@ const CrewConfirmedScreen = () => {
               />
             </div>
 
-            <p className="text-[10px] text-gray-400 font-semibold leading-normal max-w-[240px] mx-auto pt-1">
+            <p className="text-[10px] text-gray-400 font-semibold leading-normal max-w-[260px] mx-auto pt-1">
               {allHelpersVerified 
-                ? "All crew members have verified the OTP and started work."
-                : "Helpers must ask you for the OTP and enter it on their screens to start."}
+                ? "All Strike Team Operators have authenticated the Clearance Keycode and initiated execution."
+                : "Operators must request your Clearance Keycode upon physical contact to initiate work."}
             </p>
           </div>
         )}
@@ -414,10 +381,10 @@ const CrewConfirmedScreen = () => {
           <div className="bg-orange-50/50 border border-primary/10 rounded-3xl p-5 space-y-3 text-center">
             <div className="flex items-center justify-center space-x-2 text-xs font-bold text-dark">
               <KeyRound className="w-4.5 h-4.5 text-primary" />
-              <span>Reveal Start OTP</span>
+              <span>Mission Clearance Keycode 🔑</span>
             </div>
-            <p className="text-[10px] text-gray-500 font-semibold leading-normal max-w-[240px] mx-auto">
-              Provide this code to your helper(s) to authorize and start the task.
+            <p className="text-[10px] text-gray-500 font-semibold leading-normal max-w-[260px] mx-auto">
+              Provide this keycode to your Operator(s) upon contact to authorize and initiate the contract.
             </p>
 
             {otpVisible ? (
@@ -425,12 +392,12 @@ const CrewConfirmedScreen = () => {
                 <span className="text-2xl font-black text-primary tracking-widest">{currentPostedJob?.otp || otpGenerated || '----'}</span>
               </div>
             ) : (
-              <Tooltip text="Show verification OTP code">
+              <Tooltip text="Show mission clearance keycode">
                 <button
                   onClick={() => setOtpVisible(true)}
                   className="bg-primary hover:bg-primary/95 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs shadow-xs cursor-pointer inline-flex items-center space-x-1.5 transition-all"
                 >
-                  <span>Reveal OTP</span>
+                  <span>Reveal Keycode</span>
                 </button>
               </Tooltip>
             )}
@@ -440,151 +407,55 @@ const CrewConfirmedScreen = () => {
              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-1">
                <Check className="w-6 h-6" />
              </div>
-             <span className="text-sm font-black text-green-700">All Helpers Verified!</span>
-             <span className="text-[10px] text-green-600/80 font-bold text-center">The OTP was verified successfully by all crew members. The task is currently in progress.</span>
+             <span className="text-sm font-black text-green-700">Strike Team Authenticated!</span>
+             <span className="text-[10px] text-green-600/80 font-bold text-center">Keycode was verified successfully by all operators. Operation is currently in execution.</span>
           </div>
         )}
 
-        {/* Payment Options */}
+        {/* Payment Settlement */}
         <div className="bg-gray-50 border border-border rounded-2xl p-5 space-y-4">
-          <label className="block text-xs font-semibold text-gray-500">
-            Payment method
-          </label>
-          
-          <div className="space-y-2.5">
-            {/* Pay Online Card */}
-            <button
-              onClick={() => setPaymentOption('online')}
-              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
-                paymentOption === 'online'
-                  ? 'border-green-600 bg-green-50/30'
-                  : 'border-border bg-white hover:bg-gray-50/50'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center shrink-0 ${
-                  paymentOption === 'online' ? 'border-green-600' : 'border-gray-300'
-                }`}>
-                  {paymentOption === 'online' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-dark block">Pay online</span>
-                  <span className="text-[10px] font-medium text-gray-500 mt-0.5 block">Pay instantly using PhonePe, GPay, Paytm, etc.</span>
-                </div>
-              </div>
-            </button>
-
-            {/* Pay Offline Card */}
-            <button
-              onClick={() => setPaymentOption('offline')}
-              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
-                paymentOption === 'offline'
-                  ? 'border-green-600 bg-green-50/30'
-                  : 'border-border bg-white hover:bg-gray-50/50'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center shrink-0 ${
-                  paymentOption === 'offline' ? 'border-green-600' : 'border-gray-300'
-                }`}>
-                  {paymentOption === 'offline' && <div className="w-2.5 h-2.5 rounded-full bg-green-600" />}
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-dark block">Pay offline</span>
-                  <span className="text-[10px] font-medium text-gray-500 mt-0.5 block">Pay cash directly or through other offline methods.</span>
-                </div>
-              </div>
-            </button>
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-semibold text-gray-500">
+              Payment Settlement
+            </label>
+            <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
+              0% Fee
+            </span>
           </div>
-
-          <label className="block text-xs font-semibold text-gray-500 pt-2">
-            Payment & completion
-          </label>
-
-          {paymentOption === 'online' ? (
-            activeCrew.map((tasker) => {
-              const hasInitiated = paymentsTracker[tasker.id] || localStorage.getItem(`payment_initiated_${currentPostedJob?.id}_${tasker.id}`) === 'true';
-              return (
-                <div key={tasker.id} className="bg-white border border-border p-4 rounded-xl mb-3 flex flex-col space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500 font-bold">Helper</span>
-                    <span className="text-sm font-black text-dark">{tasker.name}</span>
+          
+          <div className="bg-white border border-border p-4 rounded-xl space-y-3">
+            <p className="text-xs font-bold text-gray-500 leading-relaxed">
+              Payment is settled directly between both parties upon completion using any mutually agreed method (digital transfer, bank transfer, or cash).
+            </p>
+            <div className="border-t border-dashed border-border pt-2.5 space-y-2">
+              {activeCrew.map(t => (
+                <div key={t.id} className="flex justify-between items-center text-xs font-bold text-gray-500">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-dark font-black">{t.name}</span>
+                    {t.phone && <span className="text-[10px] text-gray-400">({t.phone})</span>}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500 font-bold">UPI ID</span>
-                    <span className="text-xs font-bold text-gray-600">{tasker.upiId || 'Not provided'}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                    <span className="text-sm font-bold text-dark">Amount</span>
-                    <span className="text-lg font-black text-primary">₹{currentPostedJob?.amount || 0}</span>
-                  </div>
-                  
-                  {currentPostedJob?.amount > 0 && (
-                    <div className="pt-2">
-                      {hasInitiated ? (
-                        <span className="text-xs text-green-600 font-extrabold flex items-center justify-center space-x-1 py-2">
-                          <Check className="w-4.5 h-4.5" />
-                          <span>Payment Initiated</span>
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => handlePayOnlineForTasker(tasker)}
-                          className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-black py-2 rounded-xl active:scale-[0.99] transition-all cursor-pointer text-center text-xs"
-                        >
-                          Pay {tasker.name.split(' ')[0]} Online
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <span className="text-primary font-black text-sm">
+                    {formatCurrency(currentPostedJob?.amount || 0, currentPostedJob?.currency || currency?.code)}
+                  </span>
                 </div>
-              );
-            })
-          ) : (
-            <div className="bg-white border border-border p-4 rounded-xl mb-3 flex flex-col space-y-2.5">
-              <p className="text-xs font-bold text-gray-500 leading-relaxed">
-                Please pay the helper(s) directly via Cash, personal UPI, or any other offline method once the task is completed.
-              </p>
-              <div className="border-t border-dashed border-border pt-2.5 mt-1">
-                {activeCrew.map(t => (
-                  <div key={t.id} className="flex justify-between items-center text-xs font-bold text-gray-500 mt-1">
-                    <span>{t.name}</span>
-                    <span className="text-dark">₹{currentPostedJob?.amount || 0}</span>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* Primary Action Button */}
           <div className="pt-2 flex justify-center w-full">
-            {(currentPostedJob?.amount > 0) ? (
-              <Tooltip text={paymentOption === 'online' && !allOnlinePaymentsInitiated ? "Please initiate payment for all helpers first" : "Confirm payment to complete the task"}>
-                <button
-                  onClick={handleConfirmPaymentsClick}
-                  className={`w-full max-w-md flex items-center justify-center font-black py-4 px-6 rounded-2xl active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide ${
-                    paymentOption === 'online' && !allOnlinePaymentsInitiated
-                      ? 'bg-gray-200 text-gray-400 border border-gray-300 cursor-not-allowed shadow-none'
-                      : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20'
-                  }`}
-                >
-                  Confirm Payments & Complete
-                </button>
-              </Tooltip>
-            ) : (
-              <Tooltip text="Complete the task and submit helper review">
-                <button
-                  onClick={handleCompleteTask}
-                  disabled={isCompleting || isCancelling}
-                  className="w-full max-w-md flex justify-center items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide disabled:opacity-70"
-                >
-                  {isCompleting ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : null}
-                  <span>{isCompleting ? 'Completing...' : 'Mark as Complete'}</span>
-                </button>
-              </Tooltip>
-            )}
+            <button
+              onClick={handleCompleteTask}
+              disabled={isCompleting || isCancelling}
+              className="w-full max-w-md flex justify-center items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-green-600/20 active:scale-[0.99] transition-all cursor-pointer text-center text-xs tracking-wide disabled:opacity-70"
+            >
+              {isCompleting ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : null}
+              <span>{isCompleting ? 'Completing...' : 'Confirm Settlement & Close Contract'}</span>
+            </button>
           </div>
+        </div>
 
           <div className="flex justify-center w-full">
             <button
@@ -595,7 +466,7 @@ const CrewConfirmedScreen = () => {
               {isCancelling ? (
                 <div className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
               ) : null}
-              <span>{isCancelling ? 'Cancelling...' : 'Cancel Task'}</span>
+              <span>{isCancelling ? 'Aborting...' : 'Abort Contract'}</span>
             </button>
           </div>
 
@@ -617,8 +488,6 @@ const CrewConfirmedScreen = () => {
           </div>
 
         </div>
-
-      </div>
 
       {/* Confirm Payment Modal */}
       {showConfirmModal && (
@@ -734,16 +603,16 @@ const CrewConfirmedScreen = () => {
         </div>
       )}
 
-      {/* Helper Cancelled Alert Modal */}
+      {/* Operative Disengaged Alert Modal */}
       {localCrewTaskers.some(t => t.status === 'rejected') && !hasDecidedToContinue && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
           <div className="bg-white w-full max-w-sm rounded-[32px] p-6 flex flex-col shadow-2xl animate-scale-up">
             <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-3">
               <ShieldAlert className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-black text-dark text-center">Helper Cancelled</h3>
+            <h3 className="text-base font-black text-dark text-center">Operative Disengaged</h3>
             <p className="text-xs font-semibold text-gray-500 mt-3 text-center leading-relaxed">
-              {localCrewTaskers.filter(t => t.status === 'rejected').map(t => t.name).join(', ')} has left this task. Do you want to continue with the remaining helper(s) or end this task entirely?
+              {localCrewTaskers.filter(t => t.status === 'rejected').map(t => t.name).join(', ')} has disengaged from this operation. Do you want to continue with the remaining operative(s) or abort this operation entirely?
             </p>
             
             <div className="flex space-x-3 mt-6">

@@ -1,10 +1,13 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Clock, CheckCircle, Users, MoreVertical, MapPin, XCircle } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
-import { SKILLS } from '../config/constants';
+import { SKILLS, GUEST_DEMO_ARCHIVE_JOBS } from '../config/constants';
+import { formatCurrency } from '../utils/currency';
 
 const JobHistoryScreen = () => {
-  const { popScreen, jobHistoryTab, jobs, userProfile, role, pushScreen, setCurrentPostedJob, setAcceptedJob, deleteJob, setEditJobData } = useContext(AppContext);
+  const { popScreen, jobHistoryTab, jobs, userProfile, role, pushScreen, setCurrentPostedJob, setAcceptedJob, deleteJob, setEditJobData, userId } = useContext(AppContext);
+
+  const isGuest = !userId || userProfile?.isGuest;
 
   // Separate jobs based on role
   const userJobs = jobs.filter(j => {
@@ -20,7 +23,7 @@ const JobHistoryScreen = () => {
   const cancelledJobs = userJobs.filter(j => j.isCancelledByMe || j.status === 'cancelled');
 
   const displayActive = activeJobs;
-  const displayCompleted = completedJobs;
+  const displayCompleted = (isGuest && completedJobs.length === 0) ? GUEST_DEMO_ARCHIVE_JOBS : completedJobs;
   const displayExpired = expiredJobs;
   const displayCancelled = cancelledJobs;
 
@@ -59,7 +62,7 @@ const JobHistoryScreen = () => {
     if (type === 'active') {
       borderColor = 'border-blue-100';
       iconBg = 'bg-blue-50 text-blue-500';
-      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-blue-500 bg-blue-50 border-blue-200">Active</span>;
+      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-blue-500 bg-blue-50 border-blue-200">Active Op</span>;
     } else if (isExpired) {
       borderColor = 'border-red-100';
       iconBg = 'bg-red-50 text-red-500';
@@ -67,11 +70,11 @@ const JobHistoryScreen = () => {
     } else if (type === 'completed') {
       borderColor = 'border-green-100';
       iconBg = 'bg-green-50 text-green-500';
-      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-green-500 bg-green-50 border-green-200">Completed</span>;
+      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-green-500 bg-green-50 border-green-200">Fulfilled</span>;
     } else if (type === 'cancelled') {
       borderColor = 'border-red-100';
       iconBg = 'bg-red-50 text-red-500';
-      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-red-500 bg-red-50 border-red-200">Cancelled</span>;
+      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-red-500 bg-red-50 border-red-200">Aborted</span>;
     }
 
     return (
@@ -113,7 +116,7 @@ const JobHistoryScreen = () => {
             </div>
             <div>
               <span className="text-[10px] font-black uppercase text-gray-400 block leading-none mb-1">
-                {skill?.label || 'Task'}
+                {skill?.label || 'Contract'}
               </span>
               {statusPill}
             </div>
@@ -132,7 +135,7 @@ const JobHistoryScreen = () => {
               </button>
               
               {activeDropdownId === job.id && (
-                <div className="absolute right-0 mt-1 w-40 bg-white rounded-xl shadow-lg border border-border py-1 z-20 overflow-hidden">
+                <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-border py-1 z-20 overflow-hidden">
                   {isExpired && (
                     <button
                       onClick={(e) => {
@@ -150,7 +153,7 @@ const JobHistoryScreen = () => {
                       }}
                       className="w-full text-left px-4 py-2.5 text-xs font-bold text-primary hover:bg-orange-50 transition-colors border-b border-gray-100"
                     >
-                      Repost
+                      Re-Broadcast Bounty
                     </button>
                   )}
                   <button
@@ -161,7 +164,7 @@ const JobHistoryScreen = () => {
                     }}
                     className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 transition-colors"
                   >
-                    Delete
+                    Delete Log
                   </button>
                 </div>
               )}
@@ -188,9 +191,9 @@ const JobHistoryScreen = () => {
         <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 border-t border-dashed border-border pt-3">
           <div className="flex items-center space-x-1">
             <Users className="w-3.5 h-3.5" />
-            <span>Needed: {job.peopleNeeded}</span>
+            <span>Crew: {job.peopleNeeded}</span>
           </div>
-          <span className="text-dark font-black text-xs">₹{job.amount}</span>
+          <span className="text-dark font-black text-xs">{formatCurrency(job.amount, job.currency)} Bounty</span>
         </div>
       </div>
     );
@@ -206,25 +209,25 @@ const JobHistoryScreen = () => {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <span className="text-base font-semibold text-dark ml-2">Task history</span>
+        <span className="text-base font-semibold text-dark ml-2">Contract Mission Log</span>
       </div>
 
       <div className="flex-1 overflow-y-auto w-full">
-        <div className="px-4 py-6 space-y-10 max-w-md lg:max-w-2xl lg:px-8 mx-auto pb-20">
+        <div className="px-4 py-6 space-y-8 max-w-md lg:max-w-2xl lg:px-8 mx-auto pb-28">
         
         {/* Active Section */}
         <div ref={activeRef} className="space-y-4 pt-4 scroll-m-4" id="active-section">
           <div className="flex items-center space-x-2 px-1">
             <Clock className="w-4 h-4 text-blue-500" />
             <span className="text-sm font-semibold text-dark">
-              Active tasks
+              Active Operations
             </span>
           </div>
           <div className="space-y-3">
             {displayActive.length > 0 ? (
               displayActive.map(job => renderJobCard(job, 'active'))
             ) : (
-              <p className="text-xs font-medium text-gray-500 px-2">No active tasks.</p>
+              <p className="text-xs font-medium text-gray-500 px-2">No active operations in flight.</p>
             )}
           </div>
         </div>
@@ -234,14 +237,14 @@ const JobHistoryScreen = () => {
           <div className="flex items-center space-x-2 px-1">
             <CheckCircle className="w-4 h-4 text-green-500" />
             <span className="text-sm font-semibold text-dark">
-              Completed tasks
+              Fulfilled Contracts
             </span>
           </div>
           <div className="space-y-3">
             {displayCompleted.length > 0 ? (
               displayCompleted.map(job => renderJobCard(job, 'completed'))
             ) : (
-              <p className="text-xs font-medium text-gray-500 px-2">No completed tasks.</p>
+              <p className="text-xs font-medium text-gray-500 px-2">No fulfilled contracts on record.</p>
             )}
           </div>
         </div>
@@ -252,7 +255,7 @@ const JobHistoryScreen = () => {
             <div className="flex items-center space-x-2 px-1">
               <Clock className="w-4 h-4 text-red-500" />
               <span className="text-sm font-semibold text-dark">
-                Expired tasks
+                Expired Bounties
               </span>
             </div>
             <div className="space-y-3">
@@ -267,7 +270,7 @@ const JobHistoryScreen = () => {
             <div className="flex items-center space-x-2 px-1">
               <XCircle className="w-4 h-4 text-red-500" />
               <span className="text-sm font-semibold text-dark">
-                Cancelled tasks
+                Aborted Operations
               </span>
             </div>
             <div className="space-y-3">

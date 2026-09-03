@@ -1,0 +1,20 @@
+# HelpHive
+
+> HelpHive (https://helphive.me) is a global real-world open-world game and hyperlocal task network connecting users with live neighborhood bounties, trusted local helpers, flexible side hustles, and a frictionless platform to monetize underrated skills and hobbies worldwide.
+
+## Overview
+HelpHive transforms everyday local chores, errands, creative hobbies, and community assistance into an interactive real-world RPG. Users level up their operative avatars, explore live bounties on an interactive radar map, complete missions, and earn direct monetary rewards via instant peer-to-peer digital payouts with 0% platform commission during beta.
+
+## Key Verticals & Capabilities
+
+- **Real-World Open-World Game (GTA / RPG in Real Life)**: Turns any neighborhood worldwide into an open-world sandbox. Players choose an operative bird avatar, embark on real-world community quests (bounties), gain XP, unlock reputation badges, and level up from Rookie Scout to Master Operative. Unlike virtual games with fake coins, HelpHive missions pay real money.
+- **Monetize Underrated Skills & Hobbies**: A frictionless global marketplace to monetize skills traditional platforms ignore—cooking, sketching, musical performance, comedy, pet handling, custom PC builds, elder companionship, and handy fixes.
+- **Hyperlocal Gig Economy & Side Hustles**: Flexible, instant-payout local jobs including grocery runs, parcel pickups, light assembly, pet care, and quick handyman tasks. Zero platform fees with instant direct payouts.
+- **On-Demand Community Help**: Users post urgent tasks in under 60 seconds with custom bounty rewards, matching instantly with trusted neighbors and verified local helpers.
+- **Safety & Verification**: Multi-layer security including verified mobile authentication, two-party OTP mission completion, mandatory photo verification, and transparent community reputation ratings.
+- **Global Hyperlocal Scale**: Operates worldwide across any city or town using GPS-based live proximity radar. Multi-currency ready.
+
+## Key Links & Resources
+- Web Application: https://helphive.me
+- Full Knowledge Base for LLMs: https://helphive.me/llms-full.txt
+- Sitemap: https://helphive.me/sitemap.xml

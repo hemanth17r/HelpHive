@@ -5,8 +5,10 @@ import { ToastContext } from '../../store/ToastContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import { api } from '../../services/api';
+import { formatCurrency } from '../../utils/currency';
+
 const LiveStatusScreen = () => {
-  const { currentPostedJob, setCurrentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs, acceptPartialCrew, userId, userProfile } = useContext(AppContext);
+  const { currentPostedJob, setCurrentPostedJob, crewTaskers, setCrewTaskers, setLiveStatus, pushScreen, setJobs, acceptPartialCrew, userId, userProfile, currency } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -107,7 +109,7 @@ const LiveStatusScreen = () => {
       {/* Header */}
       <div className="text-center shrink-0">
         <span className="text-xs font-semibold text-gray-400">
-          Searching for Helpers...
+          Scanning Sector Operators...
         </span>
       </div>
 
@@ -127,7 +129,7 @@ const LiveStatusScreen = () => {
           <div className="bg-gray-50 border border-border rounded-2xl p-3 text-center w-32 shadow-xs">
             <div className="flex items-center justify-center space-x-1.5 text-gray-500 mb-1">
               <Users className="w-3.5 h-3.5 shrink-0 text-primary" />
-              <span className="text-xs font-medium text-gray-500">Accepted</span>
+              <span className="text-xs font-medium text-gray-500">Locked In</span>
             </div>
             <span className="text-lg font-semibold text-dark">
               {crewTaskers.length} / {currentPostedJob.peopleNeeded}
@@ -157,18 +159,15 @@ const LiveStatusScreen = () => {
             )}
           </div>
           <div className="flex justify-between items-center pt-2 border-t border-dashed border-border text-xs font-bold text-gray-500">
-            <div className="flex items-center space-x-1">
-              <IndianRupee className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-dark">₹{currentPostedJob.amount} Payout</span>
-            </div>
-            <span>Need {currentPostedJob.peopleNeeded} helpers</span>
+            <span className="text-dark font-black">{formatCurrency(currentPostedJob.amount, currentPostedJob.currency || currency?.code)} Bounty</span>
+            <span>Crew Size: {currentPostedJob.peopleNeeded} Operators</span>
           </div>
         </div>
 
         {/* Waiting text */}
         <div className="text-center mt-6">
           <p className="text-xs font-semibold text-gray-400 animate-pulse">
-            Waiting for a Tasker to accept this task...
+            Transmitting directives to nearby Operators on the Grid...
           </p>
         </div>
       </div>
@@ -180,16 +179,16 @@ const LiveStatusScreen = () => {
             onClick={() => acceptPartialCrew(currentPostedJob.id)}
             className="w-full max-w-md flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all cursor-pointer"
           >
-            <span>Proceed with {crewTaskers.length} Helper{crewTaskers.length > 1 ? 's' : ''}</span>
+            <span>Deploy with {crewTaskers.length} Operator{crewTaskers.length > 1 ? 's' : ''}</span>
           </button>
         )}
-        <Tooltip text="Cancel this task search" position="top" className="w-full flex justify-center">
+        <Tooltip text="Abort this bounty broadcast" position="top" className="w-full flex justify-center">
           <button
             onClick={() => setShowCancelModal(true)}
             className="w-full max-w-md flex items-center justify-center space-x-2 bg-gray-100 hover:bg-red-50 hover:text-red-500 text-gray-500 font-bold py-3.5 px-6 rounded-2xl transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
-            <span>Cancel Search</span>
+            <span>Abort Broadcast</span>
           </button>
         </Tooltip>
       </div>
@@ -207,9 +206,9 @@ const LiveStatusScreen = () => {
               <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
                 <ShieldAlert className="w-6 h-6 text-red-500" />
               </div>
-              <h3 className="text-lg font-black text-dark">Cancel Search?</h3>
+              <h3 className="text-lg font-black text-dark">Abort Broadcast?</h3>
               <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
-                Are you sure you want to cancel this task search?
+                Are you sure you want to abort this bounty broadcast? Operators in your sector will be released.
               </p>
             </div>
             <div className="flex space-x-3">
@@ -218,7 +217,7 @@ const LiveStatusScreen = () => {
                 disabled={isCancelling}
                 className="flex-1 py-3.5 border border-border text-gray-600 hover:bg-gray-50 rounded-2xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50"
               >
-                No, Keep Searching
+                Maintain Radar Scan
               </button>
               <button
                 disabled={isCancelling}
@@ -244,19 +243,19 @@ const LiveStatusScreen = () => {
                       .update({ status: 'expired' })
                       .eq('job_id', currentPostedJob.id)
                       .eq('status', 'pending');
-                    showToast('Task broadcast cancelled.', 'info');
+                    showToast('Bounty broadcast aborted.', 'info');
                     setShowCancelModal(false);
                     pushScreen('poster_home', true);
                   } catch (err) {
                     console.error("Failed to cancel broadcast:", err);
-                    showToast('Failed to cancel broadcast.', 'error');
+                    showToast('Failed to abort broadcast.', 'error');
                   } finally {
                     setIsCancelling(false);
                   }
                 }}
                 className="flex-1 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50"
               >
-                {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                {isCancelling ? 'Aborting...' : 'Yes, Abort'}
               </button>
             </div>
           </div>

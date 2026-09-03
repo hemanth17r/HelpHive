@@ -4,7 +4,6 @@ import { AppProvider, AppContext } from './store/AppContext';
 import { ToastProvider } from './store/ToastContext';
 import { NotificationProvider, NotificationContext } from './store/NotificationContext';
 import { 
-  Sparkles, 
   Home, 
   PlusCircle, 
   Plus, 
@@ -21,7 +20,9 @@ import {
   Star,
   Menu,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Radio,
+  Layers
 } from 'lucide-react';
 
 const WhatsAppIcon = ({ className }) => (
@@ -42,6 +43,7 @@ import MyProfileScreen from './screens/MyProfileScreen';
 import AboutUsScreen from './screens/AboutUsScreen';
 import NeedHelpScreen from './screens/NeedHelpScreen';
 import PosterHomeScreen from './screens/poster/PosterHomeScreen';
+import OperationsScreen from './screens/OperationsScreen';
 import PostJobScreen from './screens/poster/PostJobScreen';
 import LiveStatusScreen from './screens/poster/LiveStatusScreen';
 import CrewConfirmedScreen from './screens/poster/CrewConfirmedScreen';
@@ -55,6 +57,7 @@ import ProfileCompletionModal from './components/ProfileCompletionModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import SetupWizardModal from './components/SetupWizardModal';
 import LoginModal from './components/LoginModal';
+import CurrencyPickerModal from './components/CurrencyPickerModal';
 import DevToolsPanel from './components/DevToolsPanel';
 import NotificationsScreen from './screens/NotificationsScreen';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -103,7 +106,10 @@ const AppContent = () => {
     logout,
     switchRole,
     jobHistoryTab,
-    setJobHistoryTab
+    setJobHistoryTab,
+    currency,
+    showCurrencyPicker,
+    setShowCurrencyPicker
   } = useContext(AppContext);
 
   const { 
@@ -120,7 +126,6 @@ const AppContent = () => {
     hasNotifications,
     hasValidNameAndPhone,
     hasSkills,
-    hasUpiId,
     hasJobLocation
   } = useProfileCompletion();
 
@@ -157,7 +162,7 @@ const AppContent = () => {
 
       if (role === 'tasker') {
         const hasServiceArea = !missingWizardItems.includes('service_area');
-        isProfileIncomplete = !hasSkills || !hasServiceArea || !hasValidNameAndPhone || !hasUpiId || !hasPermissions;
+        isProfileIncomplete = !hasSkills || !hasServiceArea || !hasValidNameAndPhone || !hasPermissions;
       } else {
         isProfileIncomplete = !hasValidNameAndPhone || !hasJobLocation || !hasPermissions;
       }
@@ -171,7 +176,6 @@ const AppContent = () => {
     role,
     hasSkills,
     hasValidNameAndPhone,
-    hasUpiId,
     hasJobLocation,
     hasOsLocation,
     hasNotifications,
@@ -196,7 +200,8 @@ const AppContent = () => {
 
   const handleLogout = () => {
     logout();
-    pushScreen('landing');
+    setActiveTab('home');
+    pushScreen('tasker_home');
   };
 
   const handleHomeLogoClick = () => {
@@ -206,7 +211,8 @@ const AppContent = () => {
     } else if (role === 'poster') {
       pushScreen('poster_home');
     } else {
-      resetApp();
+      setActiveTab('home');
+      pushScreen('tasker_home');
     }
   };
 
@@ -347,6 +353,8 @@ const AppContent = () => {
         return <ServiceUnavailableScreen />;
       case 'tasker_onboarding':
         return <TaskerOnboardingScreen />;
+      case 'operations':
+        return <OperationsScreen />;
       case 'poster_home':
         return <PosterHomeScreen />;
       case 'tasker_home':
@@ -384,7 +392,7 @@ const AppContent = () => {
       case 'admin_dashboard':
         return <AdminDashboard />;
       default:
-        return <LandingScreen />;
+        return <TaskerHomeScreen />;
     }
   };
 
@@ -392,19 +400,13 @@ const AppContent = () => {
     alert(message);
   };
 
-  const isMainScreen = currentScreen === 'landing' || (currentScreen === 'tasker_home' && activeTab === 'home') || currentScreen === 'poster_home';
-  const showBottomNav = (currentScreen === 'tasker_home' && activeTab === 'home') || currentScreen === 'poster_home';
+  const isMainScreen = (currentScreen === 'tasker_home' && activeTab === 'home') || currentScreen === 'operations' || currentScreen === 'poster_home' || currentScreen === 'my_profile';
+  const showBottomNav = (currentScreen === 'tasker_home' && activeTab === 'home') || currentScreen === 'operations' || currentScreen === 'poster_home' || currentScreen === 'my_profile';
 
-
-
-  const isHomeActive = role === 'tasker' 
-    ? activeTab === 'home' && currentScreen === 'tasker_home'
-    : currentScreen === 'poster_home';
-
-  const isProfileActive = role === 'tasker' 
-    ? activeTab === 'profile' && currentScreen === 'tasker_home'
-    : currentScreen === 'my_profile';
-
+  const isRadarActive = currentScreen === 'tasker_home' && activeTab === 'home';
+  const isDeployActive = currentScreen === 'post_job';
+  const isOperationsActive = currentScreen === 'operations' || currentScreen === 'poster_home';
+  const isDossierActive = currentScreen === 'my_profile' || (currentScreen === 'tasker_home' && activeTab === 'profile');
   const isEarningsActive = currentScreen === 'tasker_activity';
   const isAddressBookActive = currentScreen === 'address_book' || currentScreen === 'add_edit_address';
   const isActiveTasksActive = currentScreen === 'job_history' && jobHistoryTab === 'active';
@@ -433,7 +435,7 @@ const AppContent = () => {
   }
 
   return (
-    <div className="h-full w-full bg-white flex flex-col p-0 select-none font-sans overflow-hidden">
+    <div className="h-full w-full bg-[#F8FAFC] flex flex-col p-0 select-none font-sans overflow-hidden">
       
       {/* Desktop Dashboard Header (above 1024px) */}
       {role && currentScreen !== 'landing' && (
@@ -449,11 +451,14 @@ const AppContent = () => {
               <Menu className="w-5 h-5" />
             </button>
             <div 
-              className="flex items-center cursor-pointer hover:opacity-90 transition-opacity"
+              className="relative inline-flex items-center cursor-pointer hover:opacity-90 transition-opacity"
               onClick={handleHomeLogoClick}
             >
               <span className="text-[22px] font-black text-dark tracking-tight">
                 Help<span className="text-primary">Hive</span>
+              </span>
+              <span className="self-start mt-0.5 ml-1 text-[8px] font-[900] uppercase tracking-wider text-primary leading-none select-none">
+                BETA
               </span>
             </div>
           </div>
@@ -474,15 +479,23 @@ const AppContent = () => {
           {/* Right: Actions */}
           <div className="flex items-center space-x-2">
             
-            {role === 'poster' && (
-              <button
-                onClick={handlePostTaskClick}
-                className="flex items-center space-x-1.5 px-4 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-full shadow-md shadow-primary/10 active-scale cursor-pointer mr-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Post a task</span>
-              </button>
-            )}
+            {/* Currency Switcher Badge */}
+            <button
+              onClick={() => setShowCurrencyPicker(true)}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs font-bold text-dark transition-colors cursor-pointer active-scale"
+              title="Change Currency"
+            >
+              <span className="text-sm leading-none">{currency?.flag || '🌐'}</span>
+              <span className="text-xs font-black">{currency?.code || 'INR'} ({currency?.symbol || '₹'})</span>
+            </button>
+
+            <button
+              onClick={handlePostTaskClick}
+              className="flex items-center space-x-1.5 px-4 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-full shadow-md shadow-primary/10 active-scale cursor-pointer mr-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Deploy Op</span>
+            </button>
 
             {/* Notification Bell */}
             <button 
@@ -501,12 +514,8 @@ const AppContent = () => {
             <button 
               className="p-1 rounded-full hover:bg-[#E8EAED] transition-colors active-scale cursor-pointer"
               onClick={() => {
-                if (role === 'tasker') {
-                  setActiveTab('profile');
-                  pushScreen('tasker_home');
-                } else if (role === 'poster') {
-                  pushScreen('my_profile');
-                }
+                setActiveTab('profile');
+                pushScreen('my_profile');
               }}
             >
               <div 
@@ -525,89 +534,96 @@ const AppContent = () => {
 
       {/* Mobile/Tablet Header (below 1024px) */}
       {role && isMainScreen && currentScreen !== 'landing' && (
-        <div 
-          className="lg:hidden bg-white px-4 pb-3 flex items-center justify-between shrink-0 z-10 relative pt-safe"
+        <header 
+          className="lg:hidden bg-transparent px-4 pb-1 pt-3 flex items-center justify-between shrink-0 z-20 relative max-w-md lg:max-w-xl mx-auto w-full"
           style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}
         >
-          <div className="flex items-center">
-            {/* Branding (Mobile) */}
-            <div 
-              className="flex items-center cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={handleHomeLogoClick}
-            >
-              <span className="text-lg font-black text-dark tracking-tight">
-                Help<span className="text-primary">Hive</span>
-              </span>
-            </div>
+          {/* Branding (Mobile) */}
+          <div 
+            className="relative inline-flex items-center cursor-pointer hover:opacity-90 transition-opacity active-scale"
+            onClick={handleHomeLogoClick}
+          >
+            <span className="text-xl font-black text-dark tracking-tight">
+              Help<span className="text-primary">Hive</span>
+            </span>
+            <span className="self-start mt-0.5 ml-0.5 text-[7px] font-[900] uppercase tracking-wider text-primary leading-none select-none">
+              BETA
+            </span>
           </div>
           
-          {/* Center: availability toggle for mobile */}
-          {role === 'tasker' && (
-            <button
-              onClick={() => setIsOnline(!isOnline)}
-              aria-label="Toggle Availability"
-              className={`relative inline-flex h-6.5 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none active-scale ${isOnline ? 'bg-primary' : 'bg-gray-200'}`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5.5 w-5.5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${isOnline ? 'translate-x-5.5' : 'translate-x-0'}`}
-              />
-            </button>
+          {/* Center: availability toggle for mobile (Tasker role only) */}
+          {role === 'tasker' ? (
+            <div className="flex items-center gap-1.5 bg-slate-100/80 px-2.5 py-1 rounded-full">
+              <span className={`text-[9px] font-black uppercase tracking-wider ${isOnline ? 'text-emerald-600' : 'text-slate-400'}`}>
+                {isOnline ? 'Online' : 'Offline'}
+              </span>
+              <button
+                onClick={() => setIsOnline(!isOnline)}
+                aria-label="Toggle Availability"
+                className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none active-scale ${isOnline ? 'bg-emerald-500' : 'bg-slate-300'}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out mt-[1px] ml-[1px] ${isOnline ? 'translate-x-3.5' : 'translate-x-0'}`}
+                />
+              </button>
+            </div>
+          ) : (
+            <div className="w-4"></div>
           )}
           
           {/* Right side actions */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-1.5">
 
             {/* Notification Bell (Mobile) */}
-            <div 
-              className="relative cursor-pointer hover:opacity-80 transition-opacity"
+            <button 
+              className="relative p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors active-scale cursor-pointer"
               onClick={handleNotificationClick}
+              aria-label="Notifications"
             >
-              <Bell className="w-5 h-5 text-gray-600" />
+              <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
-            </div>
+            </button>
 
+            {/* Profile Avatar Trigger (Mobile) */}
             {isMainScreen && (
-              <div 
+              <button 
                 onClick={() => {
-                  if (role === 'tasker') {
-                    setActiveTab('profile');
-                    pushScreen('tasker_home');
-                  } else if (role === 'poster') {
-                    pushScreen('my_profile');
-                  }
+                  setActiveTab('profile');
+                  pushScreen('my_profile');
                 }}
-                className="relative cursor-pointer"
+                aria-label="Agent Dossier"
+                className="relative cursor-pointer p-0.5 rounded-full hover:bg-slate-100 transition-colors active-scale"
               >
                 <div 
                   className="w-9 h-9 rounded-full flex items-center justify-center p-[2px]"
-                  style={{ background: `conic-gradient(#F26419 ${completionPercentage}%, #f3f4f6 ${completionPercentage}%)` }}
+                  style={{ background: `conic-gradient(#F26419 ${completionPercentage}%, #E2E8F0 ${completionPercentage}%)` }}
                 >
                   <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-2 border-white">
-                    <BirdAvatar birdName={selectedBird} size={28} />
+                    <BirdAvatar birdName={selectedBird} size={26} />
                   </div>
                 </div>
                 {renderStatusDot()}
-              </div>
+              </button>
             )}
             {/* Back button (hides on main layout bases) */}
             {!isMainScreen && (
               <button 
                 onClick={popScreen}
-                className="text-[10px] font-black text-primary hover:underline cursor-pointer"
+                className="text-xs font-black text-primary hover:underline cursor-pointer px-1 py-0.5"
               >
                 ← Back
               </button>
             )}
           </div>
-        </div>
+        </header>
       )}
 
       {/* Main Dashboard Layout with Collapsible Sidebar & Unified Viewport */}
-      <div className="flex-1 flex flex-row w-full overflow-hidden bg-white">
+      <div className="flex-1 flex flex-row w-full overflow-hidden bg-[#F8FAFC]">
         
         {/* Left Sidebar Navigation — Collapsible (Desktop only) */}
         {role && currentScreen !== 'landing' && (
@@ -625,72 +641,104 @@ const AppContent = () => {
             >
               <div className="space-y-1">
 
-                {/* Primary Nav Links */}
-                <nav className="space-y-0.5">
+                {/* Primary Nav Links (Universal 4 Pillars) */}
+                <nav className="space-y-1">
+                  {/* 1. Radar Grid */}
                   <button 
                     onClick={() => {
-                      if (role === 'tasker') {
-                        setActiveTab('profile');
-                        pushScreen('tasker_home');
-                      } else {
-                        pushScreen('my_profile');
-                      }
+                      setActiveTab('home');
+                      pushScreen('tasker_home');
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] font-semibold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
-                      isProfileActive 
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] font-bold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
+                      isRadarActive 
                         ? 'bg-[#FCE8DB] text-[#C4521A]' 
                         : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
                     }`}
-                    title="Profile"
+                    title="Radar Grid"
+                  >
+                    <Radio className="w-5 h-5 shrink-0" />
+                    <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Radar Grid</span>
+                  </button>
+
+                  {/* 2. Deploy Op */}
+                  <button 
+                    onClick={handlePostTaskClick}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] font-bold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
+                      isDeployActive 
+                        ? 'bg-[#FCE8DB] text-[#C4521A]' 
+                        : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
+                    }`}
+                    title="Deploy Op"
+                  >
+                    <PlusCircle className="w-5 h-5 shrink-0" />
+                    <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Deploy Op</span>
+                  </button>
+
+                  {/* 3. Operations Center */}
+                  <button 
+                    onClick={() => {
+                      pushScreen('operations');
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] font-bold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
+                      isOperationsActive 
+                        ? 'bg-[#FCE8DB] text-[#C4521A]' 
+                        : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
+                    }`}
+                    title="Operations"
+                  >
+                    <Layers className="w-5 h-5 shrink-0" />
+                    <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Operations</span>
+                  </button>
+
+                  {/* 4. Agent Dossier */}
+                  <button 
+                    onClick={() => {
+                      setActiveTab('profile');
+                      pushScreen('my_profile');
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] font-bold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
+                      isDossierActive 
+                        ? 'bg-[#FCE8DB] text-[#C4521A]' 
+                        : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
+                    }`}
+                    title="Agent Dossier"
                   >
                     <User className="w-5 h-5 shrink-0" />
-                    <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Profile</span>
+                    <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Dossier</span>
                   </button>
                 </nav>
 
-                {/* Role switch */}
-                <button 
-                  onClick={() => switchRole(role === 'tasker' ? 'poster' : 'tasker')}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-semibold text-primary hover:bg-[#FCE8DB]/50 transition-colors duration-200 cursor-pointer active-scale whitespace-nowrap overflow-hidden"
-                  title={role === 'tasker' ? 'Switch to hirer' : 'Switch to helper'}
-                >
-                  <ArrowLeftRight className="w-5 h-5 shrink-0" />
-                  <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>{role === 'tasker' ? 'Switch to hirer' : 'Switch to helper'}</span>
-                </button>
-
                 {/* Secondary Navigation Links */}
-                <div className="space-y-0.5">
-                  {role === 'tasker' ? (
-                    <button 
-                      onClick={() => {
-                        pushScreen('tasker_activity');
-                      }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-semibold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
-                        isEarningsActive 
-                          ? 'bg-[#FCE8DB] text-[#C4521A]' 
-                          : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
-                      }`}
-                      title="Earnings"
-                    >
-                      <TrendingUp className="w-5 h-5 shrink-0" />
-                      <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Earnings</span>
-                    </button>
-                  ) : role === 'poster' ? (
-                    <button 
-                      onClick={() => {
-                        pushScreen('address_book');
-                      }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-semibold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
-                        isAddressBookActive 
-                          ? 'bg-[#FCE8DB] text-[#C4521A]' 
-                          : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
-                      }`}
-                      title="Address book"
-                    >
-                      <MapPin className="w-5 h-5 shrink-0" />
-                      <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Address book</span>
-                    </button>
-                  ) : null}
+                <div className="space-y-1 pt-2 border-t border-border/50">
+                  <button 
+                    onClick={() => {
+                      pushScreen('tasker_activity');
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-xs font-semibold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
+                      isEarningsActive 
+                        ? 'bg-[#FCE8DB] text-[#C4521A]' 
+                        : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
+                    }`}
+                    title="Bounty Stash & Earnings"
+                  >
+                    <TrendingUp className="w-5 h-5 shrink-0" />
+                    <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Bounty Stash</span>
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      pushScreen('address_book');
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-xs font-semibold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
+                      isAddressBookActive 
+                        ? 'bg-[#FCE8DB] text-[#C4521A]' 
+                        : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
+                    }`}
+                    title="Sector Addresses"
+                  >
+                    <MapPin className="w-5 h-5 shrink-0" />
+                    <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Sector Addresses</span>
+                  </button>
                 </div>
               </div>
 
@@ -709,11 +757,11 @@ const AppContent = () => {
           </div>
         )}
 
-        {/* Main Viewport Content Area (Unified!) */}
+        {/* Main Viewport Content Area */}
         <main className={`flex-1 overflow-y-auto no-scrollbar relative flex flex-col w-full transition-all duration-300 ${
           currentScreen === 'landing' 
             ? 'bg-orange-50 p-0' 
-            : 'bg-white'
+            : 'bg-[#F8FAFC]'
         }`}>
           <div key={currentScreen} className="w-full flex-1 flex flex-col relative animate-[fadeIn_200ms_ease-in-out]">
             <ErrorBoundary key={currentScreen}>
@@ -724,9 +772,9 @@ const AppContent = () => {
 
       </div>
 
-      {/* Fixed Bottom Nav (Mobile/Tablet only) */}
+      {/* Fixed Floating Bottom Nav (Mobile/Tablet only) */}
       {showBottomNav && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 w-full">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 w-full pointer-events-none flex justify-center">
           <BottomNav />
         </div>
       )}
@@ -756,6 +804,11 @@ const AppContent = () => {
     <LoginModal 
       isOpen={showLoginModal}
       onClose={() => setShowLoginModal(false)}
+    />
+
+    <CurrencyPickerModal
+      isOpen={showCurrencyPicker}
+      onClose={() => setShowCurrencyPicker(false)}
     />
 
     <DevToolsPanel />

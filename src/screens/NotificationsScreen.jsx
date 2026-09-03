@@ -91,7 +91,7 @@ const NotificationsScreen = () => {
           >
             <ArrowLeft className="w-5 h-5 text-dark" />
           </button>
-          <h2 className="text-lg font-black text-dark">Notifications</h2>
+          <h2 className="text-lg font-black text-dark">Comms &amp; Dispatches</h2>
         </div>
         {notifications.some(n => !n.is_read) && (
           <button 
@@ -115,15 +115,15 @@ const NotificationsScreen = () => {
             <div className="flex-1">
               {pushPermission === 'denied' ? (
                 <>
-                  <h3 className="text-sm font-bold text-dark">Notifications Blocked</h3>
+                  <h3 className="text-sm font-bold text-dark">Dispatches Blocked</h3>
                   <p className="text-xs text-gray-600 mt-1">
-                    Notifications are blocked by your browser. To enable them, open your browser settings and allow notifications for this site.
+                    Comms dispatches are blocked by your browser. To enable them, allow notifications for this site in browser settings.
                   </p>
                 </>
               ) : (
                 <>
-                  <h3 className="text-sm font-bold text-dark">Enable Push Notifications</h3>
-                  <p className="text-xs text-gray-600 mt-1">Get instantly notified when a tasker accepts your task or completes it, even when you're not in the app.</p>
+                  <h3 className="text-sm font-bold text-dark">Enable Priority Comms Dispatches</h3>
+                  <p className="text-xs text-gray-600 mt-1">Get instant tactical alerts when Operators lock onto your bounties or fulfill contracts, even outside the app.</p>
                   <button 
                     onClick={handleSubscribeToPush}
                     disabled={isSubscribing}
@@ -136,7 +136,7 @@ const NotificationsScreen = () => {
                         <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"></span>
                         <span>Enabling...</span>
                       </span>
-                    ) : 'Turn on notifications'}
+                    ) : 'Activate Priority Uplink'}
                   </button>
                   {subscribeError && (
                     <p className="text-xs text-red-500 font-semibold mt-2">{subscribeError}</p>
@@ -156,8 +156,8 @@ const NotificationsScreen = () => {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                 <Bell className="w-8 h-8 text-gray-400" />
               </div>
-              <p className="text-dark font-bold">No notifications yet</p>
-              <p className="text-sm text-gray-500 mt-1">When you get updates about your tasks or ratings, they'll show up here.</p>
+              <p className="text-dark font-bold">No Comms Dispatches</p>
+              <p className="text-sm text-gray-500 mt-1">Incoming mission updates, clearance keycodes, and combat commendations will appear here.</p>
             </div>
           ) : (
             notifications.map((notification) => (

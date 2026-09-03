@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
-import { Home, User, Repeat, Clock, Plus } from 'lucide-react';
+import { Radio, Plus, Layers } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { useProfileCompletion } from '../hooks/useProfileCompletion';
 
@@ -7,18 +7,14 @@ const BottomNav = () => {
   const { 
     activeTab, 
     setActiveTab, 
-    switchRole, 
-    role, 
     pushScreen, 
     currentScreen, 
     userId,
     openLoginModal,
     openOnboardingWizard
   } = useContext(AppContext);
-  const [isRotating, setIsRotating] = useState(false);
+  
   const [visible, setVisible] = useState(true);
-
-  const timeoutRef = useRef(null);
   const lastScrollTopRef = useRef(0);
 
   useEffect(() => {
@@ -27,8 +23,8 @@ const BottomNav = () => {
 
   useEffect(() => {
     const handleScroll = (e) => {
-      // Keep bottom bar always fixed on Hirer or Tasker Home Screens
-      if (currentScreen === 'tasker_home' || currentScreen === 'poster_home') {
+      // Keep bottom bar always fixed on main screens
+      if (currentScreen === 'tasker_home' || currentScreen === 'operations' || currentScreen === 'poster_home') {
         setVisible(true);
         return;
       }
@@ -59,37 +55,21 @@ const BottomNav = () => {
     };
   }, [currentScreen]);
 
-  const handleSwitchMode = () => {
-    setIsRotating(true);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      setIsRotating(false);
-      switchRole(role === 'tasker' ? 'poster' : 'tasker');
-    }, 400);
-  };
-
-  React.useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  const handleHomeClick = () => {
-    if (role === 'tasker') setActiveTab('home');
-    else pushScreen('poster_home');
-  };
-
-  const handleProfileClick = () => {
-    if (role === 'tasker') setActiveTab('profile');
-    else pushScreen('my_profile');
-  };
-
   const { missingWizardItems } = useProfileCompletion();
 
-  const handlePlusClick = () => {
+  const handleRadarClick = () => {
+    setActiveTab('home');
+    pushScreen('tasker_home');
+  };
+
+  const handleOperationsClick = () => {
+    pushScreen('operations');
+  };
+
+  const handleDeployClick = () => {
     if (!userId) {
       openLoginModal(() => {
-        handlePlusClick();
+        handleDeployClick();
       });
       return;
     }
@@ -103,69 +83,61 @@ const BottomNav = () => {
     }
   };
 
-  const isHomeActive = role === 'tasker' 
-    ? activeTab === 'home' 
-    : currentScreen === 'poster_home';
-
-  const isProfileActive = role === 'tasker' 
-    ? activeTab === 'profile' 
-    : currentScreen === 'my_profile';
+  const isRadarActive = currentScreen === 'tasker_home' && activeTab === 'home';
+  const isDeployActive = currentScreen === 'post_job';
+  const isOperationsActive = currentScreen === 'operations' || currentScreen === 'poster_home';
 
   return (
-    <div 
-      className={`grid grid-cols-3 items-center bg-white/95 backdrop-blur-lg shrink-0 w-full transition-all duration-300 ease-in-out origin-bottom ${
+    <nav 
+      aria-label="Bottom Navigation"
+      className={`pointer-events-auto mx-auto w-[calc(100%-2.5rem)] max-w-xs sm:max-w-sm p-1 grid grid-cols-3 items-center bg-slate-200/50 backdrop-blur-2xl backdrop-saturate-150 rounded-full border border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.07),0_1px_3px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.9)] transition-all duration-300 ease-in-out origin-bottom z-40 ${
         visible 
-          ? 'py-2.5 opacity-100 translate-y-0 shadow-[0_-2px_10px_rgba(0,0,0,0.02)]' 
-          : 'py-0 opacity-0 pointer-events-none overflow-hidden border-transparent translate-y-full'
+          ? 'opacity-100 translate-y-0' 
+          : 'opacity-0 pointer-events-none translate-y-8'
       }`}
       style={{
-        paddingBottom: 'calc(env(safe-area-inset-bottom) + 6px)'
+        marginBottom: 'max(env(safe-area-inset-bottom), 14px)'
       }}
     >
+      {/* 1. Radar Grid */}
       <button
-        onClick={handleHomeClick}
-        className={`flex flex-col items-center space-y-0.5 py-1 transition-all cursor-pointer ${
-          isHomeActive ? 'text-primary' : 'text-gray-400 hover:text-primary'
+        onClick={handleRadarClick}
+        className={`flex flex-col items-center justify-center py-2 px-2 rounded-full transition-all duration-200 cursor-pointer select-none active-scale ${
+          isRadarActive 
+            ? 'bg-white/95 backdrop-blur-md text-primary font-black shadow-[0_2px_10px_rgba(242,100,25,0.12),0_1px_2px_rgba(0,0,0,0.04)] border border-white/90' 
+            : 'text-slate-500 hover:text-slate-900 hover:bg-white/30'
         }`}
       >
-        <Home className="w-5 h-5" />
-        <span className="text-[9px] font-extrabold tracking-wide">Home</span>
+        <Radio className="w-5 h-5 shrink-0" />
+        <span className="text-[10px] font-black uppercase tracking-wider mt-0.5 leading-none">Radar</span>
       </button>
 
-      {role === 'poster' ? (
-        <div className="relative flex justify-center w-full h-10">
-          <div className="absolute -top-[30px]">
-            <button
-              onClick={handlePlusClick}
-              className="w-14 h-14 bg-gradient-to-tr from-primary to-orange-500 rounded-full shadow-lg shadow-orange-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-transform cursor-pointer shrink-0"
-              title="Post a Task"
-            >
-              <Plus size={32} />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={handleProfileClick}
-          className={`flex flex-col items-center space-y-0.5 py-1 transition-all cursor-pointer justify-center ${
-            isProfileActive ? 'text-primary' : 'text-gray-400 hover:text-primary'
-          }`}
-        >
-          <User className="w-5 h-5" />
-          <span className="text-[9px] font-extrabold tracking-wide">Profile</span>
-        </button>
-      )}
-
+      {/* 2. Deploy Contract (Middle Inline Tab) */}
       <button
-        onClick={handleSwitchMode}
-        className="flex flex-col items-center space-y-0.5 py-1 text-gray-400 hover:text-primary transition-all cursor-pointer justify-center"
+        onClick={handleDeployClick}
+        className={`flex flex-col items-center justify-center py-2 px-2 rounded-full transition-all duration-200 cursor-pointer select-none active-scale ${
+          isDeployActive 
+            ? 'bg-white/95 backdrop-blur-md text-primary font-black shadow-[0_2px_10px_rgba(242,100,25,0.12),0_1px_2px_rgba(0,0,0,0.04)] border border-white/90' 
+            : 'text-slate-500 hover:text-slate-900 hover:bg-white/30'
+        }`}
       >
-        <Repeat className={`w-5 h-5 ${isRotating ? 'animate-role-rotate' : ''}`} />
-        <span className="text-[9px] font-extrabold tracking-wide">
-          {role === 'tasker' ? 'Hirer Mode' : 'Tasker Mode'}
-        </span>
+        <Plus className="w-5 h-5 shrink-0 stroke-[2.5]" />
+        <span className="text-[10px] font-black uppercase tracking-wider mt-0.5 leading-none">Deploy</span>
       </button>
-    </div>
+
+      {/* 3. Operations Center */}
+      <button
+        onClick={handleOperationsClick}
+        className={`flex flex-col items-center justify-center py-2 px-2 rounded-full transition-all duration-200 cursor-pointer select-none active-scale ${
+          isOperationsActive 
+            ? 'bg-white/95 backdrop-blur-md text-primary font-black shadow-[0_2px_10px_rgba(242,100,25,0.12),0_1px_2px_rgba(0,0,0,0.04)] border border-white/90' 
+            : 'text-slate-500 hover:text-slate-900 hover:bg-white/30'
+        }`}
+      >
+        <Layers className="w-5 h-5 shrink-0" />
+        <span className="text-[10px] font-black uppercase tracking-wider mt-0.5 leading-none">Operations</span>
+      </button>
+    </nav>
   );
 };
 

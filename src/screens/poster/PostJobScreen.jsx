@@ -1,20 +1,26 @@
-import React, { useState, useContext, useRef } from 'react';
-import { ArrowLeft, Minus, Plus, IndianRupee, Radio, Info, Calendar, MapPin, Home, Briefcase, Wifi, X } from 'lucide-react';
+import React, { useState, useContext, useRef, useMemo } from 'react';
+import { ArrowLeft, Minus, Plus, IndianRupee, Radio, Info, Calendar, Clock, MapPin, Home, Briefcase, Wifi, X, Target, Trophy, Crown, Search, Zap, Check, HeartHandshake, Users, Flame, Globe } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
-import { SKILLS } from '../../config/constants';
+import { SKILLS, SUB_SKILL_TAGS, GAME_SKILLS, HERO_DISCIPLINES, searchGameSkills } from '../../config/constants';
 import IconLabel from '../../components/IconLabel';
 import Tooltip from '../../components/Tooltip';
 import LocationPicker from '../../components/LocationPicker';
 import { ToastContext } from '../../store/ToastContext';
 import { evaluateMarketplaceMaturity } from '../../utils/marketplaceMaturity';
 import { api } from '../../services/api';
+import { formatCurrency } from '../../utils/currency';
+
 const PostJobScreen = () => {
-  const { userLocation, postJob, popScreen, editJobData, setEditJobData, savedAddresses, addSavedAddress, userProfile, setUserProfile, realLocation, setRealLocation } = useContext(AppContext);
+  const { userLocation, postJob, popScreen, editJobData, setEditJobData, savedAddresses, addSavedAddress, userProfile, setUserProfile, realLocation, setRealLocation, userId, openLoginModal, currency, setShowCurrencyPicker } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const [selectedSkillId, setSelectedSkillId] = useState(editJobData?.skillId || '');
+  const [selectedTags, setSelectedTags] = useState(editJobData?.skillTags || []);
   const [description, setDescription] = useState(editJobData?.description || '');
   const [peopleNeeded, setPeopleNeeded] = useState(editJobData?.peopleNeeded || 1);
   const [amount, setAmount] = useState(editJobData?.amount ? String(editJobData.amount) : '');
+  const [skillSearchQuery, setSkillSearchQuery] = useState('');
+  const [selectedDisciplineId, setSelectedDisciplineId] = useState('all');
+  const [questRarity, setQuestRarity] = useState('standard'); // 'standard' | 'legendary' | 'volunteer'
   
   const datesList = React.useMemo(() => {
     const list = [];
@@ -70,8 +76,24 @@ const PostJobScreen = () => {
 
   // Rotating examples logic
   const [exampleIndex, setExampleIndex] = useState(0);
-  const currentSkill = SKILLS.find(s => s.id === selectedSkillId) || SKILLS[0];
-  const activeExamples = currentSkill?.examples || ['Describe your task here'];
+  const currentSkill = GAME_SKILLS.find(s => s.id === selectedSkillId) || SKILLS.find(s => s.id === selectedSkillId) || GAME_SKILLS[0];
+  const activeExamples = currentSkill?.examples || ['Describe your quest objectives here...'];
+
+  const filteredGameSkills = useMemo(() => {
+    let list = GAME_SKILLS;
+    if (selectedDisciplineId !== 'all') {
+      list = list.filter(s => s.disciplineId === selectedDisciplineId);
+    }
+    if (skillSearchQuery.trim()) {
+      const q = skillSearchQuery.trim().toLowerCase();
+      list = list.filter(s => 
+        s.label.toLowerCase().includes(q) ||
+        s.tagline.toLowerCase().includes(q) ||
+        s.aliases?.some(a => a.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [selectedDisciplineId, skillSearchQuery]);
 
   React.useEffect(() => {
     if (activeExamples.length <= 1) return;
@@ -264,6 +286,10 @@ const PostJobScreen = () => {
   };
 
   const handlePost = () => {
+    if (!userId) {
+      openLoginModal();
+      return;
+    }
     if (isLoading) return;
     if (!selectedSkillId) return;
     const parsedAmount = parseFloat(amount);
@@ -283,22 +309,33 @@ const PostJobScreen = () => {
       lng: address.lng || realLocation?.lng || 78.9629 
     };
     setIsLoading(true);
+
+    const gameSkill = GAME_SKILLS.find(s => s.id === selectedSkillId);
+    const dbSkillId = gameSkill ? (gameSkill.categoryId || gameSkill.id) : selectedSkillId;
+    const allTags = gameSkill 
+      ? Array.from(new Set([gameSkill.label, ...(selectedTags || [])]))
+      : selectedTags;
+
     const result = await postJob({
       id: editJobData?.id,
-      skillId: selectedSkillId,
+      skillId: dbSkillId,
+      specificSkillId: selectedSkillId,
+      skillTags: allTags,
+      questRarity: questRarity,
       description: description,
       peopleNeeded: peopleNeeded,
       amount: parsedAmount,
+      currency: currency?.code || 'INR',
       day: day,
       time: time,
-      posterName: userProfile?.posterName || userProfile?.name || 'You',
+      posterName: userProfile?.posterName || userProfile?.name || 'Guild Master',
       lat: coords.lat,
       lng: coords.lng,
       address: address
     });
     setIsLoading(false);
     if (!result || !result.success) {
-      showToast(result?.error || 'Failed to post task. Please try again.', 'error');
+      showToast(result?.error || 'Failed to broadcast bounty. Please try again.', 'error');
     }
   };
 
@@ -364,10 +401,13 @@ const PostJobScreen = () => {
   const showRemote = !selectedSkill || selectedSkill.type === 'remote';
 
   return (
-    <div className="flex-1 flex flex-col justify-between bg-white px-6 pt-3 pb-8 lg:pt-4 lg:px-8 overflow-hidden select-none">
+    <div className="flex-1 flex flex-col justify-between bg-[#F8FAFC] px-4 pt-2 pb-8 lg:pt-4 lg:px-8 overflow-hidden select-none">
       
       {/* Header */}
-      <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full mb-3 shrink-0">
+      <div 
+        className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full mb-2 shrink-0"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 8px)' }}
+      >
         <div className="flex items-center justify-between">
           <button
             onClick={() => {
@@ -377,35 +417,41 @@ const PostJobScreen = () => {
                 popScreen();
               }
             }}
-            className="p-2.5 -ml-2 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
+            className="p-2 -ml-2 rounded-full hover:bg-slate-200/60 text-slate-700 cursor-pointer active-scale"
+            aria-label="Back"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <span className="text-xs font-semibold text-gray-500">
-            Post a task
+          <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+            Broadcast Bounty
           </span>
-          <div className="w-10"></div>
+          <div className="w-9"></div>
         </div>
       </div>
 
       {/* Selected Location Banner */}
       {selectedJobLocation && (
         <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full mb-3 shrink-0">
-          <div className="px-4 py-3 bg-orange-50 border border-orange-100 rounded-xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform" onClick={() => setShowAddressPopup(true)}>
-            <div className="flex items-center space-x-3 mr-4">
-              <div className="p-2 bg-white rounded-lg shadow-sm shrink-0">
-                <MapPin className="w-4 h-4 text-orange-500" />
+          <div 
+            className="px-4 py-3 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl flex items-center justify-between cursor-pointer active-scale shadow-2xs hover:border-primary/50 transition-all" 
+            onClick={() => setShowAddressPopup(true)}
+          >
+            <div className="flex items-center space-x-3 mr-3 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-orange-100/70 text-primary flex items-center justify-center shrink-0">
+                <MapPin className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-primary">Task location</p>
-                <p className="text-xs font-semibold text-dark line-clamp-1 mt-0.5">
+                <p className="text-[10px] font-black uppercase tracking-wider text-primary">Drop Coordinates</p>
+                <p className="text-xs font-bold text-slate-900 truncate mt-0.5">
                   {selectedJobLocation.completeAddress?.startsWith('Location at') && selectedJobLocation.landmark 
                     ? selectedJobLocation.landmark 
                     : selectedJobLocation.completeAddress}
                 </p>
               </div>
             </div>
-            <button className="text-xs font-medium text-primary bg-white px-2.5 py-1 rounded-md shadow-xs border border-orange-100 shrink-0">Change</button>
+            <button className="text-[11px] font-black text-primary bg-orange-50 px-3 py-1.5 rounded-xl border border-orange-200/60 shrink-0 cursor-pointer">
+              Change
+            </button>
           </div>
         </div>
       )}
@@ -420,28 +466,28 @@ const PostJobScreen = () => {
           <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-6">
             <Info className="w-10 h-10 text-primary" />
           </div>
-          <h2 className="text-2xl font-black text-dark mb-3">Not Active Here Yet</h2>
+          <h2 className="text-2xl font-black text-dark mb-3">Sector Still Calibrating</h2>
           <p className="text-sm font-semibold text-gray-500 mb-8 max-w-xs">
-            We don't have enough taskers for <strong className="text-dark">{currentSkill?.label}</strong> near this location yet. Join the waitlist to be notified!
+            We are still onboarding verified operators for <strong className="text-dark">{currentSkill?.label}</strong> in this sector. Join the priority dispatch queue!
           </p>
           
           {isWaitlisted ? (
             <div className="bg-green-50 border border-green-200 rounded-2xl p-5 w-full max-w-xs">
-              <p className="font-black text-green-700 text-lg mb-1">You're on the list!</p>
+              <p className="font-black text-green-700 text-lg mb-1">Queued for Dispatch!</p>
               <p className="text-xs font-bold text-green-600/80">
-                {waitlistCount} {waitlistCount === 1 ? 'person is' : 'people are'} waiting in this area. We'll alert you soon.
+                {waitlistCount} {waitlistCount === 1 ? 'player is' : 'players are'} in this sector queue. We will notify you immediately.
               </p>
             </div>
           ) : (
             <button 
               onClick={handleJoinWaitlist}
               disabled={isLoading}
-              className="w-full max-w-xs flex items-center justify-center space-x-2 bg-dark hover:bg-dark/90 text-white font-black py-4 px-6 rounded-2xl shadow-lg active:scale-[0.99] transition-all cursor-pointer"
+              className="w-full max-w-xs flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-primary/25 active:scale-[0.99] transition-all cursor-pointer"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
-                <span>Join Waitlist</span>
+                <span>Join Priority Dispatch</span>
               )}
             </button>
           )}
@@ -453,60 +499,213 @@ const PostJobScreen = () => {
             {/* Centered inner form content */}
             <div className="space-y-8 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full text-left pt-2">
             
-            {/* Category Section */}
-            <div className="space-y-8">
+            {/* Quest Hero Talent Section */}
+            <div className="space-y-5">
               <div>
-                <h2 className="text-xl font-black text-dark tracking-tight mb-1">
-                  What kind of help do you need?
+                <h2 className="text-xl font-black text-slate-900 tracking-tight mb-0.5">
+                  Select Required Hero Talent
                 </h2>
+                <p className="text-xs text-slate-500 font-semibold">
+                  Specify the skill your quest requires from the Realm
+                </p>
               </div>
 
-              {/* Physical & On-site Section */}
-              {showPhysical && (
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-1.5 px-1">
-                    <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className="text-xs font-medium text-slate-700 tracking-wide">
-                      On-site & Physical Services
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3 max-w-md mx-auto">
-                    {SKILLS.filter(s => s.type === 'physical').map((skill) => {
-                      const isSelected = selectedSkillId === skill.id;
-                      return (
-                        <IconLabel
-                          key={skill.id}
-                          icon={skill.icon}
-                          label={skill.label}
-                          selected={isSelected}
-                          onClick={() => setSelectedSkillId(prev => prev === skill.id ? '' : skill.id)}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {/* Instant Skill Search Bar */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={skillSearchQuery}
+                  onChange={(e) => setSkillSearchQuery(e.target.value)}
+                  placeholder="Search required talent (e.g. Drone, Chef, IKEA, Reels)..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-primary focus:bg-white transition-all shadow-inner"
+                />
+                {skillSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSkillSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
 
-              {/* Online & Remote Section */}
-              {showRemote && (
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-1.5 px-1">
-                    <Wifi className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className="text-xs font-medium text-slate-700 tracking-wide">
-                      Online & Remote Services
-                    </span>
+              {/* Horizontal Discipline Pills */}
+              <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pb-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedDisciplineId('all')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    selectedDisciplineId === 'all'
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+                  }`}
+                >
+                  All Disciplines
+                </button>
+                {HERO_DISCIPLINES.map(d => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setSelectedDisciplineId(d.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      selectedDisciplineId === d.id
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+                    }`}
+                  >
+                    {d.shortTitle}
+                  </button>
+                ))}
+              </div>
+
+              {/* Skills Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                {filteredGameSkills.map((skill) => {
+                  const isSelected = selectedSkillId === skill.id || selectedSkillId === skill.categoryId;
+                  const SkillIcon = skill.icon || Zap;
+
+                  return (
+                    <div
+                      key={skill.id}
+                      onClick={() => {
+                        setSelectedSkillId(prev => prev === skill.id ? '' : skill.id);
+                        setSelectedTags([]);
+                      }}
+                      className={`p-3 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                        isSelected
+                          ? 'bg-orange-50/80 border-primary shadow-xs ring-1 ring-primary/20'
+                          : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                            isSelected ? 'bg-primary text-white shadow-xs' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            <SkillIcon className="w-4 h-4 shrink-0" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-black text-slate-900 text-xs tracking-tight truncate leading-snug">
+                              {skill.label}
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-bold truncate mt-0.5 leading-none">
+                              {skill.tagline}
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 border mt-0.5 ${
+                          isSelected ? 'bg-primary border-primary text-white' : 'border-slate-300 bg-white'
+                        }`}>
+                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-100/80">
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 leading-none">
+                          {skill.type === 'remote' ? (
+                            <>
+                              <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="leading-none">Remote Op</span>
+                            </>
+                          ) : (
+                            <>
+                              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="leading-none">Physical Raid</span>
+                            </>
+                          )}
+                        </span>
+                        {skill.isHighDemand && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-orange-600 font-black tracking-wide leading-none bg-orange-50/90 px-1.5 py-0.5 rounded-md border border-orange-200/60">
+                            <Flame className="w-3 h-3 text-orange-500 shrink-0 fill-orange-500/30" />
+                            <span className="leading-none">High Demand</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {filteredGameSkills.length === 0 && (
+                  <div className="col-span-full p-4 rounded-2xl bg-orange-50/80 border border-orange-200 text-center space-y-2.5 my-2">
+                    <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center mx-auto shadow-xs">
+                      <Zap className="w-5 h-5 fill-white/20" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 text-xs">
+                        No standard skill for "{skillSearchQuery}"
+                      </h4>
+                      <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                        Broadcast this bounty as a Custom Op with your custom tag.
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSkillId('custom_physical_op');
+                          const cleanTag = skillSearchQuery.trim().replace(/^#/, '');
+                          if (cleanTag && !selectedTags.includes(cleanTag)) {
+                            setSelectedTags(prev => [...prev, cleanTag]);
+                          }
+                        }}
+                        className="px-3.5 py-2 bg-primary hover:bg-primary/95 text-white font-black text-xs rounded-xl shadow-xs transition-all active-scale cursor-pointer inline-flex items-center space-x-1.5"
+                      >
+                        <Zap className="w-3.5 h-3.5 fill-white/20" />
+                        <span>Custom Physical Op</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSkillId('custom_remote_op');
+                          const cleanTag = skillSearchQuery.trim().replace(/^#/, '');
+                          if (cleanTag && !selectedTags.includes(cleanTag)) {
+                            setSelectedTags(prev => [...prev, cleanTag]);
+                          }
+                        }}
+                        className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-black text-xs rounded-xl shadow-xs transition-all active-scale cursor-pointer inline-flex items-center space-x-1.5"
+                      >
+                        <Zap className="w-3.5 h-3.5 fill-white/20" />
+                        <span>Custom Remote Op</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-3 max-w-md mx-auto">
-                    {SKILLS.filter(s => s.type === 'remote').map((skill) => {
-                      const isSelected = selectedSkillId === skill.id;
+                )}
+              </div>
+
+              {/* Sub-Skill / Equipment Tag Chips */}
+              {selectedSkillId && (
+                <div className="p-3.5 bg-orange-50/40 border border-orange-100/70 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                      Target Equipment &amp; Sub-Skill Tags
+                    </span>
+                    {selectedTags.length > 0 && (
+                      <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                        {selectedTags.length} tagged
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(SUB_SKILL_TAGS[currentSkill?.categoryId || currentSkill?.id] || ['Standard Specs', 'Priority Dispatch', 'Special Gear']).map((tag) => {
+                      const isTagSelected = selectedTags.includes(tag);
                       return (
-                        <IconLabel
-                          key={skill.id}
-                          icon={skill.icon}
-                          label={skill.label}
-                          selected={isSelected}
-                          onClick={() => setSelectedSkillId(prev => prev === skill.id ? '' : skill.id)}
-                        />
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTags(prev => 
+                              prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                            );
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                            isTagSelected
+                              ? 'bg-primary text-white border-primary shadow-xs'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-primary/40 hover:bg-orange-50/50'
+                          }`}
+                        >
+                          #{tag}
+                        </button>
                       );
                     })}
                   </div>
@@ -514,17 +713,73 @@ const PostJobScreen = () => {
               )}
             </div>
 
+            {/* Quest Rarity Tier Selector */}
+            <div className="space-y-3 pt-1">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                  Quest Rarity Tier
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold">
+                  Defines the urgency and reward prestige on the Quest Radar
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQuestRarity('standard')}
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                    questRarity === 'standard'
+                      ? 'bg-orange-50/90 border-primary ring-1 ring-primary/20 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 hover:bg-white text-slate-600'
+                  }`}
+                >
+                  <Target className="w-4 h-4 mx-auto mb-1 text-primary stroke-[2.2]" />
+                  <p className="text-xs font-black text-slate-900 leading-tight">Standard</p>
+                  <span className="text-[9px] font-bold text-slate-400 block mt-0.5">Regular Quest</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setQuestRarity('legendary')}
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                    questRarity === 'legendary'
+                      ? 'bg-amber-50 border-amber-400 ring-1 ring-amber-400/40 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 hover:bg-white text-slate-600'
+                  }`}
+                >
+                  <Trophy className="w-4 h-4 mx-auto mb-1 text-amber-600 stroke-[2.2]" />
+                  <p className="text-xs font-black text-amber-900 leading-tight">Legendary</p>
+                  <span className="text-[9px] font-bold text-amber-600 block mt-0.5">Gold Bounty</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setQuestRarity('volunteer')}
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                    questRarity === 'volunteer'
+                      ? 'bg-teal-50 border-teal-400 ring-1 ring-teal-400/40 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 hover:bg-white text-slate-600'
+                  }`}
+                >
+                  <HeartHandshake className="w-4 h-4 mx-auto mb-1 text-teal-600 stroke-[2.2]" />
+                  <p className="text-xs font-black text-teal-900 leading-tight">Volunteer</p>
+                  <span className="text-[9px] font-bold text-teal-600 block mt-0.5">Community Aid</span>
+                </button>
+              </div>
+            </div>
+
             {/* Description Section */}
             <div className="space-y-4">
               <div>
                 <h2 className="text-lg font-bold text-dark tracking-tight mb-1">
-                  Describe what you need
+                  Mission Directives & Briefing
                 </h2>
               </div>
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
                   <label className="block text-xs font-semibold text-gray-600">
-                    Description
+                    Directives & Scope
                   </label>
                   <span className={`text-[10px] font-bold ${description.length > 130 ? 'text-red-500' : 'text-gray-400'}`}>
                     {description.length}/150
@@ -542,18 +797,18 @@ const PostJobScreen = () => {
             </div>
 
             {/* When do you need it? Section */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <h2 className="text-lg font-bold text-dark tracking-tight mb-1">
-                  When do you need it?
+                <h2 className="text-base font-black text-dark tracking-tight">
+                  Deployment Window
                 </h2>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5 overflow-hidden">
-                  <label className="block text-xs font-semibold text-gray-600">
+                  <label className="block text-xs font-extrabold text-slate-500">
                     Date
                   </label>
-                  <div className="flex overflow-x-auto no-scrollbar bg-gray-100 p-1 rounded-xl h-[52px] snap-x">
+                  <div className="flex items-center overflow-x-auto no-scrollbar bg-slate-200/50 backdrop-blur-xl p-1 rounded-2xl h-[48px] border border-white/70 shadow-[inset_0_1px_3px_rgba(0,0,0,0.03)] snap-x">
                     {datesList.map((d, i) => {
                       const dIso = d.toISOString();
                       const isSelected = day === dIso;
@@ -563,8 +818,10 @@ const PostJobScreen = () => {
                           key={dIso}
                           type="button"
                           onClick={() => setDay(dIso)}
-                          className={`shrink-0 px-4 rounded-lg text-sm font-bold transition-all cursor-pointer snap-start ${
-                            isSelected ? 'bg-white shadow-xs text-dark' : 'text-gray-500 hover:text-dark'
+                          className={`shrink-0 px-3.5 h-full rounded-xl text-xs font-black transition-all cursor-pointer snap-start flex items-center justify-center ${
+                            isSelected 
+                              ? 'bg-white/95 backdrop-blur-md shadow-xs text-slate-900 border border-white/90' 
+                              : 'text-slate-500 hover:text-slate-800'
                           }`}
                         >
                           {label}
@@ -575,113 +832,158 @@ const PostJobScreen = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-gray-600">
+                  <label className="block text-xs font-extrabold text-slate-500">
                     Time
                   </label>
-                  <div className="flex items-center gap-1.5 w-full">
-                    <button
-                      type="button"
-                      onClick={() => setShowTimePicker(true)}
-                      className="flex items-center justify-center bg-gray-50 border border-border hover:border-primary hover:bg-white rounded-xl px-2 h-[52px] flex-1 cursor-pointer transition-all"
-                    >
-                      <span className="text-sm font-black text-dark">
-                        {hour}:{minute}
-                      </span>
-                    </button>
-                    
-                    <div className="flex bg-gray-100 p-1 rounded-xl h-[52px] shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setAmpm('AM')}
-                        className={`px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                          ampm === 'AM' ? 'bg-white shadow-xs text-dark' : 'text-gray-500 hover:text-dark'
-                        }`}
-                      >
-                        AM
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAmpm('PM')}
-                        className={`px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                          ampm === 'PM' ? 'bg-white shadow-xs text-dark' : 'text-gray-500 hover:text-dark'
-                        }`}
-                      >
-                        PM
-                      </button>
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTimePicker(true)}
+                    className="w-full flex items-center justify-center gap-2 bg-white border border-slate-200 hover:border-primary/80 focus:border-primary rounded-2xl px-3 h-[48px] cursor-pointer transition-all shadow-2xs active-scale"
+                  >
+                    <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="text-sm font-black text-slate-900 leading-none">
+                      {hour}:{minute}
+                    </span>
+                    <span className="text-xs font-black text-primary bg-orange-50 px-2 py-0.5 rounded-lg border border-orange-200/60 leading-none inline-flex items-center">
+                      {ampm}
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* People & Payout Section */}
-            <div className="space-y-4">
+            {/* Squad Format & Bounty Section (Solo vs Strike Team) */}
+            <div className="space-y-3">
               <div>
-                <h2 className="text-xl font-black text-dark tracking-tight mb-1">
-                  People & Payout
+                <h2 className="text-base font-black text-dark tracking-tight mb-1">
+                  Squad Format & Bounty Pool
                 </h2>
-                <div className="bg-orange-50/50 border border-primary/10 rounded-xl p-3 flex items-center space-x-2 mt-2">
-                  <Info className="w-4 h-4 text-primary shrink-0" />
-                  <p className="text-[10px] font-semibold text-gray-500 leading-tight">
-                    <strong className="text-dark font-black">Note:</strong> Payout is for service only. Excludes cost of any items involved.
+                <div className="bg-orange-50/70 border border-orange-200/60 rounded-2xl p-3 flex items-start gap-2 mt-1.5">
+                  <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <p className="text-xs font-bold text-slate-600 leading-relaxed">
+                    <strong className="text-slate-900 font-black">Contract Guarantee:</strong> Bounty is settled directly to each operative upon physical OTP verification.
                   </p>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-gray-600">
-                    Helpers needed
-                  </label>
-                  <div className="flex items-center justify-between bg-gray-50 border border-border rounded-xl p-1.5 w-full">
-                    <Tooltip text="Decrease crew count">
-                      <button type="button" onClick={decrementPeople} className="p-2.5 rounded-lg bg-white border border-border hover:bg-gray-50 active:scale-95 text-gray-500 cursor-pointer">
-                        <Minus className="w-4 h-4" />
-                      </button>
-                    </Tooltip>
-                    <span className="text-base font-semibold text-dark">{peopleNeeded}</span>
-                    <Tooltip text="Increase crew count">
-                      <button type="button" onClick={incrementPeople} className="p-2.5 rounded-lg bg-white border border-border hover:bg-gray-50 active:scale-95 text-gray-500 cursor-pointer">
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </Tooltip>
+
+              {/* Squad Format Toggle */}
+              <div className="grid grid-cols-2 gap-2 bg-slate-200/50 backdrop-blur-xl p-1 rounded-2xl border border-white/70 shadow-[inset_0_1px_3px_rgba(0,0,0,0.03)]">
+                <button
+                  type="button"
+                  onClick={() => setPeopleNeeded(1)}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active-scale ${
+                    peopleNeeded === 1
+                      ? 'bg-white/95 backdrop-blur-md text-primary shadow-xs border border-white/90'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-white/30'
+                  }`}
+                >
+                  <Zap className="w-4 h-4" />
+                  <span>Solo Op (1)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPeopleNeeded(Math.max(2, peopleNeeded))}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active-scale ${
+                    peopleNeeded > 1
+                      ? 'bg-white/95 backdrop-blur-md text-primary shadow-xs border border-white/90'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-white/30'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Strike Team ({peopleNeeded > 1 ? peopleNeeded : 2})</span>
+                </button>
+              </div>
+
+              {/* Strike Team Slot Selector (if > 1) */}
+              {peopleNeeded > 1 && (
+                <div className="bg-orange-50/50 border border-orange-200/60 rounded-2xl p-3.5 space-y-2 animate-[fadeIn_150ms_ease-out]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-dark">Strike Team Size</span>
+                    <span className="text-[10px] font-extrabold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md">
+                      {peopleNeeded} Slots Open
+                    </span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    {[2, 3, 4, 5, 6].map(num => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setPeopleNeeded(num)}
+                        className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                          peopleNeeded === num
+                            ? 'bg-primary text-white shadow-xs'
+                            : 'bg-white text-gray-600 border border-border hover:border-gray-300'
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Bounty Input & Split Math */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-extrabold text-slate-600">
+                    {peopleNeeded > 1 ? 'Bounty / Operative' : 'Bounty Payout'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrencyPicker(true)}
+                    className="text-[11px] font-black text-primary hover:underline cursor-pointer flex items-center space-x-1"
+                  >
+                    <span>{currency?.flag} {currency?.code}</span>
+                  </button>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-gray-600">
-                    Payout per helper (₹)
-                  </label>
-                  <div className="flex items-center bg-gray-50 border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
-                    <IndianRupee className="w-4 h-4 text-gray-400 shrink-0" />
-                    <input
-                      type="number"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (['-', '+', 'e', 'E', '.'].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
-                      min="0"
-                      placeholder="Amount"
-                      className="w-full bg-transparent border-0 px-2 py-2 text-sm font-semibold outline-hidden text-dark h-full"
-                    />
-                  </div>
+                <div className="flex items-center bg-white border border-slate-200 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 rounded-2xl px-3.5 w-full h-[50px] shadow-2xs transition-all">
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrencyPicker(true)}
+                    className="mr-2 px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-black text-slate-700 cursor-pointer shrink-0 transition-colors"
+                    title="Change Currency"
+                  >
+                    {currency?.symbol || '₹'}
+                  </button>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (['-', '+', 'e', 'E', '.'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    min="0"
+                    placeholder={peopleNeeded > 1 ? "Payout / Operative" : "Total Bounty Amount"}
+                    className="w-full bg-transparent border-0 px-1 py-2 text-sm font-black outline-hidden text-slate-900 h-full"
+                  />
                 </div>
+
+                {/* Live Split Math Indicator */}
+                {amount && parseFloat(amount) > 0 && peopleNeeded > 1 && (
+                  <div className="flex items-center justify-between text-xs font-black bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-xl px-3 py-2 mt-1">
+                    <span>Total Bounty Pool:</span>
+                    <span className="font-black">
+                      {formatCurrency(parseFloat(amount) * peopleNeeded, currency?.code)} ({formatCurrency(amount, currency?.code)} × {peopleNeeded} Ops)
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-          <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-1 bg-white mt-2 shrink-0 flex justify-center">
+          <div className="max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full pt-2 bg-transparent mt-2 shrink-0 flex justify-center">
             <button
               onClick={handlePost}
               disabled={isPostDisabled}
-              className={`w-full max-w-md h-14 flex items-center justify-center space-x-2 font-bold rounded-2xl shadow-lg active:scale-[0.99] transition-all cursor-pointer text-base ${
+              className={`w-full max-w-md h-14 flex items-center justify-center space-x-2 font-black rounded-2xl shadow-lg active-scale transition-all cursor-pointer text-sm tracking-wide ${
                 isPostDisabled 
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
-                  : 'bg-primary hover:bg-primary/95 text-white shadow-primary/20'
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
+                  : 'bg-primary hover:bg-primary/95 text-white shadow-primary/25'
               }`}
             >
               {isLoading ? (
@@ -689,7 +991,7 @@ const PostJobScreen = () => {
               ) : (
                 <>
                   <Radio className="w-5 h-5 text-white" />
-                  <span>Post</span>
+                  <span>Broadcast Bounty</span>
                 </>
               )}
             </button>
@@ -780,36 +1082,37 @@ const PostJobScreen = () => {
       )}
 
       {showAddressPopup && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={handleClosePopup}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={handleClosePopup}>
           {/* Backdrop: pure opacity fade on its own layer — no translateY, no blur animation */}
-          {/* This prevents the camera-flash tile artifact caused by animating backdrop-blur */}
-          <div className="absolute inset-0 bg-dark/50 animate-[overlayIn_180ms_ease-out]" />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-xs animate-[overlayIn_180ms_ease-out]" />
           {/* Modal card: slides up independently on its own composited layer */}
-          <div className="relative bg-white rounded-[32px] w-full max-w-sm sm:max-w-lg max-h-[90vh] shadow-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out]" onClick={e => e.stopPropagation()}>
-            <div className="px-6 pt-4 pb-1 relative flex items-center justify-between shrink-0">
-              <h3 className="font-black text-sm sm:text-base text-dark tracking-wide">{!isAddingNewAddress ? 'Pick the task location' : 'Add a new task location'}</h3>
-              <button onClick={handleClosePopup} className="p-1.5 -mr-1 rounded-full text-gray-400 hover:text-dark hover:bg-gray-100 transition-colors cursor-pointer" aria-label="Close modal">
+          <div className="relative bg-white rounded-t-[32px] sm:rounded-[32px] w-full max-w-sm sm:max-w-lg max-h-[90vh] shadow-2xl border-t sm:border border-slate-200 overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out]" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-100 relative flex items-center justify-between shrink-0">
+              <h3 className="font-black text-sm text-slate-900 tracking-tight">{!isAddingNewAddress ? 'Set Drop Coordinates' : 'Add New Drop Coordinates'}</h3>
+              <button onClick={handleClosePopup} className="p-1.5 -mr-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer" aria-label="Close modal">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto px-6 pt-0 pb-0">
+            <div className="flex-1 overflow-y-auto no-scrollbar px-6 pt-0 pb-0">
               {!isAddingNewAddress ? (
-                <div className="pt-4 pb-4 space-y-4">
+                <div className="pt-4 pb-4 space-y-3">
                   {savedAddresses.map((address) => (
                     <div 
-                      key={address.id}
+                      key={address.id} 
                       onClick={() => handleSelectExistingAddress(address)}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all ${address.isDefault ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 bg-white'}`}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${address.isDefault ? 'border-primary bg-orange-50/60 shadow-xs' : 'border-slate-200 hover:border-slate-300 bg-white'}`}
                     >
                       <div className="flex items-start space-x-3">
-                        <MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                        <div>
+                        <div className="w-8 h-8 rounded-xl bg-orange-100/80 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                          <MapPin className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center space-x-2">
-                            <h4 className="text-sm font-semibold text-dark">{address.type || 'Location'}</h4>
-                            {address.isDefault && <span className="text-[10px] font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-md">Default</span>}
+                            <h4 className="text-xs font-black text-slate-900">{address.type || 'Drop Point'}</h4>
+                            {address.isDefault && <span className="text-[9px] font-extrabold bg-primary/10 text-primary px-2 py-0.5 rounded-md">Primary Base</span>}
                           </div>
-                          <p className="text-xs font-semibold text-gray-500 mt-1 line-clamp-2">
+                          <p className="text-[11px] font-bold text-slate-500 mt-0.5 line-clamp-2 leading-snug">
                             {address.completeAddress?.startsWith('Location at') && address.landmark 
                               ? address.landmark 
                               : address.completeAddress}
@@ -821,15 +1124,15 @@ const PostJobScreen = () => {
                   
                   <button 
                     onClick={() => setIsAddingNewAddress(true)}
-                    className="w-full py-3 mt-2 rounded-xl border border-dashed border-gray-300 text-gray-500 hover:text-primary hover:border-primary hover:bg-primary/5 text-sm font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                    className="w-full py-3.5 mt-2 rounded-2xl border-2 border-dashed border-slate-200 hover:border-primary/60 text-slate-600 hover:text-primary text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer active-scale"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Add a new task location</span>
+                    <span>Add New Drop Coordinates</span>
                   </button>
                 </div>
               ) : (
                 <div className="flex flex-col">
-                  <div className="h-[200px] sm:h-[240px] mt-4 mb-4 relative rounded-2xl overflow-hidden border border-border shrink-0">
+                  <div className="h-[200px] sm:h-[240px] mt-4 mb-4 relative rounded-2xl overflow-hidden border border-slate-200 shrink-0">
                     <LocationPicker 
                       initialLat={lat}
                       initialLng={lng}
@@ -843,41 +1146,41 @@ const PostJobScreen = () => {
                   </div>
                   <div className="space-y-4 mb-4">
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-gray-600">Nearest landmark</label>
+                      <label className="block text-xs font-extrabold text-slate-600">Nearest landmark</label>
                       <input
                         type="text"
                         value={landmark}
                         onChange={(e) => setLandmark(e.target.value)}
                         placeholder="e.g. Near Community Center, opposite park"
-                        className="bg-white border border-border focus:border-primary rounded-xl px-3 h-10 w-full text-xs font-semibold outline-none text-dark"
+                        className="bg-slate-50 border border-slate-200 focus:border-primary focus:bg-white rounded-xl px-3.5 h-11 w-full text-xs font-bold outline-none text-slate-900 transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Save location as</label>
+                      <label className="block text-xs font-extrabold text-slate-600 mb-1.5">Save location as</label>
                       <div className="flex space-x-2 w-full">
                         <button 
                           type="button"
                           onClick={() => setAddressType('Home')}
-                          className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Home' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+                          className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all active-scale ${addressType === 'Home' ? 'border-primary bg-primary/10 text-primary shadow-xs font-black' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 font-bold'}`}
                         >
                           <Home className="w-3.5 h-3.5 mr-1" />
-                          <span className="text-[10px]">Home</span>
+                          <span className="text-xs">Home</span>
                         </button>
                         <button 
                           type="button"
                           onClick={() => setAddressType('Work')}
-                          className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Work' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+                          className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all active-scale ${addressType === 'Work' ? 'border-primary bg-primary/10 text-primary shadow-xs font-black' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 font-bold'}`}
                         >
                           <Briefcase className="w-3.5 h-3.5 mr-1" />
-                          <span className="text-[10px]">Work</span>
+                          <span className="text-xs">Work</span>
                         </button>
                         <button 
                           type="button"
                           onClick={() => setAddressType('Other')}
-                          className={`flex-1 flex items-center justify-center py-2 rounded-lg border cursor-pointer transition-all ${addressType === 'Other' ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold' : 'border-border bg-white text-gray-500 hover:bg-gray-50'}`}
+                          className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-all active-scale ${addressType === 'Other' ? 'border-primary bg-primary/10 text-primary shadow-xs font-black' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 font-bold'}`}
                         >
                           <MapPin className="w-3.5 h-3.5 mr-1" />
-                          <span className="text-[10px]">Other</span>
+                          <span className="text-xs">Other</span>
                         </button>
                       </div>
                     </div>
@@ -887,11 +1190,11 @@ const PostJobScreen = () => {
             </div>
 
             {isAddingNewAddress && (
-              <div className="px-6 pt-4 pb-4 bg-white shrink-0 flex flex-col items-center w-full">
+              <div className="px-6 pt-3 pb-4 bg-white shrink-0 flex flex-col items-center w-full space-y-2 border-t border-slate-100">
                 <button 
                   onClick={handleSaveAddressAndPost} 
                   disabled={isSavingAddress}
-                  className="w-[84%] flex justify-center items-center gap-2 bg-primary hover:bg-primary/95 text-white font-black py-3 rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-70 text-sm"
+                  className="w-full flex justify-center items-center gap-2 bg-primary hover:bg-primary/95 text-white font-black py-3.5 rounded-2xl shadow-lg shadow-primary/25 active-scale transition-all cursor-pointer disabled:opacity-70 text-sm"
                 >
                   {isSavingAddress ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -901,7 +1204,7 @@ const PostJobScreen = () => {
                 {savedAddresses.length > 0 && (
                   <button 
                     onClick={() => setIsAddingNewAddress(false)}
-                    className="w-[84%] py-2.5 mt-1.5 text-sm font-bold text-gray-500 hover:text-dark transition-colors cursor-pointer text-center"
+                    className="w-full py-2 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer text-center"
                   >
                     Cancel
                   </button>

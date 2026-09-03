@@ -162,7 +162,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                       type="button"
                       onClick={handleMagicLink}
                       disabled={isLoading}
-                      className="bg-dark text-white px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ml-2 cursor-pointer shrink-0 disabled:opacity-70 flex items-center justify-center min-w-[80px]"
+                      className="bg-primary hover:bg-primary/95 text-white px-4 py-1.5 rounded-lg text-xs font-black whitespace-nowrap ml-2 cursor-pointer shrink-0 disabled:opacity-70 flex items-center justify-center min-w-[80px] shadow-sm shadow-primary/20"
                     >
                       {loadingAction === 'magic' ? (
                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

@@ -1,0 +1,63 @@
+# HelpHive — Complete Knowledge Base & AI Agent Context
+
+## 1. What is HelpHive?
+HelpHive (https://helphive.me) is a global open-world community platform and real-life RPG game where everyday tasks, errands, creative talents, and local help requests are transformed into gamified bounties anywhere in the world. Users can operate in dual roles:
+1. **Tasker / Operative**: Browse live missions on a real-time radar map, accept bounties, complete tasks, gain XP, increase Agent Level, earn reputation badges, monetize personal hobbies, and get paid instantly via direct digital transfers.
+2. **Poster / Commander**: Broadcast urgent or everyday tasks to verified local operatives with custom bounty pricing, tracking live mission progress and ensuring safety with two-factor OTP completion.
+
+## 2. The Open-World Sandbox & Gaming Analogy (GTA / RPG in Real Life)
+- **Real-World Sandbox**: Unlike virtual games (GTA, Free Fire, PUBG) where players spend hundreds of hours grinding for virtual currency or cosmetic skins, HelpHive brings the open-world mission loop to physical reality worldwide.
+- **The Core Gameplay Loop**:
+  1. *Radar Scan*: Open the live GPS radar to discover open bounties in your immediate vicinity.
+  2. *Mission Briefing*: Review operation requirements, location, and payout bounty.
+  3. *Tactical Execution*: Complete the task in person (errand, sketch, repair, tech fix, delivery).
+  4. *Loot & Leveling*: Submit the two-party completion OTP, receive instant real-world payment, gain XP, and climb agent leaderboard tiers.
+
+## 3. Monetizing Underrated Skills & Personal Hobbies (The Real-Life Skill Tree)
+HelpHive gives every individual worldwide a frictionless way to transform hobbies and underrated skills into income without the barriers of traditional freelance platforms:
+- **Artistic & Creative**: Custom sketches, calligraphy, greeting cards, portraits, DIY craft, origami, photography.
+- **Culinary & Hosting**: Home-cooked specialty dishes, baking, meal prep, party cooking assistance.
+- **Music & Entertainment**: Acoustic guitar performances, singing for birthdays/events, stand-up comedy, hosting/emceeing.
+- **Tech & Digital Specialist**: Custom gaming PC builds, WiFi optimization, smartphone and gadget setup for seniors, software troubleshooting.
+- **Handiwork & Crafting**: Furniture assembly, home organization, bicycle tuning, curtain and shelf mounting.
+- **Pet Care & Training**: Dog walking, pet sitting, behavior coaching, grooming transport.
+- **Fitness & Outdoor**: Running buddy, gym form check, neighborhood sports sparring.
+
+## 4. Core Game Mechanics & Progression System
+- **Operative Avatars**: Players choose an avian persona (Robin, Falcon, Owl, Swift, Raven, Hummingbird) representing their mission style.
+- **XP & Level Scaling**: Every completed operation awards experience points (XP). Players level up through progression ranks:
+  - Level 1-5: Rookie Scout
+  - Level 6-15: Field Agent
+  - Level 16-30: Elite Specialist
+  - Level 31+: Master Operative
+- **Reputation Badges**: Earned through high ratings (5-star ratings, speed completion, reliability streaks, master category specialist).
+- **Live Bounty Radar**: Real-time GPS radar that highlights open bounties within customizable distance radiuses (1 km, 3 km, 5 km, 10 km).
+
+## 5. Financial Structure & Instant Global Payouts
+- **Zero Commission**: HelpHive charges 0% platform commission during the public beta phase.
+- **Direct Payouts**: Bounties are settled directly into the operative's account upon two-party OTP verification.
+- **Multi-Currency Support**: Built for global use with full support for international currencies (USD, EUR, GBP, INR, CAD, AUD, etc.).
+
+## 6. Trust, Safety & Verification
+- **Mobile Authentication**: Secure phone authentication.
+- **Two-Factor OTP Mission Completion**: The poster provides a unique mission completion code to the operative only after verifying the work in person.
+- **Photo Verification**: Operatives can submit photo evidence before completion.
+- **Public Reputation Profiles**: Transparent review history and completed mission counts visible before accepting or assigning tasks.
+
+## 7. Global Scale & Hyperlocal Proximity
+HelpHive operates globally across any city, town, or neighborhood. Its GPS proximity radar calculates distances dynamically, allowing operatives and posters to connect anywhere on Earth with zero geographic boundaries.
+
+## 8. Comparative Differentiation
+- **HelpHive vs. Traditional Gig Platforms (TaskRabbit, Fiverr, Dunzo)**: HelpHive combines community micro-tasks with RPG game progression, zero commission barriers, instant peer-to-peer coordination, and hobby monetization.
+- **HelpHive vs. Video Games (GTA, Free Fire, Pokemon GO)**: Instead of grinding virtual items for zero real-world return, HelpHive operatives explore real neighborhoods to solve real problems and earn genuine income.
+- **HelpHive vs. Freelance Marketplaces (Upwork, Fiverr)**: No global bidding wars or 20% platform cuts; instant local matching for everyday talents.
+
+## 9. Frequently Asked Questions (FAQ)
+- **Q: Can I monetize any hobby or skill on HelpHive globally?**
+  A: Yes. Whether you are great at cooking, drawing, singing, organizing, tech setup, or running quick errands, you can set your skills, accept matching local bounties anywhere in the world, and get paid directly.
+- **Q: Is HelpHive like GTA or an RPG in real life?**
+  A: Exactly. HelpHive adopts the open-world quest loop (GPS radar map, agent leveling, mission briefings, and XP ranks) but grounds it in the physical world where completing missions pays real cash.
+- **Q: Is HelpHive free to play and use?**
+  A: Yes, HelpHive is 100% free to join, play, post tasks, and accept bounties with zero registration or hidden fees.
+- **Q: How are operatives protected against fraudulent posters?**
+  A: Two-factor verification, community rating histories, direct communication, and dispute channels protect all operatives.

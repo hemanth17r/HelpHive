@@ -287,7 +287,7 @@ const TaskerOnboardingScreen = () => {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">
-          {step === 1 ? 'Select Services' : 'Service Area'}
+          {step === 1 ? 'Operator Classes' : 'Sector Perimeter'}
         </span>
         <div className="w-10"></div>
       </div>
@@ -296,13 +296,13 @@ const TaskerOnboardingScreen = () => {
         {step === 1 && (
           <>
             <h2 className="text-2xl font-black text-dark tracking-tight mb-1">
-              What Can You Do?
+              Choose Your Operator Classes
             </h2>
             <p className="text-xs font-semibold text-gray-400 mb-2">
-              Tap categories of work you are comfortable doing.
+              Select the tactical archetype skills you are ready to deploy in the real world.
             </p>
             <div className="bg-orange-50 border border-primary/20 rounded-xl p-3 mb-6 text-primary text-xs font-bold shrink-0">
-              Don't worry, you can always change these services later!
+              You can level up and calibrate additional classes at any time from your Dossier.
             </div>
 
             <div className="flex-1 space-y-8 overflow-y-auto pr-1">
@@ -310,7 +310,7 @@ const TaskerOnboardingScreen = () => {
               <div className="space-y-4">
                 <div className="flex items-center gap-1.5 px-1">
                   <MapPin className="w-3 h-3 text-primary shrink-0" />
-                  <span className="text-xs font-medium text-slate-700 tracking-wide">On-site &amp; Physical Services</span>
+                  <span className="text-xs font-medium text-slate-700 tracking-wide">Tactical Field Archetypes</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {SKILLS.filter(s => s.type === 'physical').map((skill) => {
@@ -323,7 +323,7 @@ const TaskerOnboardingScreen = () => {
                         isNew={skill.isNew}
                         isHighDemand={skill.isHighDemand}
                         isUrgent={skill.isUrgent}
-                        tooltipText={`Toggle skill: ${skill.label}`}
+                        tooltipText={`Toggle class: ${skill.label}`}
                         selected={isSelected}
                         onClick={() => handleToggleSkill(skill.id)}
                       />
@@ -336,7 +336,7 @@ const TaskerOnboardingScreen = () => {
               <div className="space-y-4">
                 <div className="flex items-center gap-1.5 px-1">
                   <Wifi className="w-3 h-3 text-primary shrink-0" />
-                  <span className="text-xs font-medium text-slate-700 tracking-wide">Online &amp; Remote Services</span>
+                  <span className="text-xs font-medium text-slate-700 tracking-wide">Cyber &amp; Remote Archetypes</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {SKILLS.filter(s => s.type === 'remote').map((skill) => {
@@ -349,7 +349,7 @@ const TaskerOnboardingScreen = () => {
                         isNew={skill.isNew}
                         isHighDemand={skill.isHighDemand}
                         isUrgent={skill.isUrgent}
-                        tooltipText={`Toggle skill: ${skill.label}`}
+                        tooltipText={`Toggle class: ${skill.label}`}
                         selected={isSelected}
                         onClick={() => handleToggleSkill(skill.id)}
                       />
@@ -370,7 +370,7 @@ const TaskerOnboardingScreen = () => {
                   <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
                     <Flame className="w-2.5 h-2.5 fill-current text-white" />
                   </span>
-                  <span className="text-[10px] font-bold text-gray-500">High Demand</span>
+                  <span className="text-[10px] font-bold text-gray-500">High Demand Bounty</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
@@ -386,15 +386,15 @@ const TaskerOnboardingScreen = () => {
         {step === 2 && (
           <>
             <h2 className="text-2xl font-black text-dark tracking-tight mb-1">
-              Where Can You Work?
+              Define Your Operational Sector
             </h2>
             <p className="text-xs font-semibold text-gray-400 mb-4">
-              Set your coverage area so we can match you with local tasks.
+              Calibrate your patrol radius to lock onto nearby sector bounties.
             </p>
             
             {/* Map Preview First */}
             <div className="mt-2 flex-1 flex flex-col min-h-[420px] mb-6">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Map Preview</label>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Sector Grid Radar</label>
               <div className="flex-1 relative rounded-xl overflow-hidden border border-border">
                 {/* Floating Search Bar */}
                 <div className="absolute top-4 left-4 max-w-[320px] sm:max-w-[400px] w-[calc(100%-80px)] z-20" ref={dropdownRef}>
@@ -406,7 +406,7 @@ const TaskerOnboardingScreen = () => {
                       onKeyDown={handleKeyDown}
                       onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
                       className="w-full bg-white border-none rounded-xl pl-11 pr-10 py-2.5 text-sm font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                      placeholder="Search for your location..."
+                      placeholder="Search base coordinate..."
                     />
                     <Search className="absolute left-4 top-2.5 w-5 h-5 text-gray-400" />
                     {isSearching && (
@@ -455,12 +455,12 @@ const TaskerOnboardingScreen = () => {
                   )}
                 </button>
               </div>
-              <p className="text-[10px] text-gray-400 mt-2 text-center">Drag the pin or use search to adjust the center of your service area.</p>
+              <p className="text-[10px] text-gray-400 mt-2 text-center">Drag the pin or search to set your sector base coordinates.</p>
             </div>
 
             {/* Coverage Level Second */}
             <div className="mb-4">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Coverage Level</label>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Sector Patrol Radius</label>
               <div className="flex flex-col space-y-2">
                 {Object.values(MARKETPLACE_RULES.COVERAGE_LEVELS).map((level) => {
                   const isSelected = coverageLevel === level.id;
@@ -488,7 +488,7 @@ const TaskerOnboardingScreen = () => {
 
       {/* Button footer */}
       <div className="max-w-md lg:max-w-3xl lg:px-4 mx-auto w-full pt-4 shrink-0 border-t border-border mt-4 flex justify-center">
-        <Tooltip text={step === 1 ? 'Next to Service Area' : (routeParams?.editServiceAreaOnly ? 'Save service area changes' : 'Start earning with selected area')} className="w-full flex justify-center">
+        <Tooltip text={step === 1 ? 'Next to Sector Perimeter' : (routeParams?.editServiceAreaOnly ? 'Save sector changes' : 'Enter the Grid with calibrated perimeter')} className="w-full flex justify-center">
           <button
             onClick={handleNextStep}
             disabled={isLoading}
@@ -498,7 +498,7 @@ const TaskerOnboardingScreen = () => {
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
             ) : (
               <>
-                <span>{step === 1 ? 'Next' : (routeParams?.editServiceAreaOnly ? 'Save Changes' : 'Start Earning')}</span>
+                <span>{step === 1 ? 'Next' : (routeParams?.editServiceAreaOnly ? 'Save Sector' : 'Enter The Grid 🚀')}</span>
                 {step === 1 ? <ArrowRight className="w-5 h-5" /> : <Check className="w-5 h-5" />}
               </>
             )}

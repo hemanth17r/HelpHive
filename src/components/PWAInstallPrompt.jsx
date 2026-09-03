@@ -116,7 +116,7 @@ const PWAInstallPrompt = () => {
   if (!showPrompt) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-white rounded-xl shadow-2xl p-4 z-50 flex flex-col border border-gray-100 animate-in slide-in-from-bottom-5">
+    <div className="fixed bottom-20 left-4 right-4 md:bottom-4 md:left-auto md:right-4 md:w-96 bg-white rounded-2xl shadow-2xl p-4 z-50 flex flex-col border border-gray-100 animate-in slide-in-from-bottom-5">
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-3">
           <div className="bg-[#FF6B35] p-2 rounded-lg text-white">

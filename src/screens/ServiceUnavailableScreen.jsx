@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { MapPin, Mail, ArrowLeft, Send, Sparkles, CheckCircle2 } from 'lucide-react';
+import { MapPin, Mail, ArrowLeft, Send, Clock, CheckCircle2 } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import Tooltip from '../components/Tooltip';
 
@@ -20,22 +20,20 @@ const ServiceUnavailableScreen = () => {
 
     addLeadNotification(inputValue, userLocation?.name || 'Unknown');
     setSubmitted(true);
-
-    // Alert toast simulation
-    alert(`Got it! We will notify you when HelpHive reaches ${cityName}`);
   };
 
   return (
-    <div className="flex-1 flex flex-col justify-between bg-white px-6 py-8 select-none">
+    <div className="flex-1 flex flex-col bg-white h-full p-4 select-none">
       
-      {/* Header */}
-      <div className="flex items-center justify-between shrink-0">
-        <Tooltip text="Change location">
-          <button
-            onClick={() => popScreen()}
-            className="p-2.5 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
+      {/* Frameless Minimal Header */}
+      <div className="flex items-center justify-between py-2 border-b border-gray-100 max-w-sm lg:max-w-2xl lg:px-8 mx-auto w-full">
+        <Tooltip content="Return to live bounties" position="right">
+          <button 
+            onClick={popScreen}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+            aria-label="Back to radar"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 text-dark" />
           </button>
         </Tooltip>
         <span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">
@@ -50,7 +48,7 @@ const ServiceUnavailableScreen = () => {
         {/* LIGHT ILLUSTRATION - Location pin with coming soon symbol */}
         <div className="relative flex items-center justify-center w-24 h-24 bg-orange-50 rounded-full border border-primary/10">
           <div className="absolute top-1 right-1 bg-primary text-white p-1 rounded-full shadow-xs">
-            <Sparkles className="w-4 h-4 animate-pulse" />
+            <Clock className="w-4 h-4" />
           </div>
           <MapPin className="w-12 h-12 text-primary" />
         </div>

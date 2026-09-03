@@ -2,7 +2,17 @@ import React, { useState, useEffect } from 'react';
 import BirdAvatar, { BIRD_LIST } from './BirdAvatars';
 import { X, Check } from 'lucide-react';
 
-const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
+const BirdSelector = ({ 
+  isOpen = true, 
+  onClose, 
+  selectedBird, 
+  currentBird, 
+  onSelectBird, 
+  onSelect 
+}) => {
+  const activeBird = selectedBird || currentBird || 'falcon';
+  const selectCallback = onSelectBird || onSelect;
+
   const [animatingBird, setAnimatingBird] = useState(null);
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
@@ -17,7 +27,7 @@ const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
         const timer = setTimeout(() => {
           setShouldRender(false);
           setIsAnimatingOut(false);
-        }, 200); // Match closing transition duration (200ms)
+        }, 200);
         return () => clearTimeout(timer);
       }
     }
@@ -27,14 +37,15 @@ const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
 
   const handleSelect = (birdId) => {
     setAnimatingBird(birdId);
-    onSelectBird(birdId);
+    if (selectCallback) {
+      selectCallback(birdId);
+    }
 
-    // Close after 300ms
     if (selectTimeoutRef.current) clearTimeout(selectTimeoutRef.current);
     selectTimeoutRef.current = setTimeout(() => {
       setAnimatingBird(null);
-      onClose();
-    }, 300);
+      if (onClose) onClose();
+    }, 250);
   };
 
   useEffect(() => {
@@ -88,7 +99,7 @@ const BirdSelector = ({ isOpen, onClose, selectedBird, onSelectBird }) => {
         {/* 3×2 Grid */}
         <div className="grid grid-cols-3 gap-3">
           {BIRD_LIST.map((bird) => {
-            const isSelected = selectedBird === bird.id;
+            const isSelected = activeBird === bird.id;
             const isAnimating = animatingBird === bird.id;
 
             return (

@@ -69,15 +69,11 @@ export const api = {
   },
 
   // --- Jobs API ---
-  fetchJobs: async (userId, role) => {
-    if (!userId || !role) {
-      return { data: [], error: null };
-    }
-    
+  fetchJobs: async (userId, role = null) => {
     let ratedJobsMap = {};
     let offers = [];
     
-    if (role === 'tasker') {
+    if (userId) {
       const { data: offersData } = await supabase
         .from('job_offers')
         .select('job_id, status, expires_at, otp_verified, completed_by_tasker')
@@ -93,15 +89,26 @@ export const api = {
       tasker:profiles!jobs_tasker_id_fkey(id, name, bird, phone, upi_id, rating, tasks_completed)
     `);
     
-    if (role === 'poster') {
+    if (role === 'poster' && userId) {
       query = query.eq('poster_id', userId);
-    } else if (role === 'tasker') {
+    } else if (role === 'tasker' && userId) {
       const offerJobIds = offers.map(o => o.job_id);
       if (offerJobIds.length > 0) {
         query = query.neq('poster_id', userId).or(`tasker_id.eq.${userId},id.in.(${offerJobIds.join(',')})`);
       } else {
         query = query.neq('poster_id', userId).eq('tasker_id', userId);
       }
+    } else if (userId) {
+      // Unified mode: fetch deployed ops, active/assigned ops, and open radar ops
+      const offerJobIds = offers.map(o => o.job_id);
+      if (offerJobIds.length > 0) {
+        query = query.or(`poster_id.eq.${userId},tasker_id.eq.${userId},status.in.(open,searching),id.in.(${offerJobIds.join(',')})`);
+      } else {
+        query = query.or(`poster_id.eq.${userId},tasker_id.eq.${userId},status.in.(open,searching)`);
+      }
+    } else {
+      // Guest mode
+      query = query.in('status', ['open', 'searching']);
     }
 
     const { data, error } = await query;
@@ -153,6 +160,11 @@ export const api = {
 
         return {
           ...j,
+          currency: j.currency || 'INR',
+          questRarity: j.quest_rarity || 'standard',
+          quest_rarity: j.quest_rarity || 'standard',
+          specificSkillId: j.specific_skill_id || null,
+          specific_skill_id: j.specific_skill_id || null,
           description: cleanDesc,
           expiresAt: expiresAt,
           posterId: j.poster_id,
@@ -194,6 +206,10 @@ export const api = {
     const { data, error } = await supabase.from('jobs').insert({
       poster_id: jobData.posterId,
       skill_id: jobData.skillId,
+      specific_skill_id: jobData.specificSkillId || null,
+      skill_tags: jobData.skillTags || [],
+      quest_rarity: jobData.questRarity || 'standard',
+      currency: jobData.currency || 'INR',
       description: jobData.description,
       people_needed: jobData.peopleNeeded,
       amount: jobData.amount,

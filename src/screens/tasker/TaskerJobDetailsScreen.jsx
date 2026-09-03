@@ -8,6 +8,7 @@ import MapView from '../../components/MapView';
 import BirdAvatar from '../../components/BirdAvatars';
 import { api } from '../../services/api';
 import { trackEvent, EVENTS } from '../../utils/eventTracker';
+import { formatCurrency } from '../../utils/currency';
 
 const WhatsAppIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -23,6 +24,7 @@ const TaskerJobDetailsScreen = () => {
     trackingTaskerPos,
     trackingLocationError,
     userProfile,
+    currency,
     role,
     pushScreen,
     cancelTaskerAssignment,
@@ -158,14 +160,14 @@ const TaskerJobDetailsScreen = () => {
       const totalHelpers = acceptedJob.peopleNeeded || 1;
       const verifiedCount = crewList.filter(m => m.otpVerified || m.id === callerId).length;
 
-      // Send notification to the Poster (Hirer) that the task is started
+      // Send notification to the Quest Issuer that the operation is started
       if (acceptedJob.posterId) {
-        let title = "Task Started!";
-        let body = `${userProfile?.name || 'Your helper'} has verified the OTP and started the task.`;
+        let title = "Operation Started!";
+        let body = `${userProfile?.name || 'Your operative'} has verified OTP and commenced the operation.`;
         
         if (totalHelpers > 1) {
-          title = `${verifiedCount}/${totalHelpers} Helpers Started!`;
-          body = `${userProfile?.name || 'A helper'} verified their OTP. (${verifiedCount} of ${totalHelpers} helpers have started work)`;
+          title = `${verifiedCount}/${totalHelpers} Operatives Deployed!`;
+          body = `${userProfile?.name || 'An operative'} verified their OTP. (${verifiedCount} of ${totalHelpers} operatives have commenced work)`;
         }
 
         api.sendNotification(
@@ -240,7 +242,7 @@ const TaskerJobDetailsScreen = () => {
         {/* Header */}
         <div className="text-center shrink-0">
           <span className="text-xs font-semibold text-gray-400">
-            Waiting for other helpers...
+            Assembling Strike Team...
           </span>
         </div>
 
@@ -259,11 +261,11 @@ const TaskerJobDetailsScreen = () => {
           {/* Helpers joined counter */}
           <div className="bg-gray-50 border border-border rounded-3xl p-5 text-center w-full shadow-xs space-y-3">
             <div className="flex items-center justify-center space-x-2 text-xs font-bold text-dark">
-              <span>Helper Crew Setup</span>
+              <span>Strike Team Assembly</span>
             </div>
             
             <div className="text-2xl font-black text-primary tracking-tight">
-              {crewMembers.length} / {acceptedJob.peopleNeeded} Confirmed
+              {crewMembers.length} / {acceptedJob.peopleNeeded} Operators Locked In
             </div>
 
             {/* Custom progress bar */}
@@ -274,8 +276,8 @@ const TaskerJobDetailsScreen = () => {
               />
             </div>
 
-            <p className="text-[10px] text-gray-400 font-semibold leading-normal max-w-[240px] mx-auto pt-1">
-              Please wait here. The task will start once all helpers have joined or the hirer finalized the crew.
+            <p className="text-[10px] text-gray-400 font-semibold leading-normal max-w-[260px] mx-auto pt-1">
+              Stand by. Contract initiates once all strike team Operators arrive or the Fixer authorizes deployment.
             </p>
           </div>
 
@@ -283,13 +285,13 @@ const TaskerJobDetailsScreen = () => {
           <div className="bg-gray-50 border border-border rounded-2xl p-4 w-full space-y-2.5">
             <div className="flex items-center space-x-2 text-[10px] font-black uppercase text-gray-400">
               <Icon className="w-4 h-4 text-primary" />
-              <span>{skill?.label || 'Task details'}</span>
+              <span>{skill?.label || 'Mission Directives'}</span>
             </div>
             <p className="text-xs font-bold text-dark leading-relaxed">
               {acceptedJob.description}
             </p>
             <div className="bg-primary/5 rounded-xl px-3 py-1.5 border border-primary/10 inline-block">
-              <span className="text-[11px] font-extrabold text-primary">Offered Payout: ₹{acceptedJob.amount} per helper</span>
+              <span className="text-[11px] font-extrabold text-primary">Bounty: {formatCurrency(acceptedJob.amount, acceptedJob.currency || currency?.code)} per Operator</span>
             </div>
           </div>
 
@@ -305,7 +307,7 @@ const TaskerJobDetailsScreen = () => {
             {isCancelling ? (
               <div className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
             ) : null}
-            <span>Exit Waiting Room</span>
+            <span>Disengage from Strike Team</span>
           </button>
         </div>
 
@@ -323,9 +325,9 @@ const TaskerJobDetailsScreen = () => {
                 <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
                   <ShieldAlert className="w-6 h-6 text-red-500" />
                 </div>
-                <h3 className="text-lg font-black text-dark">Cancel Assignment?</h3>
+                <h3 className="text-lg font-black text-dark">Abort Assignment?</h3>
                 <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
-                  Are you sure you want to cancel this task? This action is recorded and may affect your completion rate.
+                  Are you sure you want to abort this contract? This action is recorded and may affect your Street Cred.
                 </p>
               </div>
               <div className="flex space-x-3">
@@ -333,7 +335,7 @@ const TaskerJobDetailsScreen = () => {
                   onClick={() => setShowCancelModal(false)}
                   className="flex-1 py-3.5 border border-border text-gray-600 hover:bg-gray-50 rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
                 >
-                  No, Keep Task
+                  No, Keep Contract
                 </button>
                 <button
                   onClick={async () => {
@@ -352,8 +354,8 @@ const TaskerJobDetailsScreen = () => {
                       if (acceptedJob.posterId) {
                         api.sendNotification(
                           acceptedJob.posterId,
-                          "Task Cancelled",
-                          `${userProfile?.name || 'Your helper'} cancelled the task.`,
+                          "Operative Disengaged",
+                          `${userProfile?.name || 'An operative'} disengaged from the contract.`,
                           'live_status',
                           'job_cancelled',
                           'poster',
@@ -367,7 +369,7 @@ const TaskerJobDetailsScreen = () => {
                   }}
                   className="flex-1 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
                 >
-                  Yes, Cancel
+                  Yes, Abort
                 </button>
               </div>
             </div>
@@ -384,7 +386,7 @@ const TaskerJobDetailsScreen = () => {
       {/* Header */}
       <div className="text-center shrink-0">
         <span className="text-xs font-semibold text-gray-400">
-          {isVerified ? 'Working on task...' : 'Head to customer...'}
+          {isVerified ? 'Contract In Execution...' : 'En Route to Target Drop Coordinates...'}
         </span>
       </div>
 
@@ -398,15 +400,15 @@ const TaskerJobDetailsScreen = () => {
               <BirdAvatar birdName={acceptedJob.posterBird || 'falcon'} size={48} />
             </div>
             <div>
-              <h3 className="text-[10px] font-bold text-gray-400">Customer</h3>
-              <p className="text-sm font-black text-dark leading-tight">{acceptedJob.posterName || acceptedJob.address?.contactName || 'Customer'}</p>
+              <h3 className="text-[10px] font-bold text-gray-400">Fixer</h3>
+              <p className="text-sm font-black text-dark leading-tight">{acceptedJob.posterName || acceptedJob.address?.contactName || 'Fixer'}</p>
             </div>
           </div>
           <div className="flex space-x-2">
-            <Tooltip text="WhatsApp Customer">
+            <Tooltip text="Comms (WhatsApp)">
               <button onClick={handleWhatsAppCustomer} className="flex items-center space-x-1.5 p-2 px-3 rounded-xl bg-white border border-border text-green-600 hover:bg-green-50 hover:border-green-200 cursor-pointer transition-colors">
                 <WhatsAppIcon className="w-4 h-4" />
-                <span className="text-xs font-bold">Contact</span>
+                <span className="text-xs font-bold">Comms</span>
               </button>
             </Tooltip>
           </div>
@@ -417,7 +419,7 @@ const TaskerJobDetailsScreen = () => {
           <div className="bg-gray-50 border border-border rounded-2xl p-4 space-y-2">
             <div className="flex items-center space-x-2 text-[10px] font-black uppercase text-gray-400 mb-1">
               <MapPin className="w-3.5 h-3.5 text-primary" />
-              <span>Service Address</span>
+              <span>Target Coordinates</span>
             </div>
             <p className="text-sm font-bold text-dark leading-tight">
               {acceptedJob.address.completeAddress?.startsWith('Location at') && acceptedJob.address.landmark 
@@ -436,7 +438,7 @@ const TaskerJobDetailsScreen = () => {
             )}
             <div className="mt-3 pt-3 border-t border-gray-200 flex items-center space-x-2 text-xs font-bold text-dark">
                <Phone className="w-3.5 h-3.5 text-gray-400" />
-               <span>Contact: {acceptedJob.address.contactPhone}</span>
+               <span>Direct Line: {acceptedJob.address.contactPhone}</span>
             </div>
           </div>
         )}
@@ -445,20 +447,20 @@ const TaskerJobDetailsScreen = () => {
         <div className="space-y-1.5">
           <div className="flex items-center space-x-2 text-[10px] font-black uppercase text-gray-400">
             <Icon className="w-4 h-4 text-primary" />
-            <span>{skill?.label || 'Task Details'}</span>
+            <span>{skill?.label || 'Mission Directives'}</span>
           </div>
           <p className="text-xs font-bold text-dark leading-relaxed">
             {acceptedJob.description}
           </p>
           <div className="bg-primary/5 rounded-xl px-3 py-1.5 border border-primary/10 inline-block">
-            <span className="text-[11px] font-extrabold text-primary">Offered Payout: ₹{acceptedJob.amount}</span>
+            <span className="text-[11px] font-extrabold text-primary">Bounty: {formatCurrency(acceptedJob.amount, acceptedJob.currency || currency?.code)}</span>
           </div>
         </div>
 
         {/* Connection / Live Map */}
         <div className="space-y-2">
           <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
-            <span>{isRemote ? 'Remote connection' : 'Live location'}</span>
+            <span>{isRemote ? 'Cyber Link' : 'Live GPS Radar'}</span>
             {!isRemote && (
               trackingLocationError ? (
                 <span className="text-red-500 font-medium flex items-center space-x-1">
@@ -477,9 +479,9 @@ const TaskerJobDetailsScreen = () => {
             <div className="flex items-start space-x-2.5 bg-orange-50 border border-orange-100 rounded-2xl p-3.5 animate-scale-up">
               <ShieldAlert className="w-4.5 h-4.5 text-orange-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-black text-orange-700">Location sharing is paused</p>
+                <p className="text-xs font-black text-orange-700">GPS Uplink is Paused</p>
                 <p className="text-[10px] font-semibold text-orange-600 mt-0.5 leading-normal">
-                  Please enable location access/GPS in your browser or device settings so the customer knows you are on your way.
+                  Please enable location access/GPS so the Fixer can track your vector coordinates en route.
                 </p>
               </div>
             </div>
@@ -497,18 +499,18 @@ const TaskerJobDetailsScreen = () => {
         <div className="bg-gray-50 border border-border rounded-2xl p-4 space-y-3">
           <div className="flex items-center space-x-2 text-xs font-bold text-dark">
             <ShieldCheck className="w-5 h-5 text-primary shrink-0" />
-            <span>{isVerified ? 'Verification Status' : 'Verify OTP to Start Task'}</span>
+            <span>{isVerified ? 'Clearance Authorization' : 'Authenticate Keycode to Initiate'}</span>
           </div>
           
           {isVerified ? (
             <div className="flex items-center space-x-2 bg-green-50 text-green-600 border border-green-200 p-3 rounded-xl font-bold text-xs animate-scale-up">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>OTP Verified! You are currently working on this task.</span>
+              <span>Keycode Authenticated! Contract is in active execution.</span>
             </div>
           ) : (
             <div className="space-y-2 animate-scale-up">
               <p className="text-[10px] text-gray-400 font-semibold leading-normal">
-                Enter the 4-digit code generated by the customer to start the task.
+                Enter the 4-digit Mission Clearance Keycode provided by the Fixer to initiate.
               </p>
               <div className="flex gap-2">
                 <input
@@ -516,11 +518,11 @@ const TaskerJobDetailsScreen = () => {
                   maxLength={4}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Enter OTP"
+                  placeholder="Keycode"
                   className="flex-1 bg-white border border-border focus:border-primary rounded-xl px-4 py-2.5 text-center font-bold tracking-widest outline-hidden text-sm text-dark min-w-0"
                 />
                 <div className="shrink-0">
-                  <Tooltip text="Verify OTP code">
+                  <Tooltip text="Authenticate clearance keycode">
                     <button
                       onClick={handleVerifyOtp}
                       disabled={isVerifying}
@@ -529,7 +531,7 @@ const TaskerJobDetailsScreen = () => {
                       {isVerifying ? (
                         <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                       ) : null}
-                      <span>{isVerifying ? 'Verifying...' : 'Verify'}</span>
+                      <span>{isVerifying ? 'Verifying...' : 'Authorize'}</span>
                     </button>
                   </Tooltip>
                 </div>
@@ -543,7 +545,7 @@ const TaskerJobDetailsScreen = () => {
 
         {/* Buttons Section */}
         {isVerified && (acceptedJob.peopleNeeded || 1) === 1 && (
-          <Tooltip text="Mark task as fully completed" className="w-full flex justify-center">
+          <Tooltip text="Fulfill contract and claim bounty settlement" className="w-full flex justify-center">
             <button
               onClick={handleComplete}
               disabled={isCompleting || isCancelling}
@@ -554,7 +556,7 @@ const TaskerJobDetailsScreen = () => {
               ) : (
                 <CheckCircle2 className="w-5 h-5 animate-pulse" />
               )}
-              <span>{isCompleting ? 'Completing...' : 'Mark Task Complete'}</span>
+              <span>{isCompleting ? 'Completing...' : 'Fulfill Contract & Claim Bounty'}</span>
             </button>
           </Tooltip>
         )}
@@ -567,7 +569,7 @@ const TaskerJobDetailsScreen = () => {
           {isCancelling ? (
             <div className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
           ) : null}
-          <span>{isCancelling ? 'Cancelling...' : 'Cancel Task'}</span>
+          <span>{isCancelling ? 'Aborting...' : 'Abort Assignment'}</span>
         </button>
       </div>
 
@@ -586,9 +588,9 @@ const TaskerJobDetailsScreen = () => {
               <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
                 <ShieldAlert className="w-6 h-6 text-red-500" />
               </div>
-              <h3 className="text-lg font-black text-dark">Cancel Assignment?</h3>
+              <h3 className="text-lg font-black text-dark">Abort Assignment?</h3>
               <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
-                Are you sure you want to cancel this task? This action is recorded and may affect your completion rate.
+                Are you sure you want to abort this contract? This action is recorded and may affect your Street Cred.
               </p>
             </div>
             <div className="flex space-x-3">
@@ -596,7 +598,7 @@ const TaskerJobDetailsScreen = () => {
                 onClick={() => setShowCancelModal(false)}
                 className="flex-1 py-3.5 border border-border text-gray-600 hover:bg-gray-50 rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
               >
-                No, Keep Task
+                No, Keep Contract
               </button>
               <button
                 onClick={async () => {
@@ -615,8 +617,8 @@ const TaskerJobDetailsScreen = () => {
                     if (acceptedJob.posterId) {
                       api.sendNotification(
                         acceptedJob.posterId,
-                        "Task Cancelled",
-                        `${userProfile?.name || 'Your helper'} cancelled the task.`,
+                        "Operative Disengaged",
+                        `${userProfile?.name || 'An operative'} disengaged from the contract.`,
                         'live_status',
                         'job_cancelled',
                         'poster',
@@ -630,7 +632,7 @@ const TaskerJobDetailsScreen = () => {
                 }}
                 className="flex-1 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
               >
-                Yes, Cancel
+                Yes, Abort
               </button>
             </div>
           </div>

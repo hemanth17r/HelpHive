@@ -16,10 +16,10 @@ const ProfileProgressBar = () => {
     openOnboardingWizard();
   };
 
-  const titleText = role === 'tasker' ? 'Complete Helper Profile' : 'Complete Poster Profile';
+  const titleText = role === 'tasker' ? 'Complete Operator Dossier' : 'Complete Fixer Profile';
   const subtext = role === 'tasker'
-    ? 'Set up profile to start getting task notifications'
-    : 'Set up profile to start posting tasks';
+    ? 'Configure dossier to lock onto high-payout bounties'
+    : 'Complete setup to broadcast bounties to the network';
 
   return (
     <button

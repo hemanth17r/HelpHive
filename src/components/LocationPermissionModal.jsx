@@ -24,10 +24,10 @@ const LocationPermissionModal = ({ isOpen, onClose, onAllow, role }) => {
 
   if (!shouldRender) return null;
 
-  const title = role === 'tasker' ? 'Find Nearby Tasks' : 'Get Faster Responses';
+  const title = role === 'tasker' ? 'Activate Sector Radar' : 'Calibrate Drop Coordinates';
   const description = role === 'tasker' 
-    ? 'To show you tasks that are close to you, we need your current location.' 
-    : 'To accurately calculate the distance for taskers and help you get faster responses, we need your current location.';
+    ? 'To ping open bounties within your tactical patrol perimeter, activate live GPS radar.' 
+    : 'To calculate vector distance for Operators and dispatch strike teams with zero lag, calibrate your drop coordinates.';
 
   const handleClose = () => {
     if (isWorking) return;
@@ -77,7 +77,7 @@ const LocationPermissionModal = ({ isOpen, onClose, onAllow, role }) => {
             {isWorking ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : null}
-            <span>{isWorking ? 'Requesting...' : 'Allow Location'}</span>
+            <span>{isWorking ? 'Calibrating...' : 'Activate GPS Radar'}</span>
           </button>
           
           <button 
@@ -85,7 +85,7 @@ const LocationPermissionModal = ({ isOpen, onClose, onAllow, role }) => {
             disabled={isWorking}
             className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3.5 rounded-2xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Maybe Later
+            Stand Down For Now
           </button>
         </div>
       </div>

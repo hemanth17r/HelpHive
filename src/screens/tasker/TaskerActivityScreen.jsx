@@ -1,79 +1,32 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
-import { ArrowLeft, TrendingUp, Briefcase, CalendarDays, Check, X, Edit2 } from 'lucide-react';
+import React, { useContext, useRef } from 'react';
+import { ArrowLeft, TrendingUp, Briefcase, CalendarDays } from 'lucide-react';
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
+import { formatCurrency } from '../../utils/currency';
 
 const TaskerActivityScreen = () => {
-  const { popScreen, jobs, userProfile, setUserProfile, taskerActivityScrollTarget, setTaskerActivityScrollTarget } = useContext(AppContext);
+  const { popScreen, jobs, userProfile, currency, userId } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
 
-  const [isEditingUpi, setIsEditingUpi] = useState(false);
-  const [editedUpiId, setEditedUpiId] = useState('');
-  const [pulseUpi, setPulseUpi] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const upiRef = useRef(null);
-
-  const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
-
-  const handleSaveUpi = async (e) => {
-    if (e) e.preventDefault();
-    const finalUpi = editedUpiId.trim();
-    if (!upiRegex.test(finalUpi)) {
-      showToast('Please enter a valid UPI ID (e.g. name@bank)', 'error');
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const result = await setUserProfile({ upiId: finalUpi });
-      if (result && result.success === false) {
-        showToast(result.error || 'Failed to save UPI ID. Please try again.', 'error');
-        return;
-      }
-      showToast('UPI ID saved successfully!', 'success');
-      setIsEditingUpi(false);
-    } catch (err) {
-      console.error('Failed to save UPI ID:', err);
-      showToast('Failed to save UPI ID. Please try again.', 'error');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Scroll to targeted section if directed from MyProfileScreen
-  const scrollTimerRef = useRef(null);
-  const pulseTimerRef = useRef(null);
-
-  useEffect(() => {
-    if (taskerActivityScrollTarget) {
-      // Bug 3.2 fix: Store timeout IDs in refs so they can be cleaned up on
-      // unmount, preventing state-update-on-unmounted-component warnings.
-      scrollTimerRef.current = setTimeout(() => {
-        if (taskerActivityScrollTarget === 'upi' && upiRef.current) {
-          upiRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          setPulseUpi(true);
-          pulseTimerRef.current = setTimeout(() => setPulseUpi(false), 2000);
-        }
-        setTaskerActivityScrollTarget(null);
-      }, 100);
-    }
-    return () => {
-      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-      if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
-    };
-  }, [taskerActivityScrollTarget, setTaskerActivityScrollTarget]);
+  const isGuest = !userId || userProfile?.isGuest;
 
   // Filter jobs for this tasker
   const taskerJobs = jobs.filter(j =>
     j.taskerId === userProfile?.id ||
-    j.taskerName === userProfile?.name
+    j.taskerName === userProfile?.name ||
+    j.isAcceptedByMe
   );
 
-  const displayCompleted = taskerJobs.filter(j => j.status === 'completed');
+  const displayCompleted = taskerJobs.filter(j => j.status === 'completed' || j.completedByMe);
 
   // Earnings calculations
-  const totalEarned = displayCompleted.reduce((sum, j) => sum + (j.amount || 0), 0);
-  const jobsCompletedCount = displayCompleted.length;
+  const totalEarned = isGuest 
+    ? (userProfile?.taskerEarningsAmount || 24500)
+    : displayCompleted.reduce((sum, j) => sum + (j.amount || 0), 0);
+    
+  const jobsCompletedCount = isGuest
+    ? (userProfile?.taskerTasksCompleted || 42)
+    : displayCompleted.length;
 
   // Current month earnings
   const now = new Date();
@@ -82,16 +35,25 @@ const TaskerActivityScreen = () => {
     const posted = new Date(j.timePosted);
     return posted.getMonth() === now.getMonth() && posted.getFullYear() === now.getFullYear();
   });
-  const thisMonthEarnings = currentMonthJobs.reduce((sum, j) => sum + (j.amount || 0), 0);
+  
+  const thisMonthEarnings = isGuest
+    ? 6800
+    : currentMonthJobs.reduce((sum, j) => sum + (j.amount || 0), 0);
 
   // Monthly breakdown (last 3 months)
   const getMonthName = (offset) => {
     const d = new Date();
     d.setMonth(d.getMonth() - offset);
-    return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   };
 
   const getEarningsForMonth = (offset) => {
+    if (isGuest) {
+      if (offset === 0) return 6800;
+      if (offset === 1) return 9500;
+      if (offset === 2) return 8200;
+      return 0;
+    }
     const d = new Date();
     d.setMonth(d.getMonth() - offset);
     const targetMonth = d.getMonth();
@@ -123,7 +85,7 @@ const TaskerActivityScreen = () => {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <span className="text-sm font-black text-dark ml-2">Earnings</span>
+        <span className="text-sm font-black text-dark ml-2">Bounty Stash & Ledger</span>
       </div>
 
       <div id="tasker-activity-scroll-container" className="flex-1 overflow-y-auto w-full">
@@ -139,14 +101,14 @@ const TaskerActivityScreen = () => {
               <div className="p-2 bg-primary/10 rounded-xl">
                 <TrendingUp className="w-4.5 h-4.5 text-primary" />
               </div>
-              <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Earnings Overview</h3>
+              <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Bounty Overview</h3>
             </div>
 
             {/* Hero stat */}
             <div className="text-center py-2">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Total Earned</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Total Bounties Claimed</span>
               <span className="text-4xl font-black text-dark tracking-tight leading-none" id="total-earned-value">
-                ₹{totalEarned.toLocaleString('en-IN')}
+                {formatCurrency(totalEarned, currency?.code)}
               </span>
             </div>
 
@@ -154,11 +116,11 @@ const TaskerActivityScreen = () => {
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
               <div className="bg-gray-50 rounded-2xl p-3 text-center">
                 <span className="text-xl font-black text-dark block leading-none" id="jobs-completed-value">{jobsCompletedCount}</span>
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 block">Tasks Completed</span>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 block">Contracts Solved</span>
               </div>
               <div className="bg-gray-50 rounded-2xl p-3 text-center">
-                <span className="text-xl font-black text-dark block leading-none" id="this-month-value">₹{(thisMonthEarnings || 0).toLocaleString('en-IN')}</span>
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 block">This Month</span>
+                <span className="text-xl font-black text-dark block leading-none" id="this-month-value">{formatCurrency(thisMonthEarnings || 0, currency?.code)}</span>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 block">Current Cycle</span>
               </div>
             </div>
           </div>
@@ -170,7 +132,7 @@ const TaskerActivityScreen = () => {
             <div className="p-2 bg-amber-50 rounded-xl">
               <CalendarDays className="w-4.5 h-4.5 text-amber-500" />
             </div>
-            <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Monthly Earnings</h3>
+            <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Cycle Ledger</h3>
           </div>
 
           <div className="space-y-2 pt-1">
@@ -184,78 +146,34 @@ const TaskerActivityScreen = () => {
                   {i === 0 && <span className="text-[9px] font-black uppercase tracking-wider text-primary/60 ml-1.5">(Current)</span>}
                 </span>
                 <span className={`text-sm font-black ${i === 0 ? 'text-primary' : 'text-dark'}`}>
-                  ₹{entry.amount.toLocaleString('en-IN')}
+                  {formatCurrency(entry.amount, currency?.code)}
                 </span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ─── UPI ID / Receive Payments Section ─── */}
-        <div ref={upiRef} className={`bg-white rounded-3xl shadow-sm overflow-hidden transition-all duration-300 ${pulseUpi ? 'border border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)]' : 'border border-gray-100'}`} id="upi-settings-section">
-          <div className="p-5 space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="p-2 bg-orange-50 rounded-xl">
-                <Briefcase className="w-4.5 h-4.5 text-orange-500" />
+        {/* ─── Direct Peer-to-Peer Settlement Card ─── */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden" id="payout-info-section">
+          <div className="p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-emerald-50 rounded-xl">
+                  <Briefcase className="w-4.5 h-4.5 text-emerald-600" />
+                </div>
+                <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Payment Settlement</h3>
               </div>
-              <h3 className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Payment Settings</h3>
+              <span className="text-[9px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
+                0% Fee
+              </span>
             </div>
             
-            {!userProfile?.upiId ? (
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
-                <h3 className="text-[11px] font-black uppercase text-orange-600 tracking-wider mb-2">Receive Payments</h3>
-                <p className="text-[10px] font-bold text-gray-500 mb-3">Add your UPI ID to receive payments directly from customers.</p>
-                <form onSubmit={handleSaveUpi} className="flex flex-col space-y-2">
-                  <input
-                    type="text"
-                    value={editedUpiId}
-                    onChange={(e) => setEditedUpiId(e.target.value)}
-                    placeholder="e.g. username@okhdfcbank"
-                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold text-dark focus:outline-none focus:border-primary"
-                  />
-                  <button type="submit" disabled={!editedUpiId.trim() || isSaving} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50 flex justify-center items-center gap-2">
-                    {isSaving ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    ) : null}
-                    <span>{isSaving ? 'Saving...' : 'Save UPI ID'}</span>
-                  </button>
-                </form>
-              </div>
-            ) : (
-              <div className="px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Receive Payments (UPI)</span>
-                  {!isEditingUpi && (
-                    <button onClick={() => { setEditedUpiId(userProfile.upiId); setIsEditingUpi(true); }} className="text-primary hover:bg-primary/10 p-1.5 rounded-full transition-colors cursor-pointer flex items-center justify-center" title="Edit UPI ID">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                {isEditingUpi ? (
-                  <form onSubmit={handleSaveUpi} className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      value={editedUpiId}
-                      onChange={(e) => setEditedUpiId(e.target.value)}
-                      placeholder="e.g. username@okhdfcbank"
-                      className="flex-1 bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs font-bold text-dark focus:outline-none focus:border-primary"
-                    />
-                    <button type="button" onClick={() => setIsEditingUpi(false)} className="text-gray-400 hover:text-red-500 p-1.5 cursor-pointer flex-shrink-0">
-                      <X className="w-4 h-4" />
-                    </button>
-                    <button type="submit" disabled={!editedUpiId.trim() || isSaving} className="text-primary hover:text-primary/80 p-1.5 cursor-pointer disabled:opacity-50 flex-shrink-0 flex items-center justify-center min-w-[28px]">
-                      {isSaving ? (
-                        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                      ) : (
-                        <Check className="w-4 h-4" />
-                      )}
-                    </button>
-                  </form>
-                ) : (
-                  <span className="text-sm font-bold text-dark truncate">{userProfile.upiId}</span>
-                )}
-              </div>
-            )}
+            <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-2xl p-4 space-y-1.5">
+              <span className="text-xs font-black text-emerald-900 block">Direct Peer-to-Peer Settlement</span>
+              <p className="text-[11px] font-semibold text-emerald-800 leading-relaxed">
+                Direct settlement between both parties upon task completion.
+              </p>
+            </div>
           </div>
         </div>
       </div>

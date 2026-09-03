@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Satisfy&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900;1000&family=Satisfy&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -8,6 +8,11 @@
   --color-light-gray: #F8FAFC;
   --color-border: #E2E8F0;
   --color-border-m3: #E0E2E6;
+  --font-sans: 'Nunito', system-ui, -apple-system, sans-serif;
+}
+
+html, body, #root, *, button, input, select, textarea {
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif !important;
 }
 
 html, body, #root {
@@ -20,11 +25,12 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif !important;
   background: #FFFFFF !important;
   color: var(--color-dark);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* Hide all scrollbars globally for a cleaner app look */
@@ -51,6 +57,43 @@ body {
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  /* Sharp AAA Tactical Typography Tokens */
+  .hud-title {
+    font-size: 1.125rem;
+    font-weight: 900;
+    letter-spacing: -0.025em;
+    color: var(--color-dark);
+    text-transform: uppercase;
+  }
+  .hud-headline {
+    font-size: 0.875rem;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    color: var(--color-dark);
+    line-height: 1.25;
+  }
+  .hud-label {
+    font-size: 0.625rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94A3B8;
+    line-height: 1;
+    user-select: none;
+  }
+  .hud-subtext {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748B;
+    line-height: 1.35;
+  }
+  .hud-number {
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    font-family: 'Nunito', system-ui, -apple-system, sans-serif !important;
+    color: var(--color-dark);
+  }
 }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(5px); } }
@@ -69,6 +112,22 @@ body {
 
 .animate-slide-down {
   animation: toastSlideDown 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Relaxed live radar indicator pulse (2.5s cycle with natural rest interval) */
+@keyframes livePing {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  60%, 100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.animate-live-ping {
+  animation: livePing 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 /* Pure opacity-only backdrop animation — no translateY, no blur re-composition.

@@ -1,10 +1,11 @@
 import React, { createContext, useState, useEffect, useRef, useContext, useCallback } from 'react';
 import { api } from '../services/api';
-import { SKILLS } from '../config/constants';
+import { SKILLS, GOATED_GUEST_PROFILE } from '../config/constants';
 import { trackEvent, EVENTS } from '../utils/eventTracker';
 import { ToastContext } from './ToastContext';
 import { parseEWKBPoint, getCurrentLocation } from '../utils/location';
 import { reverseGeocode } from '../utils/geocoding';
+import { detectUserCurrency, setUserCurrency as saveUserCurrency, resetUserCurrency as clearUserCurrency } from '../utils/currency';
 
 export const AppContext = createContext();
 
@@ -39,16 +40,34 @@ const parseProfileData = (data, currentRole) => {
     ? parseFloat((posterFeedbacks.reduce((sum, r) => sum + r, 0) / posterFeedbacks.length).toFixed(1))
     : null;
 
+  const allRatings = feedbacks.map(f => f.rating);
+  const overallRating = allRatings.length > 0
+    ? parseFloat((allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length).toFixed(1))
+    : (data.rating || null);
+
   const taskerTasks = taskerFeedbacks.length;
   const posterTasks = posterFeedbacks.length;
+  const totalCompleted = taskerTasks + posterTasks;
 
   const repBadges = data.reputation_badges || [];
   const taskerBadges = repBadges.filter(b => b.role_context === 'tasker').map(b => b.badge_type);
   const posterBadges = repBadges.filter(b => b.role_context === 'poster').map(b => b.badge_type);
+  const allBadges = repBadges.map(b => b.badge_type);
+
+  const xp = data.xp !== undefined && data.xp !== null ? parseInt(data.xp, 10) : 0;
+  const calculatedLevel = Math.min(99, Math.max(1, Math.floor(Math.sqrt(totalCompleted * 4)) + 1));
+  const playerLevel = data.player_level || calculatedLevel;
 
   return {
     id: data.id,
     name: data.name,
+    handle: data.handle || (data.name ? `@${data.name.toLowerCase().replace(/\s+/g, '_')}` : '@operative'),
+    title: data.title || 'Rookie Scout',
+    xp,
+    playerLevel,
+    level: playerLevel,
+    streakDays: data.streak_days || 0,
+    currency: data.currency || 'INR',
     email: data.email,
     phone: data.phone,
     posterName: data.posterName || data.name,
@@ -59,17 +78,19 @@ const parseProfileData = (data, currentRole) => {
     skills: data.skills || [],
     
     // Real Database Ratings and Badges
+    overallRating,
     taskerRating,
     posterRating,
     taskerTasksCompleted: taskerTasks,
     posterTasksCompleted: posterTasks,
+    allBadges,
     taskerBadges,
     posterBadges,
     taskerReviews: taskerFeedbacks,
     posterReviews: posterFeedbacks,
 
     // Compatibility fields
-    rating: currentRole === 'tasker' ? taskerRating : posterRating,
+    rating: currentRole === 'tasker' ? (taskerRating || overallRating) : (posterRating || overallRating),
     tasksCompleted: currentRole === 'tasker' ? taskerTasks : posterTasks,
     badges: currentRole === 'tasker' ? taskerBadges : posterBadges,
     reviews: currentRole === 'tasker' ? taskerFeedbacks : posterFeedbacks,
@@ -94,6 +115,36 @@ export const AppProvider = ({ children }) => {
   // State to track scroll target for tasker activity screen
   const [taskerActivityScrollTarget, setTaskerActivityScrollTarget] = useState(null);
 
+  // Global Currency State & Switcher
+  const [currency, setCurrencyState] = useState(() => detectUserCurrency());
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+
+  const setCurrency = useCallback((currencyCode) => {
+    const updated = saveUserCurrency(currencyCode);
+    setCurrencyState(updated);
+    const savedUserId = localStorage.getItem('userId');
+    if (savedUserId) {
+      api.updateProfile(savedUserId, { currency: updated.code }).catch(e => console.warn('Currency profile sync error:', e));
+    }
+    if (showToast) showToast(`Currency set to ${updated.code} (${updated.symbol})`, 'success');
+  }, [showToast]);
+
+  const resetCurrency = useCallback(() => {
+    const updated = clearUserCurrency();
+    setCurrencyState(updated);
+    if (showToast) showToast(`Currency reset to auto-detect (${updated.code} ${updated.symbol})`, 'info');
+  }, [showToast]);
+
+  useEffect(() => {
+    const handleCurrencyChange = (e) => {
+      if (e.detail) {
+        setCurrencyState(e.detail);
+      }
+    };
+    window.addEventListener('currencyChange', handleCurrencyChange);
+    return () => window.removeEventListener('currencyChange', handleCurrencyChange);
+  }, []);
+
   // Global State for role & profiles
   const [role, setRole] = useState(localStorage.getItem('activeRole') || 'tasker');
   
@@ -101,26 +152,20 @@ export const AppProvider = ({ children }) => {
   const [locationActionCallback, setLocationActionCallback] = useState(null);
   const [locationActionRole, setLocationActionRole] = useState('poster');
   const [userProfile, setUserProfileState] = useState(() => {
-    const saved = localStorage.getItem('userProfile');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse cached userProfile", e);
-      }
-    }
     const hasUserId = localStorage.getItem('userId');
-    if (!hasUserId) {
-      const guestSaved = localStorage.getItem('helphive_guest_profile');
-      if (guestSaved) {
+    if (hasUserId) {
+      const saved = localStorage.getItem('userProfile');
+      if (saved) {
         try {
-          return JSON.parse(guestSaved);
+          return JSON.parse(saved);
         } catch (e) {
-          // ignore
+          console.error("Failed to parse cached userProfile", e);
         }
       }
+      return null;
     }
-    return null;
+    // Guest mode: always use GOATED_GUEST_PROFILE for peak preview
+    return GOATED_GUEST_PROFILE;
   }); // { name, phone, skills, rating, tasksCompleted }
   const [userId, setUserId] = useState(() => localStorage.getItem('userId'));
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -172,17 +217,13 @@ export const AppProvider = ({ children }) => {
     if (hash.includes('access_token') || search.includes('code=')) {
       return ['auth_loading'];
     }
-    const activeRole = localStorage.getItem('activeRole');
-    const storedUserId = localStorage.getItem('userId');
-    if (activeRole && storedUserId) {
-      const path = window.location.pathname.replace(/^\/+/g, '').replace(/\/+$/g, '');
-      const validScreens = ['notifications', 'tasker_activity', 'my_profile', 'about_us', 'need_help', 'job_history', 'address_book'];
-      if (validScreens.includes(path)) {
-        return [activeRole === 'tasker' ? 'tasker_home' : 'poster_home', path];
-      }
-      return [activeRole === 'tasker' ? 'tasker_home' : 'poster_home'];
+    const activeRole = localStorage.getItem('activeRole') || 'tasker';
+    const path = window.location.pathname.replace(/^\/+/g, '').replace(/\/+$/g, '');
+    const validScreens = ['notifications', 'tasker_activity', 'my_profile', 'about_us', 'need_help', 'job_history', 'address_book', 'operations', 'post_job'];
+    if (validScreens.includes(path)) {
+      return [activeRole === 'tasker' ? 'tasker_home' : 'poster_home', path];
     }
-    return ['landing'];
+    return [activeRole === 'tasker' ? 'tasker_home' : 'poster_home'];
   });
   const [routeParams, setRouteParams] = useState(null);
   const currentScreen = screenStack[screenStack.length - 1];
@@ -610,9 +651,9 @@ export const AppProvider = ({ children }) => {
           localStorage.removeItem('activeRole');
           localStorage.removeItem('userProfile');
           setUserId(null);
-          setRole(null);
-          setUserProfileState(null);
-          setScreenStack(['landing']);
+          setRole('tasker');
+          setUserProfileState(GOATED_GUEST_PROFILE);
+          setScreenStack(['tasker_home']);
           setIsProfileLoading(false);
           return;
         }
@@ -655,9 +696,9 @@ export const AppProvider = ({ children }) => {
           localStorage.removeItem('activeRole');
           localStorage.removeItem('userProfile');
           setUserId(null);
-          setRole(null);
-          setUserProfileState(null);
-          setScreenStack(['landing']);
+          setRole('tasker');
+          setUserProfileState(GOATED_GUEST_PROFILE);
+          setScreenStack(['tasker_home']);
         }
         setIsProfileLoading(false);
       };
@@ -711,10 +752,13 @@ export const AppProvider = ({ children }) => {
     if (currentUserId) {
       const updatesPayload = {
         name: profileData.name !== undefined ? profileData.name : userProfile?.name,
+        handle: profileData.handle !== undefined ? profileData.handle : userProfile?.handle,
+        title: profileData.title !== undefined ? profileData.title : userProfile?.title,
+        currency: profileData.currency !== undefined ? profileData.currency : userProfile?.currency,
         email: profileData.email !== undefined ? profileData.email : userProfile?.email,
         phone: profileData.phone !== undefined ? profileData.phone : userProfile?.phone,
         upi_id: profileData.upiId !== undefined ? profileData.upiId : userProfile?.upiId,
-        skills: profileData.skills || userProfile?.skills || [],
+        skills: profileData.skills !== undefined ? profileData.skills : (userProfile?.skills || []),
         bird: profileData.bird !== undefined ? profileData.bird : selectedBird,
         coverage_radius: profileData.coverageRadius !== undefined ? profileData.coverageRadius : userProfile?.coverageRadius,
         category_coverage: profileData.categoryCoverage !== undefined ? profileData.categoryCoverage : userProfile?.categoryCoverage,
@@ -722,6 +766,11 @@ export const AppProvider = ({ children }) => {
         service_area_name: profileData.serviceAreaName !== undefined ? profileData.serviceAreaName : userProfile?.serviceAreaName,
         verified_phones: roleSpecificUpdates.verifiedPhones !== undefined ? roleSpecificUpdates.verifiedPhones : (profileData.verifiedPhones || userProfile?.verifiedPhones || [])
       };
+
+      if (profileData.xp !== undefined) updatesPayload.xp = profileData.xp;
+      if (profileData.player_level !== undefined || profileData.playerLevel !== undefined) {
+        updatesPayload.player_level = profileData.player_level || profileData.playerLevel;
+      }
 
       const pendingRef = localStorage.getItem('helphive_referred_by');
       if (pendingRef && pendingRef !== currentUserId && !userProfile?.referredBy) {
@@ -1102,16 +1151,7 @@ export const AppProvider = ({ children }) => {
     if (!userId) {
       setRole(newRole);
       localStorage.setItem('activeRole', newRole);
-      const guestSaved = localStorage.getItem('helphive_guest_profile');
-      if (guestSaved) {
-        try {
-          setUserProfileState(JSON.parse(guestSaved));
-        } catch (e) {
-          // Ignore JSON parse error
-        }
-      } else {
-        setUserProfileState(null);
-      }
+      setUserProfileState(GOATED_GUEST_PROFILE);
       if (fromProfile) {
         if (newRole === 'tasker') {
           setActiveTab('profile');
@@ -1596,8 +1636,8 @@ export const AppProvider = ({ children }) => {
   // Poster posts a job
   const postJob = async (newJobData) => {
     if (newJobData.amount === undefined || newJobData.amount === null || isNaN(newJobData.amount) || newJobData.amount < 0) {
-      console.error('Failed to post job: Payout amount must be greater than or equal to ₹0');
-      return { success: false, error: 'Payout amount must be greater than or equal to ₹0' };
+      console.error('Failed to post job: Payout amount must be greater than or equal to 0');
+      return { success: false, error: 'Payout amount must be greater than or equal to 0' };
     }
 
     let locationStr = null;
@@ -1632,6 +1672,10 @@ export const AppProvider = ({ children }) => {
     const { data, error } = await api.postJob({
       posterId: currentUserId,
       skillId: newJobData.skillId,
+      specificSkillId: newJobData.specificSkillId || null,
+      skillTags: newJobData.skillTags || [],
+      questRarity: newJobData.questRarity || 'standard',
+      currency: newJobData.currency || currency?.code || 'INR',
       description: dbDescription,
       peopleNeeded: newJobData.peopleNeeded || 1,
       amount: newJobData.amount,
@@ -1675,7 +1719,7 @@ export const AppProvider = ({ children }) => {
       // Construct a detailed admin notification body
       const adminMessageBody = 
         `Category: ${skillName}\n` +
-        `Payout: ₹${newJobData.amount}\n` +
+        `Payout: ${formatCurrency(newJobData.amount, newJobData.currency || userCurrencyState?.code)}\n` +
         `Location: ${jobLocation}\n\n` +
         `Details: ${newJobData.description || 'Quick task'}`;
 
@@ -1842,15 +1886,16 @@ export const AppProvider = ({ children }) => {
     localStorage.removeItem('userLocation');
     localStorage.removeItem('userProfile');
     setLocationPermission('prompt');
-    setUserProfileState(null);
+    setUserProfileState(GOATED_GUEST_PROFILE);
     setUserId(null);
+    setRole('tasker');
     setSelectedBird('falcon');
     setIsAdmin(false);
     localStorage.removeItem('activeRole');
     localStorage.removeItem('userId');
     localStorage.removeItem('isOnline');
     localStorage.removeItem('helphive_addresses_v2');
-    pushScreen('landing', true);
+    pushScreen('tasker_home', true);
     setAcceptedJob(null);
     setCurrentPostedJob(null);
     setCrewTaskers([]);
@@ -2070,9 +2115,9 @@ export const AppProvider = ({ children }) => {
           localStorage.removeItem('isOnline');
           localStorage.removeItem('userProfile');
           setUserId(null);
-          setRole(null);
-          setUserProfileState(null);
-          setScreenStack(['landing']);
+          setRole('tasker');
+          setUserProfileState(GOATED_GUEST_PROFILE);
+          setScreenStack(['tasker_home']);
           setActiveTab('home');
         }
         return;
@@ -2238,7 +2283,15 @@ export const AppProvider = ({ children }) => {
 
         isAdmin,
         userId,
-        isProfileLoading
+        isGuest: !userId,
+        isProfileLoading,
+
+        // Currency State & Switcher
+        currency,
+        setCurrency,
+        resetCurrency,
+        showCurrencyPicker,
+        setShowCurrencyPicker
       }}
     >
       {children}

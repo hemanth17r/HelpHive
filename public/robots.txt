@@ -35,4 +35,7 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
+# Sitemaps & AI Knowledge Base Protocols
 Sitemap: https://helphive.me/sitemap.xml
+# LLM Context: https://helphive.me/llms.txt
+

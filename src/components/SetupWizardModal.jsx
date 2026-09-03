@@ -27,6 +27,7 @@ import { NotificationContext } from '../store/NotificationContext';
 import { ToastContext } from '../store/ToastContext';
 import { useProfileCompletion } from '../hooks/useProfileCompletion';
 import { SKILLS } from '../config/constants';
+import { GAME_SKILLS, resolveUserSkills } from '../config/skillRegistry';
 import { searchAddress, reverseGeocode } from '../utils/geocoding';
 import { getCurrentLocation, INDIA_CENTER } from '../utils/location';
 import { api } from '../services/api';
@@ -183,7 +184,8 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
       setUpiId(userProfile.upiId || '');
 
       // Skills
-      setSelectedSkills(userProfile.skills || []);
+      const resolved = resolveUserSkills(userProfile.skills || [], userProfile.taskerTasksCompleted || userProfile.tasksCompleted || 0);
+      setSelectedSkills(resolved.map(s => s.id));
 
       // Service Area Coordinates
       if (userProfile.serviceAreaLat && userProfile.serviceAreaLng) {
@@ -245,7 +247,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
           
           const cleanName = userProfile.name === 'New User' || userProfile.name === 'Guest User' ? '' : userProfile.name || '';
           const cleanPhone = userProfile.phone === 'Add Phone' ? '' : userProfile.phone || '';
-          const hasProfileAndUpi = cleanName.trim() && cleanPhone.trim() && userProfile.upiId;
+          const hasProfile = cleanName.trim() && cleanPhone.trim();
 
           if (!hasSkills) {
             setActiveStep(2);
@@ -253,7 +255,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
             setActiveStep(3);
           } else if (!hasServiceArea) {
             setActiveStep(4);
-          } else if (!hasProfileAndUpi) {
+          } else if (!hasProfile) {
             setActiveStep(5);
           } else {
             setActiveStep(5);
@@ -448,7 +450,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
   const handleNext = async () => {
     setError('');
 
-    // --- Tasker Steps Flow (1: Auth, 2: Skills, 3: Enable Access, 4: Service Area, 5: Profile/UPI) ---
+    // --- Tasker Steps Flow (1: Auth, 2: Skills, 3: Enable Access, 4: Service Area, 5: Profile/Contact) ---
     if (role === 'tasker') {
       if (activeStep === 1) {
         if (!userId) {
@@ -478,14 +480,6 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
         const rawPhone = phone.replace(/\D/g, '');
         if (rawPhone.length !== 10) {
           setError('Please enter a valid 10-digit phone number.');
-          return;
-        }
-        if (!upiId.trim()) {
-          setError('A UPI Payout ID is required to receive earnings.');
-          return;
-        }
-        if (!upiId.includes('@')) {
-          setError('Please enter a valid UPI ID (e.g. name@upi).');
           return;
         }
         handleDone();
@@ -552,13 +546,15 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
       if (role === 'tasker') {
         payload = {
           ...payload,
-          upiId: upiId.trim(),
           skills: selectedSkills,
           coverageRadius: coverageRadius,
           coverageLevel: coverageRadius === 20000 ? 'flexible' : coverageRadius === 10000 ? 'local' : 'nearby',
           serviceAreaName: searchQuery || 'Primary Service Area',
           locationStr: `POINT(${serviceAreaLocation.lng} ${serviceAreaLocation.lat})`
         };
+        if (upiId && upiId.trim()) {
+          payload.upiId = upiId.trim();
+        }
       }
 
       const res = await setUserProfile(payload);
@@ -634,14 +630,14 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
         <div className="px-6 py-5 border-b border-border bg-white shrink-0 flex flex-col space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-primary">
-              {role === 'tasker' ? 'Helper setup' : 'Hirer setup'}
+              {role === 'tasker' ? 'Apex Operator Calibration' : 'Fixer Contractor Calibration'}
             </span>
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleRoleSwitch}
                 className="text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
               >
-                Switch to {role === 'tasker' ? 'Hirer' : 'Helper'}
+                Switch to {role === 'tasker' ? 'Fixer' : 'Operator'}
               </button>
               {onClose && (
                 <button
@@ -736,7 +732,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                           type="button"
                           onClick={handleMagicLink}
                           disabled={isLoading}
-                          className="bg-dark text-white px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ml-2 cursor-pointer shrink-0 disabled:opacity-70 flex items-center justify-center min-w-[80px]"
+                          className="bg-primary hover:bg-primary/95 text-white px-4 py-1.5 rounded-lg text-xs font-black whitespace-nowrap ml-2 cursor-pointer shrink-0 disabled:opacity-70 flex items-center justify-center min-w-[80px] shadow-sm shadow-primary/20"
                         >
                           {loadingAction === 'magic' ? (
                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -778,8 +774,8 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
               {activeStep === 2 && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-black text-dark leading-tight">What tasks can you do?</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Select all categories of work you are comfortable doing.</p>
+                    <h3 className="text-lg font-black text-dark leading-tight">Select Specialist Classes</h3>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">Select tactical archetypes &amp; skill trees you want to execute.</p>
                   </div>
                   
                   <div className="space-y-8 pt-1">
@@ -787,15 +783,16 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                     <div className="space-y-4">
                       <div className="flex items-center gap-1.5 px-1">
                         <MapPin className="w-3 h-3 text-primary shrink-0" />
-                        <span className="text-xs font-medium text-slate-700 tracking-wide">On-site &amp; Physical Services</span>
+                        <span className="text-xs font-medium text-slate-700 tracking-wide">Field Ops &amp; Physical Archetypes</span>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        {SKILLS.filter(s => s.type === 'physical').map((skill) => {
+                        {GAME_SKILLS.filter(s => s.type === 'physical').map((skill) => {
                           const isSelected = selectedSkills.includes(skill.id);
-                          const SkillIcon = skill.icon;
+                          const SkillIcon = skill.icon || Zap;
                           return (
                             <button
                               key={skill.id}
+                              type="button"
                               onClick={() => {
                                 if (isSelected) {
                                   setSelectedSkills(selectedSkills.filter(id => id !== skill.id));
@@ -803,7 +800,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                                   setSelectedSkills([...selectedSkills, skill.id]);
                                 }
                               }}
-                              className={`relative flex flex-col items-center justify-center p-4 rounded-2xl border-2 text-center transition-all cursor-pointer h-24 ${
+                              className={`relative flex flex-col items-center justify-center p-3 rounded-2xl border-2 text-center transition-all cursor-pointer min-h-[96px] ${
                                 isSelected 
                                   ? 'border-primary bg-primary/[0.03] text-primary shadow-xs shadow-primary/10' 
                                   : 'border-border bg-white text-dark hover:border-gray-300'
@@ -814,18 +811,9 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                                   <Check className="w-2.5 h-2.5 stroke-[4]" />
                                 </div>
                               )}
-                              {(skill.isNew || skill.isHighDemand || skill.isUrgent) && (
-                                <span className="absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary text-white border border-primary flex items-center gap-1">
-                                  {skill.isHighDemand ? (
-                                    <Flame className="w-2.5 h-2.5 shrink-0 fill-current" />
-                                  ) : skill.isUrgent ? (
-                                    <Zap className="w-2.5 h-2.5 shrink-0 fill-current" />
-                                  ) : null}
-                                  {skill.isNew && <span>NEW</span>}
-                                </span>
-                              )}
-                              <SkillIcon className={`w-6 h-6 mb-2 ${isSelected ? 'text-primary' : 'text-gray-400'}`} />
-                              <span className="text-xs font-black tracking-tight">{skill.label}</span>
+                              <SkillIcon className={`w-5 h-5 mb-1.5 ${isSelected ? 'text-primary' : 'text-slate-500'}`} />
+                              <span className="text-xs font-black tracking-tight leading-tight">{skill.shortLabel || skill.label}</span>
+                              <span className="text-[9.5px] text-slate-400 font-medium line-clamp-1 mt-0.5">{skill.tagline}</span>
                             </button>
                           );
                         })}
@@ -836,15 +824,16 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                     <div className="space-y-4">
                       <div className="flex items-center gap-1.5 px-1">
                         <Wifi className="w-3 h-3 text-primary shrink-0" />
-                        <span className="text-xs font-medium text-slate-700 tracking-wide">Online &amp; Remote Services</span>
+                        <span className="text-xs font-medium text-slate-700 tracking-wide">Cyber &amp; Remote Archetypes</span>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        {SKILLS.filter(s => s.type === 'remote').map((skill) => {
+                        {GAME_SKILLS.filter(s => s.type === 'remote').map((skill) => {
                           const isSelected = selectedSkills.includes(skill.id);
-                          const SkillIcon = skill.icon;
+                          const SkillIcon = skill.icon || Zap;
                           return (
                             <button
                               key={skill.id}
+                              type="button"
                               onClick={() => {
                                 if (isSelected) {
                                   setSelectedSkills(selectedSkills.filter(id => id !== skill.id));
@@ -852,7 +841,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                                   setSelectedSkills([...selectedSkills, skill.id]);
                                 }
                               }}
-                              className={`relative flex flex-col items-center justify-center p-4 rounded-2xl border-2 text-center transition-all cursor-pointer h-24 ${
+                              className={`relative flex flex-col items-center justify-center p-3 rounded-2xl border-2 text-center transition-all cursor-pointer min-h-[96px] ${
                                 isSelected 
                                   ? 'border-primary bg-primary/[0.03] text-primary shadow-xs shadow-primary/10' 
                                   : 'border-border bg-white text-dark hover:border-gray-300'
@@ -863,18 +852,9 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                                   <Check className="w-2.5 h-2.5 stroke-[4]" />
                                 </div>
                               )}
-                              {(skill.isNew || skill.isHighDemand || skill.isUrgent) && (
-                                <span className="absolute -top-1.5 -right-1.5 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary text-white border border-primary flex items-center gap-1">
-                                  {skill.isHighDemand ? (
-                                    <Flame className="w-2.5 h-2.5 shrink-0 fill-current" />
-                                  ) : skill.isUrgent ? (
-                                    <Zap className="w-2.5 h-2.5 shrink-0 fill-current" />
-                                  ) : null}
-                                  {skill.isNew && <span>NEW</span>}
-                                </span>
-                              )}
-                              <SkillIcon className={`w-6 h-6 mb-2 ${isSelected ? 'text-primary' : 'text-gray-400'}`} />
-                              <span className="text-xs font-black tracking-tight">{skill.label}</span>
+                              <SkillIcon className={`w-5 h-5 mb-1.5 ${isSelected ? 'text-primary' : 'text-slate-500'}`} />
+                              <span className="text-xs font-black tracking-tight leading-tight">{skill.shortLabel || skill.label}</span>
+                              <span className="text-[9.5px] text-slate-400 font-medium line-clamp-1 mt-0.5">{skill.tagline}</span>
                             </button>
                           );
                         })}
@@ -910,8 +890,8 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
               {activeStep === 4 && (
                 <div className="space-y-4 flex flex-col h-full min-h-[380px]">
                   <div>
-                    <h3 className="text-lg font-black text-dark leading-tight">Define your work range</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">We will match you with tasks posted inside this circle.</p>
+                    <h3 className="text-lg font-black text-dark leading-tight">Set Sector Patrol Range</h3>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">Your radar scanner will ping bounties broadcast within this sector perimeter.</p>
                   </div>
 
                   {/* Map container */}
@@ -925,7 +905,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                           onChange={handleSearchChange}
                           onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
                           className="w-full bg-white border-none rounded-xl pl-9 pr-8 py-2 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="Search your main work location..."
+                          placeholder="Search sector base coordinates..."
                         />
                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                         {isSearching && (
@@ -970,19 +950,19 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                         <Navigation className="w-3.5 h-3.5 shrink-0" />
                       )}
                       <span className="text-[11px] font-bold">
-                        {isLocating ? 'Locating...' : 'Use my location'}
+                        {isLocating ? 'Pinging GPS...' : 'Ping Current GPS'}
                       </span>
                     </button>
                   </div>
 
                   {/* Radius Selection */}
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 block mb-2">Coverage radius</label>
+                    <label className="text-xs font-semibold text-gray-500 block mb-2">Radar Perimeter Radius</label>
                     <div className="flex space-x-2">
                       {[
-                        { val: 5000, label: '5 km', desc: 'Nearby' },
-                        { val: 10000, label: '10 km', desc: 'Local' },
-                        { val: 20000, label: '20 km', desc: 'Extended' }
+                        { val: 5000, label: '5 km', desc: 'Nearby Sector' },
+                        { val: 10000, label: '10 km', desc: 'Local Sector' },
+                        { val: 20000, label: '20 km', desc: 'Extended Sector' }
                       ].map((rad) => {
                         const isRadSelected = coverageRadius === rad.val;
                         return (
@@ -1005,25 +985,25 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                 </div>
               )}
 
-              {/* Step 5: Contact & UPI Payout Details */}
+              {/* Step 5: Contact & Profile Details */}
               {activeStep === 5 && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-black text-dark leading-tight">Payout & Contact</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Complete your personal and direct payment transfer options.</p>
+                    <h3 className="text-lg font-black text-dark leading-tight">Operator Profile &amp; Contact Details</h3>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">Set your callsign and direct contact phone to coordinate directly with posters.</p>
                   </div>
 
                   <div className="space-y-3.5 pt-1">
                     {/* Name */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-gray-500">Full name</label>
+                      <label className="block text-xs font-semibold text-gray-500">Operator callsign / full name</label>
                       <div className="flex items-center bg-gray-50 border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
                         <User className="w-4 h-4 text-gray-400 shrink-0" />
                         <input
                           type="text"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          placeholder="e.g. Alex Johnson"
+                          placeholder="e.g. Felix Wing"
                           className="w-full bg-transparent border-0 px-2 py-2 text-sm font-semibold outline-hidden text-dark h-full"
                         />
                       </div>
@@ -1031,7 +1011,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
 
                     {/* Phone */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-gray-500">Phone number</label>
+                      <label className="block text-xs font-semibold text-gray-500">Comms phone number</label>
                       <div className="flex items-center bg-gray-50 border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
                         <Phone className="w-4 h-4 text-gray-400 shrink-0" />
                         <input
@@ -1041,24 +1021,6 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                           onChange={handlePhoneChange}
                           placeholder="e.g. 9876543210"
                           className="w-full bg-transparent border-0 px-2 py-2 text-sm font-semibold outline-hidden text-dark h-full"
-                        />
-                      </div>
-                    </div>
-
-                    {/* UPI Payout ID */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-gray-500 flex items-center justify-between">
-                        <span>Payout UPI ID</span>
-                        <span className="text-[9px] text-green-600 font-extrabold normal-case bg-green-50 px-1.5 py-0.5 rounded-md">Direct Bank Transfer</span>
-                      </label>
-                      <div className="flex items-center bg-white border border-border focus-within:border-primary rounded-xl px-3 h-12">
-                        <IndianRupee className="w-4 h-4 text-gray-400 shrink-0" />
-                        <input
-                          type="text"
-                          value={upiId}
-                          onChange={(e) => setUpiId(e.target.value)}
-                          placeholder="e.g. ramesh@okaxis"
-                          className="w-full bg-transparent border-0 px-2.5 text-xs font-semibold outline-none text-dark"
                         />
                       </div>
                     </div>
@@ -1075,9 +1037,9 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                 <Smartphone className="w-8 h-8" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-dark leading-tight">Enable Access</h3>
+                <h3 className="text-lg font-black text-dark leading-tight">Activate Comms &amp; Sector Radar</h3>
                 <p className="text-xs font-semibold text-gray-400 mt-1 max-w-[280px] mx-auto">
-                  To help you find nearby tasks and receive real-time notifications, please enable these permissions.
+                  To detect sector bounties on radar and receive priority comms dispatches, activate system uplinks.
                 </p>
               </div>
 
@@ -1089,8 +1051,8 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-dark">Location Access</p>
-                      <p className="text-[10px] font-semibold text-gray-400">Used to center the map on your exact coordinates</p>
+                      <p className="text-xs font-bold text-dark">GPS Sector Radar</p>
+                      <p className="text-[10px] font-semibold text-gray-400">Used to sync sector grid with your live operational vector</p>
                     </div>
                   </div>
                   
@@ -1120,8 +1082,8 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                       <Bell className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-dark">Push Notifications</p>
-                      <p className="text-[10px] font-semibold text-gray-400">Used to send instant task matches and status updates</p>
+                      <p className="text-xs font-bold text-dark">Priority Comms Dispatches</p>
+                      <p className="text-[10px] font-semibold text-gray-400">Used to broadcast incoming bounty pings and crew keycode updates</p>
                     </div>
                   </div>
                   
@@ -1154,14 +1116,14 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
               {activeStep === 2 && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-black text-dark leading-tight">Introduce Yourself</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Helpers will see this name and verified number on active tasks.</p>
+                    <h3 className="text-lg font-black text-dark leading-tight">Fixer Identity &amp; Callsign</h3>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">Operators will see this identity and comms number on locked contracts.</p>
                   </div>
 
                   <div className="space-y-3.5 pt-1">
                     {/* Name */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-gray-500">Full name</label>
+                      <label className="block text-xs font-semibold text-gray-500">Fixer callsign / name</label>
                       <div className="flex items-center bg-white border border-border focus-within:border-primary rounded-xl px-3 h-12">
                         <User className="w-4 h-4 text-gray-400 shrink-0" />
                         <input
@@ -1176,7 +1138,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
 
                     {/* Phone */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-gray-500">Phone number</label>
+                      <label className="block text-xs font-semibold text-gray-500">Direct comms phone number</label>
                       <div className="flex items-center bg-white border border-border focus-within:border-primary rounded-xl px-3 h-12">
                         <Phone className="w-4 h-4 text-gray-400 shrink-0" />
                         <input
@@ -1197,8 +1159,8 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
               {activeStep === 4 && (
                 <div className="space-y-4 flex flex-col h-full min-h-[380px]">
                   <div>
-                    <h3 className="text-lg font-black text-dark leading-tight">Where do you live?</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Set a primary home or business address to post tasks faster.</p>
+                    <h3 className="text-lg font-black text-dark leading-tight">Primary Base Coordinates</h3>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">Set your headquarters or drop zone to broadcast bounties with zero delay.</p>
                   </div>
 
                   {/* Map picker wrapper */}
@@ -1219,7 +1181,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
 
                    {/* Landmark detail */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-gray-500">Nearest landmark</label>
+                    <label className="block text-xs font-semibold text-gray-500">Sector Landmark / Drop Details</label>
                     <input
                       type="text"
                       value={addressDetails.landmark}

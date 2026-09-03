@@ -47,7 +47,7 @@ export const useProfileCompletion = () => {
   if (!isTestUser) {
     completionPercentage = 0;
     if (role === 'tasker') {
-    // 4 Steps: 1. Auth (25%), 2. Skills (25%), 3. Service Area (25%), 4. Profile & UPI (25%)
+    // 4 Steps: 1. Auth (25%), 2. Skills (25%), 3. Service Area (25%), 4. Profile & Phone (25%)
     const hasAuth = !!userId;
     if (hasAuth) completionPercentage += 25;
     
@@ -63,16 +63,10 @@ export const useProfileCompletion = () => {
       missingWizardItems.push('service_area');
     }
 
-    if (hasValidNameAndPhone && hasUpiId) completionPercentage += 25;
+    if (hasValidNameAndPhone) completionPercentage += 25;
     else {
-      if (!hasValidNameAndPhone) {
-        missingItems.push('profile');
-        missingWizardItems.push('profile');
-      }
-      if (!hasUpiId) {
-        missingItems.push('upi');
-        missingWizardItems.push('upi');
-      }
+      missingItems.push('profile');
+      missingWizardItems.push('profile');
     }
 
     if (hasOsLocation) completionPercentage += 0; // Excluded from loading percentage calculation

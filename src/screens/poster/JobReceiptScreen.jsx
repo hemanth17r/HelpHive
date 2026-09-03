@@ -4,6 +4,7 @@ import { AppContext } from '../../store/AppContext';
 import { SKILLS } from '../../config/constants';
 import Tooltip from '../../components/Tooltip';
 import { api } from '../../services/api';
+import { formatCurrency } from '../../utils/currency';
 
 const WhatsAppIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -12,7 +13,7 @@ const WhatsAppIcon = ({ className }) => (
 );
 
 const JobReceiptScreen = () => {
-  const { currentPostedJob, pushScreen, popScreen, userId, role } = useContext(AppContext);
+  const { currentPostedJob, pushScreen, popScreen, userId, role, currency } = useContext(AppContext);
   const [crew, setCrew] = useState([]);
   
   useEffect(() => {
@@ -54,8 +55,8 @@ const JobReceiptScreen = () => {
   }
 
   const handleWhatsAppSupport = () => {
-    const taskTitle = skill?.label || 'General Task';
-    const message = `Hi HelpHive Support,\n\nI need help with a completed task.\n\nTask ID: ${currentPostedJob.id || 'N/A'}\nTask Title: ${taskTitle}\nAmount Paid: ₹${currentPostedJob.amount || 0}\n\nHirer ID: ${currentPostedJob.posterId || userId || 'N/A'}\n\nIssue: `;
+    const taskTitle = skill?.label || 'General Operation';
+    const message = `Hi HelpHive Support,\n\nI need help with a completed contract.\n\nContract ID: ${currentPostedJob.id || 'N/A'}\nContract: ${taskTitle}\nAmount Settled: ${formatCurrency(currentPostedJob.amount || 0, currentPostedJob.currency || currency?.code)}\n\nFixer ID: ${currentPostedJob.posterId || userId || 'N/A'}\n\nIssue: `;
     const whatsappUrl = `https://wa.me/919347442426?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -67,15 +68,15 @@ const JobReceiptScreen = () => {
   if (isJobCancelled) {
     if (role === 'tasker') {
       if (currentPostedJob.isCancelledByMe) {
-        cancelMessage = "You cancelled your assignment for this task.";
+        cancelMessage = "You disengaged from this contract.";
       } else {
-        cancelMessage = "This task was cancelled by the hirer.";
+        cancelMessage = "This contract was aborted by the Fixer.";
       }
     } else {
       if (cancelledHelpers.length > 0) {
-        cancelMessage = `${cancelledHelpers.map(h => h.name).join(', ')} left/cancelled this task.`;
+        cancelMessage = `${cancelledHelpers.map(h => h.name).join(', ')} disengaged from this contract.`;
       } else {
-        cancelMessage = "You cancelled this task.";
+        cancelMessage = "You aborted this contract.";
       }
     }
   }
@@ -90,7 +91,7 @@ const JobReceiptScreen = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
         </Tooltip>
-        <h1 className="ml-2 text-base font-black text-dark tracking-tight">Order Summary</h1>
+        <h1 className="ml-2 text-base font-black text-dark tracking-tight">Contract Settlement Report</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-6 space-y-6 w-full max-w-md lg:max-w-2xl mx-auto">
@@ -101,7 +102,7 @@ const JobReceiptScreen = () => {
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center border border-red-200 shadow-xs">
               <XCircle className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-black text-dark">Task Cancelled</h2>
+            <h2 className="text-xl font-black text-dark">Contract Aborted</h2>
             <p className="text-xs font-bold text-gray-400 text-center max-w-xs">{cancelMessage}</p>
           </div>
         ) : (
@@ -109,8 +110,8 @@ const JobReceiptScreen = () => {
             <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center border border-green-200 shadow-xs">
               <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-black text-dark">Task Completed</h2>
-            <p className="text-xs font-bold text-gray-400">Thanks for using HelpHive!</p>
+            <h2 className="text-xl font-black text-dark">Contract Fulfilled</h2>
+            <p className="text-xs font-bold text-gray-400">Mission accomplished. Escrow settled.</p>
           </div>
         )}
 
@@ -123,10 +124,10 @@ const JobReceiptScreen = () => {
             </div>
             <div>
               <span className="text-xs font-semibold text-gray-500 block leading-none mb-1">
-                Category
+                Operator Class
               </span>
               <span className="text-sm font-semibold text-dark capitalize">
-                {skill?.label || 'General task'}
+                {skill?.label || 'General Operation'}
               </span>
             </div>
           </div>
@@ -152,14 +153,14 @@ const JobReceiptScreen = () => {
         {/* Order Info Card */}
         <div className="bg-white border border-border rounded-3xl p-5 shadow-xs space-y-4">
           <h3 className="text-xs font-semibold text-gray-500 border-b border-gray-100 pb-3 flex items-center">
-            <FileText className="w-4 h-4 mr-1.5" /> Order details
+            <FileText className="w-4 h-4 mr-1.5" /> Contract Record
           </h3>
           
           <div className="space-y-3 pt-1">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-2 text-gray-500">
                 <Receipt className="w-4 h-4" />
-                <span className="text-xs font-bold">Order ID</span>
+                <span className="text-xs font-bold">Contract ID</span>
               </div>
               <span className="text-xs font-black text-dark text-right">
                 {displayOrderId}
@@ -169,7 +170,7 @@ const JobReceiptScreen = () => {
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-2 text-gray-500">
                 <Calendar className="w-4 h-4" />
-                <span className="text-xs font-bold">Date & Time</span>
+                <span className="text-xs font-bold">Execution Timestamp</span>
               </div>
               <span className="text-xs font-black text-dark text-right">
                 {formattedDate}
@@ -179,7 +180,7 @@ const JobReceiptScreen = () => {
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-2 text-gray-500">
                 <Users className="w-4 h-4" />
-                <span className="text-xs font-bold">Helpers Needed</span>
+                <span className="text-xs font-bold">Operators Deployed</span>
               </div>
               <span className="text-xs font-black text-dark text-right">
                 {currentPostedJob.peopleNeeded}
@@ -192,45 +193,45 @@ const JobReceiptScreen = () => {
         {isJobCancelled && role === 'tasker' && currentPostedJob.isCancelledByMe ? (
           <div className="bg-white border border-border rounded-3xl p-5 shadow-xs">
              <h3 className="text-xs font-semibold text-gray-500 border-b border-gray-100 pb-3 mb-3">
-               Bill summary
+               Bounty Settlement Breakdown
              </h3>
              <div className="flex flex-col items-center justify-center py-2 text-center">
                <XCircle className="w-8 h-8 text-red-500 mb-2" />
-               <span className="text-xs font-bold text-gray-500">Cancelled assignment</span>
-               <span className="text-[10px] text-gray-400 font-semibold mt-1">No payment is due for cancelled assignments.</span>
+               <span className="text-xs font-bold text-gray-500">Aborted Assignment</span>
+               <span className="text-[10px] text-gray-400 font-semibold mt-1">No bounty is due for aborted assignments.</span>
              </div>
           </div>
         ) : (
           <div className="bg-white border border-border rounded-3xl p-5 shadow-xs">
              <h3 className="text-xs font-semibold text-gray-500 border-b border-gray-100 pb-3 mb-3">
-               Bill summary
+               Bounty Settlement Breakdown
              </h3>
               <div className="flex items-center justify-between mt-2">
-                <span className="text-xs font-medium text-gray-500">Amount per helper</span>
-                <span className="text-sm font-semibold text-dark">₹{currentPostedJob.amount || 0}</span>
+                <span className="text-xs font-medium text-gray-500">Bounty per Operator</span>
+                <span className="text-sm font-semibold text-dark">{formatCurrency(currentPostedJob.amount || 0, currentPostedJob.currency || currency?.code)}</span>
               </div>
               {role === 'poster' && (
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs font-medium text-gray-500">Helpers paid</span>
+                  <span className="text-xs font-medium text-gray-500">Operators Settled</span>
                   <span className="text-sm font-semibold text-dark">{crew.filter(c => c.status === 'accepted').length || 1}</span>
                 </div>
               )}
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                <span className="text-sm font-semibold text-dark">Total amount</span>
+                <span className="text-sm font-semibold text-dark">Total Bounty Settled</span>
                 <span className="text-xl font-bold text-primary">
-                  ₹{(currentPostedJob.amount || 0) * (role === 'poster' ? (crew.filter(c => c.status === 'accepted').length || 1) : 1)}
+                  {formatCurrency((currentPostedJob.amount || 0) * (role === 'poster' ? (crew.filter(c => c.status === 'accepted').length || 1) : 1), currentPostedJob.currency || currency?.code)}
                 </span>
               </div>
              <div className="mt-4 pt-3 border-t border-dashed border-gray-200 flex items-center justify-between">
                {isJobCancelled ? (
                  <div className="inline-flex items-center space-x-1.5 text-[10px] font-medium text-red-600 bg-red-50 px-2.5 py-1 rounded-full border border-red-200">
                     <XCircle className="w-3 h-3" />
-                    <span>Cancelled</span>
+                    <span>Aborted</span>
                   </div>
                ) : (
                  <div className="inline-flex items-center space-x-1.5 text-[10px] font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">
                     <CheckCircle2 className="w-3 h-3" />
-                    <span>Paid</span>
+                    <span>Settled</span>
                   </div>
                )}
              </div>
@@ -241,25 +242,25 @@ const JobReceiptScreen = () => {
         {!currentPostedJob.hasBeenRated ? (
           <div className="bg-white border border-border rounded-3xl p-5 shadow-xs mb-6">
             <h3 className="text-xs font-semibold text-gray-500 border-b border-gray-100 pb-3 mb-3">
-              Rate your experience
+              Award Street Cred
             </h3>
             <div className="flex flex-col items-center justify-center text-center py-1 space-y-3">
               <p className="text-xs font-medium text-gray-500 leading-relaxed">
-                Your feedback helps us maintain a safe and reliable community.
+                Your commendations help maintain high standards in the open-world network.
               </p>
               <button
                 onClick={() => pushScreen(role === 'poster' ? 'rating_screen' : 'tasker_rating')}
                 className="flex items-center justify-center space-x-2 w-full bg-orange-50 hover:bg-orange-100 text-primary font-semibold py-3 rounded-xl border border-primary/20 active:scale-[0.99] transition-all cursor-pointer mt-2 text-xs"
               >
                 <Star className="w-4 h-4 fill-primary/20" />
-                <span>{role === 'poster' ? 'Rate tasker' : 'Rate hirer'}</span>
+                <span>{role === 'poster' ? 'Commend Operator' : 'Rate Fixer Cred'}</span>
               </button>
             </div>
           </div>
         ) : (
           <div className="bg-white border border-border rounded-3xl p-5 shadow-xs mb-6">
             <h3 className="text-xs font-semibold text-gray-500 border-b border-gray-100 pb-3 mb-3">
-              Your feedback
+              Your Commendation
             </h3>
             <div className="flex flex-col py-1 space-y-2">
               <div className="flex items-center space-x-1">
@@ -277,7 +278,7 @@ const JobReceiptScreen = () => {
                 </span>
               </div>
               <p className="text-xs font-semibold text-gray-500">
-                You rated the {role === 'poster' ? 'tasker' : 'hirer'} for this task.
+                You commended the {role === 'poster' ? 'Operator' : 'Fixer'} for this contract.
               </p>
             </div>
           </div>

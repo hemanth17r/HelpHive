@@ -11,6 +11,7 @@ import {
   WifiOff, Frown, HelpCircle
 } from 'lucide-react';
 import { SKILLS } from '../config/constants';
+import { formatCurrency } from '../utils/currency';
 
 const EVENT_ICONS = {
   signup: UserCheck,
@@ -97,7 +98,7 @@ const MiniBarChart = ({ data, height = 120 }) => {
 };
 
 const AdminDashboard = () => {
-  const { popScreen, pushScreen, userId, isAdmin } = useContext(AppContext);
+  const { popScreen, pushScreen, userId, isAdmin, currency } = useContext(AppContext);
   
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
@@ -370,10 +371,10 @@ const AdminDashboard = () => {
             <div>
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-orange-400" />
-                <h1 className="text-white font-black text-lg">Admin Dashboard</h1>
+                <h1 className="text-white font-black text-lg">Hive Command Center</h1>
               </div>
               <p className="text-gray-400 text-xs font-semibold mt-0.5">
-                HelpHive Platform Health
+                HelpHive Grid Operations & Platform Telemetry
               </p>
             </div>
           </div>
@@ -398,30 +399,30 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-2 gap-4">
                 <StatCard 
                   icon={Users} 
-                  label="Total Accounts" 
+                  label="Registered Operatives" 
                   value={stats?.total_accounts ?? '—'} 
-                  sub="Registered profiles"
+                  sub="Verified Hive Profiles"
                   color="indigo"
                 />
                 <StatCard 
                   icon={HelpCircle} 
-                  label="Explorers (Drop-off)" 
+                  label="Scouts (Unlinked)" 
                   value={stats?.explorer_drop_off ?? '—'} 
-                  sub="Incomplete onboarding"
+                  sub="Incomplete Loadouts"
                   color="gray"
                 />
                 <StatCard 
                   icon={Users} 
-                  label="Serious Taskers" 
+                  label="Field Operatives" 
                   value={stats?.total_taskers ?? '—'} 
-                  sub={`${stats?.users_today ?? 0} active today`}
+                  sub={`${stats?.users_today ?? 0} active on radar today`}
                   color="blue"
                 />
                 <StatCard 
                   icon={Users} 
-                  label="Serious Hirers" 
+                  label="Quest Issuers" 
                   value={stats?.total_hirers ?? '—'} 
-                  sub="Onboarded & Active"
+                  sub="Active in Grid"
                   color="purple"
                 />
               </div>
@@ -430,16 +431,16 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-2 gap-4">
                 <StatCard 
                   icon={Briefcase} 
-                  label="Total Jobs" 
+                  label="Total Contracts" 
                   value={stats?.total_jobs ?? '—'} 
-                  sub={`${stats?.jobs_today ?? 0} today`}
+                  sub={`${stats?.jobs_today ?? 0} broadcast today`}
                   color="orange"
                 />
                 <StatCard 
                   icon={Zap} 
-                  label="Active Jobs" 
+                  label="Active Operations" 
                   value={stats?.active_jobs ?? '—'} 
-                  sub="open & accepted"
+                  sub="Scanning & Locked In"
                   color="blue"
                 />
               </div>
@@ -448,16 +449,16 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-2 gap-4">
                 <StatCard 
                   icon={TrendingUp} 
-                  label="Fill Rate" 
+                  label="Lock-In Rate" 
                   value={`${fillRate}%`} 
-                  sub="accepted / posted"
+                  sub="locked in / broadcast"
                   color="green"
                 />
                 <StatCard 
                   icon={CheckCircle} 
-                  label="Completion" 
+                  label="Fulfillment Rate" 
                   value={`${completionRate}%`} 
-                  sub="completed / filled"
+                  sub="fulfilled / locked in"
                   color="emerald"
                 />
               </div>
@@ -496,15 +497,15 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Job Status Breakdown */}
+              {/* Operations Pipeline Status Breakdown */}
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
-                <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-4">Job Pipeline</h3>
+                <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-4">Operations Pipeline</h3>
                 <div className="flex items-center gap-2">
-                  <PipelineItem label="Open" value={stats?.open_jobs ?? 0} color="bg-blue-500" />
+                  <PipelineItem label="Scanning" value={stats?.open_jobs ?? 0} color="bg-blue-500" />
                   <div className="text-gray-300">→</div>
-                  <PipelineItem label="Accepted" value={stats?.accepted_jobs ?? 0} color="bg-orange-500" />
+                  <PipelineItem label="Locked In" value={stats?.accepted_jobs ?? 0} color="bg-orange-500" />
                   <div className="text-gray-300">→</div>
-                  <PipelineItem label="Completed" value={stats?.completed_jobs ?? 0} color="bg-emerald-500" />
+                  <PipelineItem label="Fulfilled" value={stats?.completed_jobs ?? 0} color="bg-emerald-500" />
                   {(stats?.expired_jobs > 0) && (
                     <>
                       <div className="text-gray-300 ml-2">|</div>
@@ -519,7 +520,7 @@ const AdminDashboard = () => {
                 const maxCount = Math.max(...eventCounts.map(e => parseInt(e.event_count)), 1);
                 return (
                   <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-4">Event Breakdown (30d)</h3>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-4">Grid Telemetry & Action Breakdown (30d)</h3>
                     <div className="space-y-3">
                       {eventCounts.map(ec => {
                         const Icon = EVENT_ICONS[ec.event_type] || Activity;
@@ -555,20 +556,20 @@ const AdminDashboard = () => {
             {/* Right Column (1/3 width on desktop) */}
             <div className="space-y-6">
               
-              {/* Top Cities Leaderboard */}
+              {/* Top Sector Hubs Leaderboard */}
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-orange-500" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-dark">Top Cities</h3>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-dark">Top Sector Hubs</h3>
                   </div>
                   <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                    India
+                    India Grid
                   </span>
                 </div>
 
                 {cityLeaderboard.length === 0 ? (
-                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No city data available yet</p>
+                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No sector hub data available yet</p>
                 ) : (
                   <div className="space-y-3.5">
                     {cityLeaderboard.map((item, index) => {
@@ -596,7 +597,7 @@ const AdminDashboard = () => {
                               </span>
                             </div>
                             <div className="text-[11px] font-extrabold text-gray-500 text-right shrink-0">
-                              {item.total_count} <span className="text-[9px] text-gray-400 font-bold">({item.hirer_count}H, {item.tasker_count}T)</span>
+                              {item.total_count} <span className="text-[9px] text-gray-400 font-bold">({item.hirer_count} Issuers, {item.tasker_count} Operatives)</span>
                             </div>
                           </div>
                           <div className="h-2 bg-gray-50 rounded-full overflow-hidden relative border border-gray-100/50">
@@ -616,9 +617,9 @@ const AdminDashboard = () => {
                 )}
               </div>
 
-              {/* Platform Health Q&A */}
+              {/* Grid Telemetry & Health Q&A */}
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Platform Health Q&A</h3>
+                <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Grid Telemetry & Health Q&A</h3>
                 
                 <div className="space-y-4">
                   {/* Q1 */}
@@ -627,9 +628,9 @@ const AdminDashboard = () => {
                       <Users className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-dark">Are people showing up?</p>
+                      <p className="text-xs font-bold text-dark">Are Operatives Checking In?</p>
                       <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                        <span className="text-blue-600 font-bold">{stats?.signups_today ?? 0}</span> new signups today • <span className="text-blue-600 font-bold">{stats?.logins_today ?? 0}</span> sign-ins today
+                        <span className="text-blue-600 font-bold">{stats?.signups_today ?? 0}</span> new operatives registered • <span className="text-blue-600 font-bold">{stats?.logins_today ?? 0}</span> grid sign-ins today
                       </p>
                     </div>
                   </div>
@@ -640,9 +641,9 @@ const AdminDashboard = () => {
                       <Briefcase className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-dark">Are jobs getting posted?</p>
+                      <p className="text-xs font-bold text-dark">Are Contracts Being Broadcast?</p>
                       <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                        <span className="text-orange-600 font-bold">{stats?.jobs_today ?? 0}</span> new tasks created today
+                        <span className="text-orange-600 font-bold">{stats?.jobs_today ?? 0}</span> new contracts broadcast to radar today
                       </p>
                     </div>
                   </div>
@@ -653,9 +654,9 @@ const AdminDashboard = () => {
                       <CheckCircle className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-dark">Are jobs getting done?</p>
+                      <p className="text-xs font-bold text-dark">Are Bounties Being Fulfilled?</p>
                       <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                        <span className="text-green-600 font-bold">{stats?.acceptances_today ?? 0}</span> tasks accepted today • <span className="text-emerald-600 font-bold">{stats?.completions_today ?? 0}</span> completed today
+                        <span className="text-green-600 font-bold">{stats?.acceptances_today ?? 0}</span> contracts locked in • <span className="text-emerald-600 font-bold">{stats?.completions_today ?? 0}</span> bounties fulfilled today
                       </p>
                     </div>
                   </div>
@@ -666,10 +667,10 @@ const AdminDashboard = () => {
                       <AlertTriangle className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-dark">Is anything broken?</p>
+                      <p className="text-xs font-bold text-dark">Any Aborted Ops or Failures?</p>
                       <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
                         <span className={stats?.cancellations_today > 0 ? "text-red-500 font-bold" : "text-gray-500 font-semibold"}>
-                          {stats?.cancellations_today ?? 0} cancellations today
+                          {stats?.cancellations_today ?? 0} contracts aborted today
                         </span>
                       </p>
                     </div>
@@ -677,16 +678,16 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* V2 Metric: Demand Hotspots */}
+              {/* V2 Metric: High-Bounty Sector Hotspots */}
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-orange-500" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-orange-500">Demand Hotspots</h3>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-orange-500">High-Bounty Sector Hotspots</h3>
                   </div>
                 </div>
                 {demandHotspots.length === 0 ? (
-                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No active hotspots</p>
+                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No active sector hotspots</p>
                 ) : (
                   <div className="space-y-3.5">
                     {demandHotspots.map(hotspot => {
@@ -704,8 +705,8 @@ const AdminDashboard = () => {
                           </div>
                           <p className="text-[10px] font-bold text-gray-500 mb-2">{skill ? skill.label : hotspot.categoryId}</p>
                           <div className="flex justify-between text-xs">
-                            <span className="font-semibold"><span className="font-black text-dark">{hotspot.waitlistCount}</span> Waitlisted</span>
-                            <span className="font-semibold text-red-500"><span className="font-black text-red-600">{hotspot.supplyDeficit}</span> Missing</span>
+                            <span className="font-semibold"><span className="font-black text-dark">{hotspot.waitlistCount}</span> Fixers Queued</span>
+                            <span className="font-semibold text-red-500"><span className="font-black text-red-600">{hotspot.supplyDeficit}</span> Operatives Needed</span>
                           </div>
                         </div>
                       );
@@ -714,16 +715,16 @@ const AdminDashboard = () => {
                 )}
               </div>
 
-              {/* V2 Metric: Coverage Gaps */}
+              {/* V2 Metric: Sector Operative Gaps */}
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <WifiOff className="w-4 h-4 text-red-500" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-red-500">Coverage Gaps</h3>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-red-500">Sector Operative Gaps</h3>
                   </div>
                 </div>
                 {coverageGaps.length === 0 ? (
-                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No coverage gaps detected</p>
+                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No sector coverage gaps detected</p>
                 ) : (
                   <div className="space-y-3.5">
                     {coverageGaps.map(gap => {
@@ -736,7 +737,7 @@ const AdminDashboard = () => {
                           </div>
                           <div className="text-right">
                             <div className="text-xs font-black text-red-500">{gap.missingSupply} needed</div>
-                            <div className="text-[10px] font-semibold text-gray-500">Vol: {gap.demandVolume}</div>
+                            <div className="text-[10px] font-semibold text-gray-500">Quest Vol: {gap.demandVolume}</div>
                           </div>
                         </div>
                       );
@@ -745,16 +746,16 @@ const AdminDashboard = () => {
                 )}
               </div>
 
-              {/* V2 Metric: Failed First Experiences */}
+              {/* V2 Metric: Aborted First Operations */}
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Frown className="w-4 h-4 text-purple-500" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-purple-500">Failed First Experiences</h3>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-purple-500">Aborted First Operations</h3>
                   </div>
                 </div>
                 {failedExperiences.length === 0 ? (
-                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No failures tracking</p>
+                  <p className="text-xs text-gray-400 font-semibold py-4 text-center">No aborted operations tracking</p>
                 ) : (
                   <div className="space-y-2.5">
                     {failedExperiences.map(failed => (
@@ -766,7 +767,7 @@ const AdminDashboard = () => {
                           <div>
                             <div className="text-xs font-bold text-dark">{failed.reason.replace(/_/g, ' ')}</div>
                             <div className="text-[10px] font-semibold text-gray-500">
-                              {failed.userName || 'Unknown User'} {failed.userPhone ? `(${failed.userPhone})` : ''} | <span className="uppercase">{failed.role}</span> | {timeAgo(failed.date)}
+                              {failed.userName || 'Unknown Operative'} {failed.userPhone ? `(${failed.userPhone})` : ''} | <span className="uppercase">{failed.role}</span> | {timeAgo(failed.date)}
                             </div>
                           </div>
                         </div>
@@ -776,12 +777,12 @@ const AdminDashboard = () => {
                 )}
               </div>
 
-              {/* Recent Activity Feed */}
+              {/* Recent Grid Activity Feed */}
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Activity className="w-4 h-4 text-gray-400" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Recent Activity</h3>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Recent Grid Telemetry</h3>
                   </div>
                   <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
                     {stats?.total_events ?? 0} total
@@ -792,7 +793,7 @@ const AdminDashboard = () => {
                   <div className="text-center py-8">
                     <Activity className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                     <p className="text-xs font-semibold text-gray-400">No events yet</p>
-                    <p className="text-[10px] text-gray-400 mt-1">Events will appear as users interact</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Events will appear as operatives interact</p>
                   </div>
                 ) : (
                   <div className="space-y-1.5">
@@ -842,13 +843,11 @@ const AdminDashboard = () => {
                 )}
               </div>
 
-
-
               {/* Commission Payment Approvals */}
               <div className="bg-white rounded-2xl p-5 border border-amber-200/80 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-black text-dark flex items-center gap-2">
-                    <span>💼 Pending Commission Payments</span>
+                    <span>💼 Operative Stash Commission Verifications</span>
                     <span className="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-bold">
                       {pendingCommissionPayments.length}
                     </span>
@@ -856,7 +855,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {pendingCommissionPayments.length === 0 ? (
-                  <p className="text-xs text-gray-400 font-semibold py-1">No pending commission payments to verify.</p>
+                  <p className="text-xs text-gray-400 font-semibold py-1">No pending stash commission payments to verify.</p>
                 ) : (
                   <div className="space-y-3">
                     {pendingCommissionPayments.map((p) => {
@@ -865,14 +864,14 @@ const AdminDashboard = () => {
                         <div key={p.id} className="bg-amber-50/50 border border-amber-100 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="space-y-1 text-xs">
                             <div className="font-bold text-dark flex items-center gap-2">
-                              <span>👤 {tObj.name || 'Tasker'}</span>
+                              <span>👤 {tObj.name || 'Operative'}</span>
                               <span className="text-gray-500 font-normal">({tObj.phone || 'No phone'})</span>
                             </div>
                             <p className="text-gray-600 font-medium">
-                              Claimed Paid Amount: <span className="font-black text-amber-700">₹{parseFloat(p.amount_paid).toFixed(2)}</span>
+                              Claimed Stash Settled: <span className="font-black text-amber-700">{formatCurrency(parseFloat(p.amount_paid), currency?.code)}</span>
                             </p>
                             <p className="text-[10px] text-gray-400">
-                              Current Pending Dues: ₹{parseFloat(tObj.unpaid_commission_dues || 0).toFixed(2)} • Submitted: {timeAgo(p.created_at)}
+                              Outstanding Guild Dues: {formatCurrency(parseFloat(tObj.unpaid_commission_dues || 0), currency?.code)} • Submitted: {timeAgo(p.created_at)}
                             </p>
                           </div>
 
@@ -884,7 +883,7 @@ const AdminDashboard = () => {
                               }}
                               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer transition-colors shadow-xs"
                             >
-                              Approve Payment (₹{parseFloat(p.amount_paid).toFixed(0)})
+                              Approve Settlement ({formatCurrency(parseFloat(p.amount_paid), currency?.code)})
                             </button>
 
                             <button
@@ -908,7 +907,7 @@ const AdminDashboard = () => {
               <div className="bg-white rounded-2xl p-5 border border-emerald-200/80 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-black text-dark flex items-center gap-2">
-                    <span>🎁 Pending Referral Payout Requests</span>
+                    <span>🎁 Squad Referral Bounty Claims</span>
                     <span className="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-bold">
                       {pendingReferralPayouts.length}
                     </span>
@@ -916,7 +915,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {pendingReferralPayouts.length === 0 ? (
-                  <p className="text-xs text-gray-400 font-semibold py-1">No pending referral payout requests.</p>
+                  <p className="text-xs text-gray-400 font-semibold py-1">No pending squad referral bounty claims.</p>
                 ) : (
                   <div className="space-y-3">
                     {pendingReferralPayouts.map((p) => {
@@ -925,14 +924,14 @@ const AdminDashboard = () => {
                         <div key={p.id} className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="space-y-1 text-xs">
                             <div className="font-bold text-dark flex items-center gap-2">
-                              <span>👤 {rObj.name || 'User'}</span>
+                              <span>👤 {rObj.name || 'Operative'}</span>
                               <span className="text-gray-500 font-normal">({rObj.phone || 'No phone'})</span>
                             </div>
                             <p className="text-gray-600 font-medium">
-                              UPI ID: <span className="font-black text-dark bg-white px-2 py-0.5 rounded border border-gray-200">{p.upi_id || rObj.upi_id}</span>
+                              Payment Identifier: <span className="font-black text-dark bg-white px-2 py-0.5 rounded border border-gray-200">{p.upi_id || rObj.upi_id || 'Direct'}</span>
                             </p>
                             <p className="text-gray-600 font-medium">
-                              Requested Payout: <span className="font-black text-emerald-700">₹{parseFloat(p.amount).toFixed(2)}</span>
+                              Requested Settlement: <span className="font-black text-emerald-700">{formatCurrency(parseFloat(p.amount), currency?.code)}</span>
                             </p>
                             <p className="text-[10px] text-gray-400">
                               Submitted: {timeAgo(p.created_at)}
@@ -942,11 +941,11 @@ const AdminDashboard = () => {
                           <div className="flex items-center space-x-2 shrink-0">
                             <button
                               onClick={() => {
-                                navigator.clipboard.writeText(`${p.upi_id || rObj.upi_id} ${p.amount}`);
+                                navigator.clipboard.writeText(`${p.upi_id || rObj.upi_id || ''} ${p.amount}`);
                               }}
                               className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs px-3 py-2 rounded-xl cursor-pointer transition-colors flex items-center space-x-1"
                             >
-                              <span>Copy UPI</span>
+                              <span>Copy Details</span>
                             </button>
 
                             <button
@@ -956,7 +955,7 @@ const AdminDashboard = () => {
                               }}
                               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer transition-colors shadow-xs"
                             >
-                              Mark Paid (₹{parseFloat(p.amount).toFixed(0)})
+                              Mark Paid ({formatCurrency(parseFloat(p.amount), currency?.code)})
                             </button>
 
                             <button
@@ -976,21 +975,21 @@ const AdminDashboard = () => {
                 )}
               </div>
 
-              {/* System Info */}
+              {/* Grid System Info */}
               <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
-                <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-3">System</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-3">Grid Telemetry Status</h3>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="text-[10px] text-gray-500 font-medium">
-                    <span className="text-gray-400">Events:</span> {stats?.total_events ?? 0}
+                    <span className="text-gray-400">Telemetry Events:</span> {stats?.total_events ?? 0}
                   </div>
                   <div className="text-[10px] text-gray-500 font-medium">
                     <span className="text-gray-400">Today:</span> {stats?.events_today ?? 0}
                   </div>
                   <div className="text-[10px] text-gray-500 font-medium">
-                    <span className="text-gray-400">Active users:</span> {stats?.users_today ?? 0}
+                    <span className="text-gray-400">Active Operatives:</span> {stats?.users_today ?? 0}
                   </div>
                   <div className="text-[10px] text-gray-500 font-medium">
-                    <span className="text-gray-400">Jobs today:</span> {stats?.jobs_today ?? 0}
+                    <span className="text-gray-400">Contracts Today:</span> {stats?.jobs_today ?? 0}
                   </div>
                 </div>
               </div>
