@@ -55,7 +55,7 @@ export const HERO_DISCIPLINES = [
   {
     id: 'creative_ops',
     title: 'Visual, Drone & Content Alchemy',
-    shortTitle: 'Creative Ops',
+    shortTitle: 'Creative',
     description: 'Drone 4K aerials, street gimbal cam, viral reels edits & brand art',
     icon: Camera,
     color: 'from-purple-500 to-pink-500',
@@ -353,8 +353,8 @@ export const GAME_SKILLS = [
     id: 'base_handyman',
     disciplineId: 'titan_muscle',
     categoryId: 'local_helpers',
-    label: 'Base Repair & Handyman Ops',
-    shortLabel: 'Handyman Ops',
+    label: 'Base Repair & Handyman',
+    shortLabel: 'Handyman',
     icon: Wrench,
     type: 'physical',
     tagline: 'Wall drilling, curtain rod mounts, tap fixes & fixtures',
@@ -578,7 +578,7 @@ export const GAME_SKILLS = [
     type: 'remote',
     tagline: 'Live translation, regional voiceover & subtitle dubbing',
     examples: [
-      'Translate English business contract into accurate conversational Hindi/Telugu',
+      'Translate English business documents into accurate conversational Hindi/Telugu',
       'Record energetic regional language voiceover for product promo video',
       'Proofread and culturally adapt regional marketing campaign slogans'
     ],
@@ -604,33 +604,33 @@ export const GAME_SKILLS = [
     id: 'custom_physical_op',
     disciplineId: 'urban_recon',
     categoryId: 'others_physical',
-    label: 'Custom Physical Bounty & Special Op',
-    shortLabel: 'Custom Physical Op',
+    label: 'Custom Field Bounty',
+    shortLabel: 'Custom Field',
     icon: Zap,
     type: 'physical',
-    tagline: 'Unique on-site micro-quests, bespoke tasks & local errands',
+    tagline: 'Unique Field micro-quests, bespoke tasks & local errands',
     examples: [
-      'Specialized in-person errand or custom assistance tailored to your exact needs',
+      'Specialized field errand or custom assistance tailored to your exact needs',
       'Bespoke physical or local coordination not listed in standard disciplines',
       'One-off unique local mission with custom instructions'
     ],
-    aliases: ['custom', 'other', 'others', 'special', 'misc', 'general', 'unique', 'miscellaneous', 'anything', 'help', 'task', 'errand', 'request', 'custom_op']
+    aliases: ['custom', 'other', 'others', 'special', 'misc', 'general', 'unique', 'miscellaneous', 'anything', 'help', 'task', 'errand', 'request', 'custom_op', 'field']
   },
   {
     id: 'custom_remote_op',
     disciplineId: 'intel_lore',
     categoryId: 'others_remote',
-    label: 'Custom Remote Bounty & Special Op',
-    shortLabel: 'Custom Remote Op',
+    label: 'Custom Cyber Bounty',
+    shortLabel: 'Custom Cyber',
     icon: Zap,
     type: 'remote',
     tagline: 'Unique digital micro-quests, virtual tasks & online assistance',
     examples: [
-      'Specialized online task or digital assistance tailored to your exact needs',
-      'Bespoke remote coordination or virtual gig not listed in standard disciplines',
+      'Specialized cyber task or digital assistance tailored to your exact needs',
+      'Bespoke cyber coordination or virtual gig not listed in standard disciplines',
       'One-off unique online mission with custom instructions'
     ],
-    aliases: ['remote custom', 'digital help', 'virtual task', 'online help', 'custom remote', 'remote task', 'misc remote']
+    aliases: ['remote custom', 'digital help', 'virtual task', 'online help', 'custom remote', 'remote task', 'misc remote', 'cyber', 'cyber bounty']
   }
 ];
 

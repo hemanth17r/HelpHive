@@ -54,7 +54,7 @@ const AboutUsScreen = () => {
             <div>
               <h3 className="text-xs font-black text-slate-900 leading-tight">Live Proximity Radar</h3>
               <p className="text-[11px] font-bold text-slate-500 mt-1 leading-snug">
-                Detect contracts and available operative support right in your sector with real-time GPS distance calculation.
+                Detect bounties and available claimer support right in your sector with real-time GPS distance calculation.
               </p>
             </div>
           </div>
@@ -78,7 +78,7 @@ const AboutUsScreen = () => {
             <div>
               <h3 className="text-xs font-black text-slate-900 leading-tight">Safe OTP Settlements</h3>
               <p className="text-[11px] font-bold text-slate-500 mt-1 leading-snug">
-                Bounties are locked securely and settled directly to operatives upon physical clearance code verification.
+                Bounties are locked securely and settled directly to claimers upon physical clearance code verification.
               </p>
             </div>
           </div>
@@ -146,13 +146,13 @@ const AboutUsScreen = () => {
                   <div>
                     <h4 className="font-black text-slate-900 mb-1">2. How We Use Your Information</h4>
                     <p>
-                      We use your information to facilitate matching between taskers and posters, provide services, and send important service notifications.
+                      We use your information to facilitate matching between claimers and deployers, provide services, and send important service notifications.
                     </p>
                   </div>
                   <div>
                     <h4 className="font-black text-slate-900 mb-1">3. Sharing of Information</h4>
                     <p>
-                      Your contact details (like phone number) are only shared with matching operatives after a mission contract is accepted. We do not sell your personal data.
+                      Your contact details (like phone number) are only shared with matching claimers and deployers after a bounty is claimed. We do not sell your personal data.
                     </p>
                   </div>
                   <div>

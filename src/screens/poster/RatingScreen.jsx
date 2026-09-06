@@ -96,7 +96,7 @@ const RatingScreen = () => {
           await api.sendNotification(
             tasker.id,
             "New Combat Badge Earned! 🏅",
-            `You received a ${star}-star rating and the "${badgeObj?.label}" commendation badge for your recent contract!`,
+            `You received a ${star}-star rating and the "${badgeObj?.label}" commendation badge for your recent bounty!`,
             'my_profile',
             'badge_received',
             'tasker'
@@ -105,8 +105,8 @@ const RatingScreen = () => {
           // Send rating-only notification to the Tasker
           await api.sendNotification(
             tasker.id,
-            "Contract Street Cred Awarded!",
-            `You received a ${star}-star Street Cred rating for your recent contract.`,
+            "Bounty Street Cred Awarded!",
+            `You received a ${star}-star Street Cred rating for your recent bounty.`,
             'tasker_activity',
             'rating_received',
             'tasker'
@@ -199,7 +199,7 @@ const RatingScreen = () => {
       </div>
 
       <div className="w-full pt-4 border-t border-border shrink-0 lg:px-8 flex justify-center">
-        <Tooltip text="Submit operator commendations">
+        <Tooltip text="Submit claimer commendations">
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}

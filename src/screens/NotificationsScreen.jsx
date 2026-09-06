@@ -123,7 +123,7 @@ const NotificationsScreen = () => {
               ) : (
                 <>
                   <h3 className="text-sm font-bold text-dark">Enable Priority Comms Dispatches</h3>
-                  <p className="text-xs text-gray-600 mt-1">Get instant tactical alerts when Operators lock onto your bounties or fulfill contracts, even outside the app.</p>
+                  <p className="text-xs text-gray-600 mt-1">Get instant tactical alerts when Claimers lock onto your bounties or fulfill bounties, even outside the app.</p>
                   <button 
                     onClick={handleSubscribeToPush}
                     disabled={isSubscribing}

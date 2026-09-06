@@ -62,7 +62,7 @@ const JobHistoryScreen = () => {
     if (type === 'active') {
       borderColor = 'border-blue-100';
       iconBg = 'bg-blue-50 text-blue-500';
-      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-blue-500 bg-blue-50 border-blue-200">Active Op</span>;
+      statusPill = <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-blue-500 bg-blue-50 border-blue-200">Active Bounty</span>;
     } else if (isExpired) {
       borderColor = 'border-red-100';
       iconBg = 'bg-red-50 text-red-500';
@@ -116,7 +116,7 @@ const JobHistoryScreen = () => {
             </div>
             <div>
               <span className="text-[10px] font-black uppercase text-gray-400 block leading-none mb-1">
-                {skill?.label || 'Contract'}
+                {skill?.label || 'Bounty'}
               </span>
               {statusPill}
             </div>
@@ -209,7 +209,7 @@ const JobHistoryScreen = () => {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <span className="text-base font-semibold text-dark ml-2">Contract Mission Log</span>
+        <span className="text-base font-semibold text-dark ml-2">Bounty Log</span>
       </div>
 
       <div className="flex-1 overflow-y-auto w-full">
@@ -220,14 +220,14 @@ const JobHistoryScreen = () => {
           <div className="flex items-center space-x-2 px-1">
             <Clock className="w-4 h-4 text-blue-500" />
             <span className="text-sm font-semibold text-dark">
-              Active Operations
+              Active Bounties
             </span>
           </div>
           <div className="space-y-3">
             {displayActive.length > 0 ? (
               displayActive.map(job => renderJobCard(job, 'active'))
             ) : (
-              <p className="text-xs font-medium text-gray-500 px-2">No active operations in flight.</p>
+              <p className="text-xs font-medium text-gray-500 px-2">No active bounties in flight.</p>
             )}
           </div>
         </div>
@@ -237,14 +237,14 @@ const JobHistoryScreen = () => {
           <div className="flex items-center space-x-2 px-1">
             <CheckCircle className="w-4 h-4 text-green-500" />
             <span className="text-sm font-semibold text-dark">
-              Fulfilled Contracts
+              Fulfilled Bounties
             </span>
           </div>
           <div className="space-y-3">
             {displayCompleted.length > 0 ? (
               displayCompleted.map(job => renderJobCard(job, 'completed'))
             ) : (
-              <p className="text-xs font-medium text-gray-500 px-2">No fulfilled contracts on record.</p>
+              <p className="text-xs font-medium text-gray-500 px-2">No fulfilled bounties on record.</p>
             )}
           </div>
         </div>
@@ -270,7 +270,7 @@ const JobHistoryScreen = () => {
             <div className="flex items-center space-x-2 px-1">
               <XCircle className="w-4 h-4 text-red-500" />
               <span className="text-sm font-semibold text-dark">
-                Aborted Operations
+                Aborted Bounties
               </span>
             </div>
             <div className="space-y-3">

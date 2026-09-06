@@ -60,6 +60,7 @@ async function resolveSilentCenter(realLocation, savedAddresses) {
 const AddEditAddressScreen = () => {
   const {
     popScreen,
+    pushScreen,
     addSavedAddress,
     updateSavedAddress,
     editAddressData,
@@ -67,10 +68,13 @@ const AddEditAddressScreen = () => {
     userProfile,
     realLocation,
     savedAddresses = [],
-    setRealLocation
+    setRealLocation,
+    routeParams,
+    setPostJobSelectedAddress
   } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
 
+  const isForPostJob = routeParams?.returnTo === 'post_job';
   const isEdit = !!editAddressData;
 
   const [addressType, setAddressType] = useState(isEdit ? editAddressData.type : 'Home');
@@ -142,16 +146,24 @@ const AddEditAddressScreen = () => {
       lng
     };
 
+    let savedAddr;
     if (isEdit) {
       updateSavedAddress(editAddressData.id, newAddress);
+      savedAddr = { ...newAddress, id: editAddressData.id };
       showToast('Location updated successfully!', 'success');
     } else {
-      addSavedAddress(newAddress);
+      savedAddr = addSavedAddress(newAddress);
       showToast('Location saved successfully!', 'success');
     }
 
     setEditAddressData(null);
-    popScreen();
+
+    if (isForPostJob) {
+      setPostJobSelectedAddress(savedAddr || newAddress);
+      pushScreen('post_job', true);
+    } else {
+      popScreen();
+    }
   };
 
   return (

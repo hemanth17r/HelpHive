@@ -420,7 +420,7 @@ const AdminDashboard = () => {
                 />
                 <StatCard 
                   icon={Users} 
-                  label="Quest Issuers" 
+                  label="Bounty Issuers" 
                   value={stats?.total_hirers ?? '—'} 
                   sub="Active in Grid"
                   color="purple"
@@ -431,14 +431,14 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-2 gap-4">
                 <StatCard 
                   icon={Briefcase} 
-                  label="Total Contracts" 
+                  label="Total Bounties" 
                   value={stats?.total_jobs ?? '—'} 
                   sub={`${stats?.jobs_today ?? 0} broadcast today`}
                   color="orange"
                 />
                 <StatCard 
                   icon={Zap} 
-                  label="Active Operations" 
+                  label="Active Bounties" 
                   value={stats?.active_jobs ?? '—'} 
                   sub="Scanning & Locked In"
                   color="blue"
@@ -497,9 +497,9 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Operations Pipeline Status Breakdown */}
+              {/* Bounty Pipeline Status Breakdown */}
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
-                <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-4">Operations Pipeline</h3>
+                <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-4">Bounty Pipeline</h3>
                 <div className="flex items-center gap-2">
                   <PipelineItem label="Scanning" value={stats?.open_jobs ?? 0} color="bg-blue-500" />
                   <div className="text-gray-300">→</div>
@@ -641,9 +641,9 @@ const AdminDashboard = () => {
                       <Briefcase className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-dark">Are Contracts Being Broadcast?</p>
+                      <p className="text-xs font-bold text-dark">Are Bounties Being Broadcast?</p>
                       <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                        <span className="text-orange-600 font-bold">{stats?.jobs_today ?? 0}</span> new contracts broadcast to radar today
+                        <span className="text-orange-600 font-bold">{stats?.jobs_today ?? 0}</span> new bounties broadcast to radar today
                       </p>
                     </div>
                   </div>
@@ -656,7 +656,7 @@ const AdminDashboard = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-dark">Are Bounties Being Fulfilled?</p>
                       <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                        <span className="text-green-600 font-bold">{stats?.acceptances_today ?? 0}</span> contracts locked in • <span className="text-emerald-600 font-bold">{stats?.completions_today ?? 0}</span> bounties fulfilled today
+                        <span className="text-green-600 font-bold">{stats?.acceptances_today ?? 0}</span> bounties locked in • <span className="text-emerald-600 font-bold">{stats?.completions_today ?? 0}</span> bounties fulfilled today
                       </p>
                     </div>
                   </div>
@@ -667,10 +667,10 @@ const AdminDashboard = () => {
                       <AlertTriangle className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-dark">Any Aborted Ops or Failures?</p>
+                      <p className="text-xs font-bold text-dark">Any Aborted Bounties or Failures?</p>
                       <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
                         <span className={stats?.cancellations_today > 0 ? "text-red-500 font-bold" : "text-gray-500 font-semibold"}>
-                          {stats?.cancellations_today ?? 0} contracts aborted today
+                          {stats?.cancellations_today ?? 0} bounties aborted today
                         </span>
                       </p>
                     </div>
@@ -737,7 +737,7 @@ const AdminDashboard = () => {
                           </div>
                           <div className="text-right">
                             <div className="text-xs font-black text-red-500">{gap.missingSupply} needed</div>
-                            <div className="text-[10px] font-semibold text-gray-500">Quest Vol: {gap.demandVolume}</div>
+                            <div className="text-[10px] font-semibold text-gray-500">Bounty Vol: {gap.demandVolume}</div>
                           </div>
                         </div>
                       );
@@ -989,7 +989,7 @@ const AdminDashboard = () => {
                     <span className="text-gray-400">Active Operatives:</span> {stats?.users_today ?? 0}
                   </div>
                   <div className="text-[10px] text-gray-500 font-medium">
-                    <span className="text-gray-400">Contracts Today:</span> {stats?.jobs_today ?? 0}
+                    <span className="text-gray-400">Bounties Today:</span> {stats?.jobs_today ?? 0}
                   </div>
                 </div>
               </div>

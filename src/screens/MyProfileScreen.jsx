@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Star, 
   Shield, 
@@ -29,6 +29,7 @@ import {
 import { AppContext } from '../store/AppContext';
 import { api } from '../services/api';
 import { SKILLS, GAME_SKILLS, HERO_DISCIPLINES, resolveUserSkills, searchGameSkills } from '../config/constants';
+import SkillPicker from '../components/SkillPicker';
 import Tooltip from '../components/Tooltip';
 import BirdAvatar from '../components/BirdAvatars';
 import BirdSelector from '../components/BirdSelector';
@@ -76,12 +77,17 @@ const MyProfileScreen = () => {
 
   // Skill Loadout Modal State
   const [isEditingSkills, setIsEditingSkills] = useState(false);
-  const [modalSkillSearch, setModalSkillSearch] = useState('');
-  const [selectedDisciplineId, setSelectedDisciplineId] = useState('all');
 
   useEffect(() => {
     if (refreshProfile) refreshProfile();
-  }, []);
+    if (userId && !userProfile?.email) {
+      api.getSession().then(({ data }) => {
+        if (data?.session?.user?.email) {
+          setUserProfile({ ...userProfile, email: data.session.user.email });
+        }
+      }).catch(err => console.warn('Could not fetch session email:', err));
+    }
+  }, [userId, userProfile?.email]);
 
   // Performance Calculations
   const taskerJobs = useMemo(() => {
@@ -138,26 +144,6 @@ const MyProfileScreen = () => {
     return resolveUserSkills(rawSkills, completedTaskerJobs.length);
   }, [userProfile?.skills, completedTaskerJobs.length]);
 
-  const equippedSkillIdSet = useMemo(() => {
-    return new Set(equippedSkills.map(s => s.id));
-  }, [equippedSkills]);
-
-  const filteredModalSkills = useMemo(() => {
-    let list = GAME_SKILLS;
-    if (selectedDisciplineId !== 'all') {
-      list = list.filter(s => s.disciplineId === selectedDisciplineId);
-    }
-    if (modalSkillSearch.trim()) {
-      const q = modalSkillSearch.trim().toLowerCase();
-      list = list.filter(s => 
-        s.label.toLowerCase().includes(q) ||
-        s.tagline?.toLowerCase().includes(q) ||
-        s.aliases?.some(a => a.toLowerCase().includes(q))
-      );
-    }
-    return list;
-  }, [selectedDisciplineId, modalSkillSearch]);
-
   const handleToggleEquipSkill = async (skillId) => {
     if (!userId) {
       openLoginModal();
@@ -172,9 +158,9 @@ const MyProfileScreen = () => {
     
     try {
       await setUserProfile({ ...userProfile, skills: newSkills });
-      showToast(isEquipped ? 'Skill unequipped from loadout' : '⚡ Skill equipped to Loadout!', 'success');
+      showToast(isEquipped ? 'Skill removed' : '⚡ Skill equipped!', 'success');
     } catch (e) {
-      showToast('Failed to update loadout', 'error');
+      showToast('Failed to update skills', 'error');
     }
   };
 
@@ -196,18 +182,45 @@ const MyProfileScreen = () => {
         name: trimmedName,
         phone: editedPhone.trim() || userProfile?.phone
       });
-      showToast('Dossier updated successfully!', 'success');
+      showToast('Profile updated successfully!', 'success');
       setIsEditingAccount(false);
     } catch (err) {
-      showToast('Failed to update dossier', 'error');
+      showToast('Failed to update profile', 'error');
     } finally {
       setIsSavingAccount(false);
     }
   };
 
+  const handleToggleAccountEdit = async () => {
+    if (isGuest) {
+      openLoginModal();
+      return;
+    }
+    if (!isEditingAccount) {
+      setEditedName(userProfile?.name || '');
+      setEditedPhone(userProfile?.phone || '');
+      setIsEditingAccount(true);
+      return;
+    }
+
+    // Drawer is already open: close and save if details changed
+    const trimmedName = editedName.trim();
+    const trimmedPhone = editedPhone.trim();
+    const currentName = (userProfile?.name || '').trim();
+    const currentPhone = (userProfile?.phone || '').trim();
+
+    const hasChanged = trimmedName !== currentName || trimmedPhone !== currentPhone;
+
+    if (hasChanged) {
+      await handleSaveAccount();
+    } else {
+      setIsEditingAccount(false);
+    }
+  };
+
   const handleWhatsAppSupport = () => {
     const agentUid = userId ? userId.slice(0, 8) : 'GUEST';
-    const message = `Hi HelpHive Support,\n\nAgent UID: ${agentUid}\nName: ${userProfile?.name || 'Operative'}\n\nIssue: `;
+    const message = `Hi HelpHive Support,\n\nUser ID: ${agentUid}\nName: ${userProfile?.name || 'Member'}\n\nIssue: `;
     window.open(`https://wa.me/919347442426?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -248,7 +261,7 @@ const MyProfileScreen = () => {
           {/* Subtle Accent Glow */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
 
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
             
             {/* Avatar with Dynamic Level Ring */}
             <div className="flex items-center space-x-3.5">
@@ -260,7 +273,7 @@ const MyProfileScreen = () => {
                   }
                   setShowBirdSelector(true);
                 }}
-                className="relative cursor-pointer group"
+                className="relative cursor-pointer group shrink-0"
                 title={isGuest ? "Sign In to Customize Avatar" : "Change Avatar"}
               >
                 <div 
@@ -280,20 +293,12 @@ const MyProfileScreen = () => {
               <div className="flex items-center space-x-1.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isGuest) {
-                      openLoginModal();
-                      return;
-                    }
-                    setEditedName(userProfile?.name || '');
-                    setEditedPhone(userProfile?.phone || '');
-                    setIsEditingAccount(true);
-                  }}
+                  onClick={handleToggleAccountEdit}
                   className="text-left group cursor-pointer"
-                  title={isGuest ? "Sign In to Edit" : "Click to edit name"}
+                  title={isGuest ? "Sign In to Edit" : isEditingAccount ? "Click to save and close" : "Click to edit name"}
                 >
                   <h2 className="text-base font-black text-dark leading-tight group-hover:text-primary transition-colors">
-                    {userProfile?.name || 'Operative'}
+                    {userProfile?.name || 'Member'}
                   </h2>
                 </button>
                 <ShieldCheck 
@@ -309,24 +314,35 @@ const MyProfileScreen = () => {
           {isEditingAccount && (
             <form onSubmit={handleSaveAccount} className="pt-3 border-t border-border space-y-3 mb-3 animate-[fadeIn_150ms_ease-out]">
               <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1">Callsign / Name</label>
+                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1">Name</label>
                 <input
                   type="text"
                   value={editedName}
                   onChange={(e) => setEditedName(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                  placeholder="Enter callsign or name"
+                  placeholder="Enter your name"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1">Phone Number</label>
+                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1">Phone</label>
                 <input
                   type="tel"
                   value={editedPhone}
                   onChange={(e) => setEditedPhone(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
                   placeholder="+91 98765 43210"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={userProfile?.email || ''}
+                  disabled
+                  readOnly
+                  className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-bold text-gray-500 cursor-not-allowed select-none"
+                  placeholder="No email registered"
                 />
               </div>
               <div className="flex justify-end space-x-2 pt-1">
@@ -342,7 +358,7 @@ const MyProfileScreen = () => {
                   disabled={isSavingAccount}
                   className="px-4 py-1.5 bg-primary text-white text-xs font-black rounded-xl shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
                 >
-                  {isSavingAccount ? 'Saving...' : 'Save Callsign'}
+                  {isSavingAccount ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </form>
@@ -359,7 +375,7 @@ const MyProfileScreen = () => {
               }`}
             >
               <Zap className="w-3.5 h-3.5" />
-              <span>Field Ops</span>
+              <span>Claimed</span>
             </button>
             <button
               onClick={() => setCareerTab('deployed')}
@@ -370,21 +386,21 @@ const MyProfileScreen = () => {
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Deployed Ops</span>
+              <span>Deployed</span>
             </button>
           </div>
 
           {/* Performance Data Display */}
           {careerTab === 'field' ? (
             <div className="grid grid-cols-3 gap-2 text-center pt-1">
-              <div className="bg-gray-50/80 rounded-xl p-2.5 border border-border/40">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Ops</span>
+              <div className="bg-gray-50/80 rounded-xl px-1.5 py-2.5 border border-border/40">
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5 whitespace-nowrap">Bounties</span>
                 <span className="text-base font-black text-dark">
                   {isGuest ? (userProfile?.taskerTasksCompleted || 42) : completedTaskerJobs.length}
                 </span>
               </div>
-              <div className="bg-gray-50/80 rounded-xl p-2.5 border border-border/40">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Street Cred</span>
+              <div className="bg-gray-50/80 rounded-xl px-1.5 py-2.5 border border-border/40">
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5 whitespace-nowrap">Street Cred</span>
                 <div className="flex items-center justify-center space-x-1">
                   <Star className="w-3.5 h-3.5 fill-primary text-primary" />
                   <span className="text-base font-black text-dark">
@@ -394,10 +410,10 @@ const MyProfileScreen = () => {
               </div>
               <div 
                 onClick={() => pushScreen('tasker_activity')}
-                className="bg-gray-50/80 hover:bg-orange-50/60 rounded-xl p-2.5 border border-border/40 cursor-pointer transition-colors"
+                className="bg-gray-50/80 hover:bg-orange-50/60 rounded-xl px-1.5 py-2.5 border border-border/40 cursor-pointer transition-colors"
                 title="View Bounty Stash & Ledger"
               >
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Stash</span>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5 whitespace-nowrap">Stash</span>
                 <span className="text-base font-black text-emerald-700">
                   {isGuest ? formatCurrency(userProfile?.taskerEarningsAmount || 24500, currency?.code) : formatCurrency(totalEarned, currency?.code)}
                 </span>
@@ -405,14 +421,14 @@ const MyProfileScreen = () => {
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 text-center pt-1">
-              <div className="bg-gray-50/80 rounded-xl p-2.5 border border-border/40">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Ops</span>
+              <div className="bg-gray-50/80 rounded-xl px-1.5 py-2.5 border border-border/40">
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5 whitespace-nowrap">Bounties</span>
                 <span className="text-base font-black text-dark">
                   {isGuest ? (userProfile?.posterTasksCompleted || 18) : posterJobs.length}
                 </span>
               </div>
-              <div className="bg-gray-50/80 rounded-xl p-2.5 border border-border/40">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Host Cred</span>
+              <div className="bg-gray-50/80 rounded-xl px-1.5 py-2.5 border border-border/40">
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5 whitespace-nowrap">Deployer Cred</span>
                 <div className="flex items-center justify-center space-x-1">
                   <Star className="w-3.5 h-3.5 fill-primary text-primary" />
                   <span className="text-base font-black text-dark">
@@ -420,8 +436,8 @@ const MyProfileScreen = () => {
                   </span>
                 </div>
               </div>
-              <div className="bg-gray-50/80 rounded-xl p-2.5 border border-border/40">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Payouts</span>
+              <div className="bg-gray-50/80 rounded-xl px-1.5 py-2.5 border border-border/40">
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5 whitespace-nowrap">Paid Out</span>
                 <span className="text-base font-black text-dark">
                   {isGuest ? formatCurrency(userProfile?.posterPaidOutAmount || 14200, currency?.code) : formatCurrency(totalPaidOut, currency?.code)}
                 </span>
@@ -431,11 +447,11 @@ const MyProfileScreen = () => {
 
         </div>
 
-        {/* ================= EQUIPPED SKILL LOADOUT ================= */}
+        {/* ================= EQUIPPED SKILLS ================= */}
         <div className="m3-card rounded-[24px] p-5 bg-white border border-border/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Skill Loadout</h3>
+              <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Skills</h3>
               <span className="text-[10px] font-extrabold bg-orange-100 text-primary px-2 py-0.5 rounded-full">
                 {equippedSkills.length}
               </span>
@@ -449,8 +465,8 @@ const MyProfileScreen = () => {
                 setIsEditingSkills(true);
               }}
               className="p-1 text-primary hover:bg-orange-50 rounded-lg transition-colors cursor-pointer"
-              title={isGuest ? "Sign In to Modify Loadout" : "Modify Loadout"}
-              aria-label="Modify Loadout"
+              title={isGuest ? "Sign In to Edit Skills" : "Edit Skills"}
+              aria-label="Edit Skills"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
             </button>
@@ -458,12 +474,12 @@ const MyProfileScreen = () => {
 
           {equippedSkills.length === 0 ? (
             <div className="text-center py-6 border border-dashed border-border rounded-2xl p-4 bg-gray-50/50">
-              <p className="text-xs font-bold text-gray-400 mb-2">No skills equipped on your loadout.</p>
+              <p className="text-xs font-bold text-gray-400 mb-2">No skills selected yet.</p>
               <button
                 onClick={() => setIsEditingSkills(true)}
                 className="px-4 py-2 bg-primary text-white text-xs font-black rounded-xl shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
               >
-                + Equip Skills
+                + Select Skills
               </button>
             </div>
           ) : (
@@ -484,7 +500,7 @@ const MyProfileScreen = () => {
         {/* ================= DIRECT PAYMENT SETTLEMENT ================= */}
         <div className="m3-card rounded-[24px] p-5 bg-white border border-border/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Payment Settlement</h3>
+            <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Direct Payment</h3>
             <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
               0% Fee
             </span>
@@ -497,7 +513,7 @@ const MyProfileScreen = () => {
             <div className="flex-1">
               <span className="text-xs font-bold text-dark block">Direct Peer-to-Peer Settlement</span>
               <span className="text-[10px] font-medium text-gray-400 block mt-0.5">
-                Direct settlement between both parties upon task completion.
+                100% direct payment between Claimer and Deployer upon bounty completion.
               </span>
             </div>
           </div>
@@ -622,14 +638,11 @@ const MyProfileScreen = () => {
       {/* Skill Loadout Modal */}
       {isEditingSkills && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 animate-[fadeIn_150ms_ease-out]">
-          <div className="bg-white rounded-t-[28px] sm:rounded-[28px] w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-[slideUp_200ms_ease-out]">
+          <div className="bg-white rounded-t-[28px] sm:rounded-[28px] w-full max-w-md h-[80vh] min-h-[500px] max-h-[640px] flex flex-col shadow-2xl overflow-hidden animate-[slideUp_200ms_ease-out]">
             
             {/* Modal Header */}
-            <div className="px-5 py-4 border-b border-border flex items-center justify-between shrink-0">
-              <div>
-                <h3 className="text-base font-black text-dark">Modify Skill Loadout</h3>
-                <p className="text-[11px] font-medium text-gray-400">Toggle skills to display on your agent card</p>
-              </div>
+            <div className="px-5 py-3.5 border-b border-border flex items-center justify-between shrink-0">
+              <h3 className="text-base font-black text-dark">Skills</h3>
               <button
                 onClick={() => setIsEditingSkills(false)}
                 className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-dark transition-colors cursor-pointer"
@@ -638,73 +651,14 @@ const MyProfileScreen = () => {
               </button>
             </div>
 
-            {/* Modal Search & Filter */}
-            <div className="px-5 pt-3 pb-2 space-y-2 shrink-0">
-              <div className="relative">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={modalSkillSearch}
-                  onChange={(e) => setModalSkillSearch(e.target.value)}
-                  placeholder="Search capabilities (e.g. electrical, delivery)..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-4 py-2 text-xs font-bold text-dark focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                />
-              </div>
-
-              {/* Discipline Tabs */}
-              <div className="flex overflow-x-auto no-scrollbar gap-1.5 pb-1">
-                <button
-                  onClick={() => setSelectedDisciplineId('all')}
-                  className={`px-3 py-1 rounded-lg text-[10px] font-black shrink-0 transition-colors cursor-pointer ${
-                    selectedDisciplineId === 'all'
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  All
-                </button>
-                {HERO_DISCIPLINES.map(d => (
-                  <button
-                    key={d.id}
-                    onClick={() => setSelectedDisciplineId(d.id)}
-                    className={`px-3 py-1 rounded-lg text-[10px] font-black shrink-0 transition-colors cursor-pointer ${
-                      selectedDisciplineId === d.id
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                    }`}
-                  >
-                    {d.shortTitle || d.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Skills Selection Grid */}
-            <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-2">
-              {filteredModalSkills.map(skill => {
-                const isEquipped = equippedSkillIdSet.has(skill.id);
-                return (
-                  <div
-                    key={skill.id}
-                    onClick={() => handleToggleEquipSkill(skill.id)}
-                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between active-scale ${
-                      isEquipped
-                        ? 'border-primary bg-orange-50/50 shadow-xs'
-                        : 'border-border hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div>
-                      <h4 className="text-xs font-black text-dark">{skill.label}</h4>
-                      <p className="text-[10px] font-medium text-gray-400">{skill.tagline || skill.category}</p>
-                    </div>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
-                      isEquipped ? 'bg-primary text-white' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    </div>
-                  </div>
-                );
-              })}
+            {/* Modal Content - Powered by Single Source of Truth SkillPicker */}
+            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-5">
+              <SkillPicker
+                mode="multi"
+                layout="modal"
+                selected={equippedSkills.map(s => s.id)}
+                onSelect={(skillId) => handleToggleEquipSkill(skillId)}
+              />
             </div>
 
             {/* Modal Footer */}

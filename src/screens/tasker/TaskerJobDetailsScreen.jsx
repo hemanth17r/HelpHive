@@ -95,7 +95,7 @@ const TaskerJobDetailsScreen = () => {
       return;
     }
     if (acceptedJob.status === 'cancelled') {
-      showToast('This task has been cancelled.', 'info');
+      showToast('This bounty has been aborted.', 'info');
       pushScreen('tasker_home', true);
     } else if (acceptedJob.status === 'completed') {
       pushScreen('tasker_rating', true);
@@ -162,12 +162,12 @@ const TaskerJobDetailsScreen = () => {
 
       // Send notification to the Quest Issuer that the operation is started
       if (acceptedJob.posterId) {
-        let title = "Operation Started!";
-        let body = `${userProfile?.name || 'Your operative'} has verified OTP and commenced the operation.`;
+        let title = "Bounty Initiated!";
+        let body = `${userProfile?.name || 'Your claimer'} has authenticated keycode and commenced the bounty.`;
         
         if (totalHelpers > 1) {
-          title = `${verifiedCount}/${totalHelpers} Operatives Deployed!`;
-          body = `${userProfile?.name || 'An operative'} verified their OTP. (${verifiedCount} of ${totalHelpers} operatives have commenced work)`;
+          title = `${verifiedCount}/${totalHelpers} Claimers Deployed!`;
+          body = `${userProfile?.name || 'A claimer'} authenticated keycode. (${verifiedCount} of ${totalHelpers} claimers have commenced work)`;
         }
 
         api.sendNotification(
@@ -205,12 +205,12 @@ const TaskerJobDetailsScreen = () => {
   };
 
   const handleWhatsAppCustomer = () => {
-    const taskTitle = skill?.label || acceptedJob.description || 'Task';
-    const message = `Hi ${acceptedJob.address?.contactName || acceptedJob.posterName || 'Customer'},\n\nI'm contacting you regarding our HelpHive task.\n\nTask ID: ${acceptedJob.id || 'N/A'}\nTask: ${taskTitle}\n\nMessage: `;
+    const taskTitle = skill?.label || acceptedJob.description || 'Bounty';
+    const message = `Hi ${acceptedJob.address?.contactName || acceptedJob.posterName || 'Deployer'},\n\nI'm contacting you regarding our HelpHive bounty.\n\nBounty ID: ${acceptedJob.id || 'N/A'}\nBounty: ${taskTitle}\n\nMessage: `;
     const posterPhone = acceptedJob.address?.contactPhone || acceptedJob.posterPhone;
     
     if (!posterPhone) {
-      showToast('Customer phone number is unavailable.', 'error');
+      showToast('Deployer direct line is unavailable.', 'error');
       return;
     }
     
@@ -224,8 +224,8 @@ const TaskerJobDetailsScreen = () => {
   };
 
   const handleWhatsAppSupport = () => {
-    const taskTitle = skill?.label || acceptedJob.description || 'Task';
-    const message = `Hi HelpHive Support,\n\nI need help with a task.\n\nTask ID: ${acceptedJob.id || 'N/A'}\nTask: ${taskTitle}\n\nTasker ID: ${userProfile?.id || 'N/A'}\nCustomer ID: ${acceptedJob.posterId || 'N/A'}\n\nMessage: `;
+    const taskTitle = skill?.label || acceptedJob.description || 'Bounty';
+    const message = `Hi HelpHive Support,\n\nI need help with a bounty.\n\nBounty ID: ${acceptedJob.id || 'N/A'}\nBounty: ${taskTitle}\n\nClaimer ID: ${userProfile?.id || 'N/A'}\nDeployer ID: ${acceptedJob.posterId || 'N/A'}\n\nMessage: `;
     const whatsappUrl = `https://wa.me/919347442426?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -277,7 +277,7 @@ const TaskerJobDetailsScreen = () => {
             </div>
 
             <p className="text-[10px] text-gray-400 font-semibold leading-normal max-w-[260px] mx-auto pt-1">
-              Stand by. Contract initiates once all strike team Operators arrive or the Fixer authorizes deployment.
+              Stand by. Bounty initiates once all strike team Claimers arrive or the Deployer authorizes deployment.
             </p>
           </div>
 
@@ -291,7 +291,7 @@ const TaskerJobDetailsScreen = () => {
               {acceptedJob.description}
             </p>
             <div className="bg-primary/5 rounded-xl px-3 py-1.5 border border-primary/10 inline-block">
-              <span className="text-[11px] font-extrabold text-primary">Bounty: {formatCurrency(acceptedJob.amount, acceptedJob.currency || currency?.code)} per Operator</span>
+              <span className="text-[11px] font-extrabold text-primary">Bounty: {formatCurrency(acceptedJob.amount, acceptedJob.currency || currency?.code)} per Claimer</span>
             </div>
           </div>
 
@@ -327,7 +327,7 @@ const TaskerJobDetailsScreen = () => {
                 </div>
                 <h3 className="text-lg font-black text-dark">Abort Assignment?</h3>
                 <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
-                  Are you sure you want to abort this contract? This action is recorded and may affect your Street Cred.
+                  Are you sure you want to abort this bounty? This action is recorded and may affect your Street Cred.
                 </p>
               </div>
               <div className="flex space-x-3">
@@ -335,7 +335,7 @@ const TaskerJobDetailsScreen = () => {
                   onClick={() => setShowCancelModal(false)}
                   className="flex-1 py-3.5 border border-border text-gray-600 hover:bg-gray-50 rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
                 >
-                  No, Keep Contract
+                  No, Keep Bounty
                 </button>
                 <button
                   onClick={async () => {
@@ -354,8 +354,8 @@ const TaskerJobDetailsScreen = () => {
                       if (acceptedJob.posterId) {
                         api.sendNotification(
                           acceptedJob.posterId,
-                          "Operative Disengaged",
-                          `${userProfile?.name || 'An operative'} disengaged from the contract.`,
+                          "Claimer Disengaged",
+                          `${userProfile?.name || 'A claimer'} disengaged from the bounty.`,
                           'live_status',
                           'job_cancelled',
                           'poster',
@@ -386,7 +386,7 @@ const TaskerJobDetailsScreen = () => {
       {/* Header */}
       <div className="text-center shrink-0">
         <span className="text-xs font-semibold text-gray-400">
-          {isVerified ? 'Contract In Execution...' : 'En Route to Target Drop Coordinates...'}
+          {isVerified ? 'Bounty In Execution...' : 'En Route to Target Drop Coordinates...'}
         </span>
       </div>
 
@@ -400,8 +400,8 @@ const TaskerJobDetailsScreen = () => {
               <BirdAvatar birdName={acceptedJob.posterBird || 'falcon'} size={48} />
             </div>
             <div>
-              <h3 className="text-[10px] font-bold text-gray-400">Fixer</h3>
-              <p className="text-sm font-black text-dark leading-tight">{acceptedJob.posterName || acceptedJob.address?.contactName || 'Fixer'}</p>
+              <h3 className="text-[10px] font-bold text-gray-400">Deployer</h3>
+              <p className="text-sm font-black text-dark leading-tight">{acceptedJob.posterName || acceptedJob.address?.contactName || 'Deployer'}</p>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -481,7 +481,7 @@ const TaskerJobDetailsScreen = () => {
               <div>
                 <p className="text-xs font-black text-orange-700">GPS Uplink is Paused</p>
                 <p className="text-[10px] font-semibold text-orange-600 mt-0.5 leading-normal">
-                  Please enable location access/GPS so the Fixer can track your vector coordinates en route.
+                  Please enable location access/GPS so the Deployer can track your vector coordinates en route.
                 </p>
               </div>
             </div>
@@ -505,12 +505,12 @@ const TaskerJobDetailsScreen = () => {
           {isVerified ? (
             <div className="flex items-center space-x-2 bg-green-50 text-green-600 border border-green-200 p-3 rounded-xl font-bold text-xs animate-scale-up">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Keycode Authenticated! Contract is in active execution.</span>
+              <span>Keycode Authenticated! Bounty is in active execution.</span>
             </div>
           ) : (
             <div className="space-y-2 animate-scale-up">
               <p className="text-[10px] text-gray-400 font-semibold leading-normal">
-                Enter the 4-digit Mission Clearance Keycode provided by the Fixer to initiate.
+                Enter the 4-digit Mission Clearance Keycode provided by the Deployer to initiate.
               </p>
               <div className="flex gap-2">
                 <input
@@ -545,7 +545,7 @@ const TaskerJobDetailsScreen = () => {
 
         {/* Buttons Section */}
         {isVerified && (acceptedJob.peopleNeeded || 1) === 1 && (
-          <Tooltip text="Fulfill contract and claim bounty settlement" className="w-full flex justify-center">
+          <Tooltip text="Fulfill bounty and claim settlement" className="w-full flex justify-center">
             <button
               onClick={handleComplete}
               disabled={isCompleting || isCancelling}
@@ -556,7 +556,7 @@ const TaskerJobDetailsScreen = () => {
               ) : (
                 <CheckCircle2 className="w-5 h-5 animate-pulse" />
               )}
-              <span>{isCompleting ? 'Completing...' : 'Fulfill Contract & Claim Bounty'}</span>
+              <span>{isCompleting ? 'Completing...' : 'Fulfill & Claim Bounty'}</span>
             </button>
           </Tooltip>
         )}
@@ -590,7 +590,7 @@ const TaskerJobDetailsScreen = () => {
               </div>
               <h3 className="text-lg font-black text-dark">Abort Assignment?</h3>
               <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
-                Are you sure you want to abort this contract? This action is recorded and may affect your Street Cred.
+                Are you sure you want to abort this bounty? This action is recorded and may affect your Street Cred.
               </p>
             </div>
             <div className="flex space-x-3">
@@ -598,7 +598,7 @@ const TaskerJobDetailsScreen = () => {
                 onClick={() => setShowCancelModal(false)}
                 className="flex-1 py-3.5 border border-border text-gray-600 hover:bg-gray-50 rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
               >
-                No, Keep Contract
+                No, Keep Bounty
               </button>
               <button
                 onClick={async () => {
@@ -617,8 +617,8 @@ const TaskerJobDetailsScreen = () => {
                     if (acceptedJob.posterId) {
                       api.sendNotification(
                         acceptedJob.posterId,
-                        "Operative Disengaged",
-                        `${userProfile?.name || 'An operative'} disengaged from the contract.`,
+                        "Claimer Disengaged",
+                        `${userProfile?.name || 'A claimer'} disengaged from the bounty.`,
                         'live_status',
                         'job_cancelled',
                         'poster',

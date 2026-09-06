@@ -167,7 +167,7 @@ const ShareHeroCardModal = ({
     }
 
     // 6. User Name & Handle
-    const displayName = userProfile?.name || 'Operative';
+    const displayName = userProfile?.name || 'Member';
     const displayHandle = userProfile?.handle || (userProfile?.name ? `@${userProfile.name.toLowerCase().replace(/\s+/g, '_')}` : '@hero');
 
     ctx.font = '900 32px system-ui, -apple-system, sans-serif';
@@ -378,7 +378,7 @@ const ShareHeroCardModal = ({
   };
 
   const bird = selectedBird || userProfile?.bird || 'falcon';
-  const displayName = userProfile?.name || 'Operative';
+  const displayName = userProfile?.name || 'Member';
   const displayHandle = userProfile?.handle || (userProfile?.name ? `@${userProfile.name.toLowerCase().replace(/\s+/g, '_')}` : '@hero');
 
   return (

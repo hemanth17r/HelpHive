@@ -148,10 +148,10 @@ const CrewConfirmedScreen = () => {
     if (currentPostedJob.status === 'completed') {
       pushScreen('rating_screen', true);
     } else if (currentPostedJob.status === 'open') {
-      showToast('Your helper has cancelled. Redirecting back to search...', 'info');
+      showToast('Your Claimer has disengaged. Redirecting back to search...', 'info');
       pushScreen('live_status', true);
     } else if (currentPostedJob.status === 'cancelled') {
-      showToast('Task cancelled.', 'info');
+      showToast('Bounty aborted.', 'info');
       pushScreen('poster_home', true);
     }
   }, [currentPostedJob, pushScreen, showToast]);
@@ -202,11 +202,11 @@ const CrewConfirmedScreen = () => {
   const handleWhatsAppHelper = (tasker) => {
     if (!tasker) return;
     const taskTitle = currentPostedJob?.description || 'Operation';
-    const message = `Hi ${tasker?.name || 'Operative'},\n\nI'm contacting you regarding our HelpHive quest operation.\n\nOperation ID: ${currentPostedJob?.id || 'N/A'}\nQuest: ${taskTitle}\n\nMessage: `;
+    const message = `Hi ${tasker?.name || 'Claimer'},\n\nI'm contacting you regarding our HelpHive bounty.\n\nBounty ID: ${currentPostedJob?.id || 'N/A'}\nBounty: ${taskTitle}\n\nMessage: `;
     const taskerPhone = tasker?.phone;
     
     if (!taskerPhone) {
-      showToast('Operative phone number is unavailable.', 'error');
+      showToast('Claimer direct line is unavailable.', 'error');
       return;
     }
 
@@ -330,7 +330,7 @@ const CrewConfirmedScreen = () => {
                       <span>{Number(tasker.rating).toFixed(1)}</span>
                     </div>
                     <span className="text-[10px] text-gray-400 font-bold">
-                      • {tasker.tasksCompleted} contracts solved
+                      • {tasker.tasksCompleted} bounties solved
                     </span>
                   </div>
                 ) : (
@@ -357,7 +357,7 @@ const CrewConfirmedScreen = () => {
             </div>
             
             <div className="text-2xl font-black text-green-600 tracking-tight">
-              {verifiedCount} / {localCrewTaskers.length} {localCrewTaskers.length === 1 ? 'Operator' : 'Operators'} Deployed
+              {verifiedCount} / {localCrewTaskers.length} {localCrewTaskers.length === 1 ? 'Claimer' : 'Claimers'} Deployed
             </div>
 
             {/* Custom progress bar */}
@@ -370,8 +370,8 @@ const CrewConfirmedScreen = () => {
 
             <p className="text-[10px] text-gray-400 font-semibold leading-normal max-w-[260px] mx-auto pt-1">
               {allHelpersVerified 
-                ? "All Strike Team Operators have authenticated the Clearance Keycode and initiated execution."
-                : "Operators must request your Clearance Keycode upon physical contact to initiate work."}
+                ? "All Strike Team Claimers have authenticated the Clearance Keycode and initiated execution."
+                : "Claimers must request your Clearance Keycode upon contact to initiate work."}
             </p>
           </div>
         )}
@@ -384,7 +384,7 @@ const CrewConfirmedScreen = () => {
               <span>Mission Clearance Keycode 🔑</span>
             </div>
             <p className="text-[10px] text-gray-500 font-semibold leading-normal max-w-[260px] mx-auto">
-              Provide this keycode to your Operator(s) upon contact to authorize and initiate the contract.
+              Provide this keycode to your Claimer(s) upon contact to authorize and initiate the bounty.
             </p>
 
             {otpVisible ? (
@@ -408,7 +408,7 @@ const CrewConfirmedScreen = () => {
                <Check className="w-6 h-6" />
              </div>
              <span className="text-sm font-black text-green-700">Strike Team Authenticated!</span>
-             <span className="text-[10px] text-green-600/80 font-bold text-center">Keycode was verified successfully by all operators. Operation is currently in execution.</span>
+             <span className="text-[10px] text-green-600/80 font-bold text-center">Keycode was verified successfully by all claimers. Operation is currently in execution.</span>
           </div>
         )}
 
@@ -452,7 +452,7 @@ const CrewConfirmedScreen = () => {
               {isCompleting ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : null}
-              <span>{isCompleting ? 'Completing...' : 'Confirm Settlement & Close Contract'}</span>
+              <span>{isCompleting ? 'Completing...' : 'Confirm Settlement & Close Bounty'}</span>
             </button>
           </div>
         </div>
@@ -466,7 +466,7 @@ const CrewConfirmedScreen = () => {
               {isCancelling ? (
                 <div className="w-4 h-4 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
               ) : null}
-              <span>{isCancelling ? 'Aborting...' : 'Abort Contract'}</span>
+              <span>{isCancelling ? 'Aborting...' : 'Abort Bounty'}</span>
             </button>
           </div>
 
@@ -499,9 +499,9 @@ const CrewConfirmedScreen = () => {
             onClick={(e) => e.stopPropagation()}
             className="bg-white w-[90%] max-w-sm rounded-[32px] p-6 flex flex-col shadow-2xl scale-100 transition-transform duration-300"
           >
-            <h3 className="text-base font-black text-dark text-center">Confirm Payment</h3>
+            <h3 className="text-base font-black text-dark text-center">Confirm Settlement</h3>
             <p className="text-xs font-semibold text-gray-500 mt-3 text-center leading-relaxed">
-              Have you completed the payment for this task?
+              Have you completed the bounty settlement for this operation?
             </p>
             
             <div className="flex space-x-3 mt-6">
@@ -519,7 +519,7 @@ const CrewConfirmedScreen = () => {
                 {isCompleting ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 ) : null}
-                <span>{isCompleting ? 'Wait...' : 'Complete Task'}</span>
+                <span>{isCompleting ? 'Settling...' : 'Confirm Settlement'}</span>
               </button>
             </div>
           </div>
@@ -540,9 +540,9 @@ const CrewConfirmedScreen = () => {
               <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
                 <ShieldAlert className="w-6 h-6 text-red-500" />
               </div>
-              <h3 className="text-lg font-black text-dark">Cancel Task?</h3>
+              <h3 className="text-lg font-black text-dark">Abort Bounty?</h3>
               <p className="text-xs font-semibold text-gray-500 leading-relaxed max-w-xs mx-auto">
-                Are you sure you want to cancel this task? This action is recorded and may affect your completion rate.
+                Are you sure you want to abort this bounty? This action is recorded and may affect your completion rate.
               </p>
             </div>
             <div className="flex space-x-3">
@@ -550,7 +550,7 @@ const CrewConfirmedScreen = () => {
                 onClick={() => setShowCancelModal(false)}
                 className="flex-1 py-3.5 border border-border text-gray-600 hover:bg-gray-50 rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
               >
-                No, Keep Task
+                No, Keep Bounty
               </button>
               <button
                 onClick={async () => {
@@ -578,8 +578,8 @@ const CrewConfirmedScreen = () => {
                       localCrewTaskers.forEach(tasker => {
                         api.sendNotification(
                           tasker.id,
-                          "Task Cancelled",
-                          `The customer cancelled the task.`,
+                          "Bounty Aborted",
+                          `The Deployer aborted the bounty.`,
                           'tasker_home',
                           'job_cancelled',
                           'tasker',
@@ -588,7 +588,7 @@ const CrewConfirmedScreen = () => {
                       });
                     }
                     
-                    showToast('Task cancelled successfully', 'info');
+                    showToast('Bounty aborted successfully', 'info');
                     pushScreen('poster_home', true);
                   } finally {
                     setIsCancelling(false);
@@ -596,7 +596,7 @@ const CrewConfirmedScreen = () => {
                 }}
                 className="flex-1 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
               >
-                Yes, Cancel
+                Yes, Abort Bounty
               </button>
             </div>
           </div>
@@ -625,17 +625,17 @@ const CrewConfirmedScreen = () => {
                       prevJobs.map(j => j.id === currentPostedJob.id ? { ...j, status: 'cancelled', v2_status: 'cancelled' } : j)
                     );
                     setCurrentPostedJob(null);
-                    showToast('Task has been ended.', 'info');
+                    showToast('Operation aborted.', 'info');
                     pushScreen('poster_home', true);
                   } catch (err) {
-                    showToast('Failed to cancel task.', 'error');
+                    showToast('Failed to abort operation.', 'error');
                   } finally {
                     setIsCancelling(false);
                   }
                 }}
                 className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
               >
-                End Task
+                Abort Operation
               </button>
               <button
                 onClick={() => setHasDecidedToContinue(true)}

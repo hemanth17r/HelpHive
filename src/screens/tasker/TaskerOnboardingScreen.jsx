@@ -3,10 +3,12 @@ import { ArrowLeft, ArrowRight, Check, MapPin, Search, Loader2, Navigation, Wifi
 import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
 import { SKILLS } from '../../config/constants';
+import SkillPicker from '../../components/SkillPicker';
 import { MARKETPLACE_RULES } from '../../config/marketplaceRules';
 import IconLabel from '../../components/IconLabel';
 import Tooltip from '../../components/Tooltip';
 import MapView from '../../components/MapView';
+import LocationPicker from '../../components/LocationPicker';
 import { api } from '../../services/api';
 import { searchAddress, reverseGeocode } from '../../utils/geocoding';
 import { getCurrentLocation, INDIA_CENTER } from '../../utils/location';
@@ -287,7 +289,7 @@ const TaskerOnboardingScreen = () => {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">
-          {step === 1 ? 'Operator Classes' : 'Sector Perimeter'}
+          {step === 1 ? 'Claimer Classes' : 'Sector Perimeter'}
         </span>
         <div className="w-10"></div>
       </div>
@@ -296,7 +298,7 @@ const TaskerOnboardingScreen = () => {
         {step === 1 && (
           <>
             <h2 className="text-2xl font-black text-dark tracking-tight mb-1">
-              Choose Your Operator Classes
+              Choose Your Claimer Classes
             </h2>
             <p className="text-xs font-semibold text-gray-400 mb-2">
               Select the tactical archetype skills you are ready to deploy in the real world.
@@ -305,80 +307,13 @@ const TaskerOnboardingScreen = () => {
               You can level up and calibrate additional classes at any time from your Dossier.
             </div>
 
-            <div className="flex-1 space-y-8 overflow-y-auto pr-1">
-              {/* On-site Section */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-1.5 px-1">
-                  <MapPin className="w-3 h-3 text-primary shrink-0" />
-                  <span className="text-xs font-medium text-slate-700 tracking-wide">Tactical Field Archetypes</span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {SKILLS.filter(s => s.type === 'physical').map((skill) => {
-                    const isSelected = selectedSkills.includes(skill.id);
-                    return (
-                      <IconLabel
-                        key={skill.id}
-                        icon={skill.icon}
-                        label={skill.label}
-                        isNew={skill.isNew}
-                        isHighDemand={skill.isHighDemand}
-                        isUrgent={skill.isUrgent}
-                        tooltipText={`Toggle class: ${skill.label}`}
-                        selected={isSelected}
-                        onClick={() => handleToggleSkill(skill.id)}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Online Section */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-1.5 px-1">
-                  <Wifi className="w-3 h-3 text-primary shrink-0" />
-                  <span className="text-xs font-medium text-slate-700 tracking-wide">Cyber &amp; Remote Archetypes</span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {SKILLS.filter(s => s.type === 'remote').map((skill) => {
-                    const isSelected = selectedSkills.includes(skill.id);
-                    return (
-                      <IconLabel
-                        key={skill.id}
-                        icon={skill.icon}
-                        label={skill.label}
-                        isNew={skill.isNew}
-                        isHighDemand={skill.isHighDemand}
-                        isUrgent={skill.isUrgent}
-                        tooltipText={`Toggle class: ${skill.label}`}
-                        selected={isSelected}
-                        onClick={() => handleToggleSkill(skill.id)}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Legend */}
-              <div className="pt-5 mt-4 border-t border-border flex flex-wrap items-center justify-center gap-x-5 gap-y-2.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary text-white border border-primary">
-                    NEW
-                  </span>
-                  <span className="text-[10px] font-bold text-gray-500">Newly Added</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
-                    <Flame className="w-2.5 h-2.5 fill-current text-white" />
-                  </span>
-                  <span className="text-[10px] font-bold text-gray-500">High Demand Bounty</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
-                    <Zap className="w-2.5 h-2.5 fill-current text-white" />
-                  </span>
-                  <span className="text-[10px] font-bold text-gray-500">Quick Match</span>
-                </div>
-              </div>
+            <div className="flex-1 overflow-y-auto pr-1">
+              <SkillPicker
+                mode="multi"
+                layout="grid"
+                selected={selectedSkills}
+                onSelect={(skillId) => handleToggleSkill(skillId)}
+              />
             </div>
           </>
         )}
@@ -396,64 +331,22 @@ const TaskerOnboardingScreen = () => {
             <div className="mt-2 flex-1 flex flex-col min-h-[420px] mb-6">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Sector Grid Radar</label>
               <div className="flex-1 relative rounded-xl overflow-hidden border border-border">
-                {/* Floating Search Bar */}
-                <div className="absolute top-4 left-4 max-w-[320px] sm:max-w-[400px] w-[calc(100%-80px)] z-20" ref={dropdownRef}>
-                  <div className="relative shadow-lg rounded-xl">
-                    <input 
-                      type="text" 
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      onKeyDown={handleKeyDown}
-                      onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
-                      className="w-full bg-white border-none rounded-xl pl-11 pr-10 py-2.5 text-sm font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                      placeholder="Search base coordinate..."
-                    />
-                    <Search className="absolute left-4 top-2.5 w-5 h-5 text-gray-400" />
-                    {isSearching && (
-                      <Loader2 className="absolute right-4 top-2.5 w-5 h-5 text-primary animate-spin" />
-                    )}
-                  </div>
-                  
-                  {showDropdown && searchResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden max-h-60 overflow-y-auto">
-                      {searchResults.map((result, idx) => (
-                        <div 
-                          key={idx}
-                          onClick={() => handleSelectResult(result)}
-                          className="p-3.5 border-b border-gray-50 hover:bg-orange-50 cursor-pointer transition-colors flex items-start space-x-3"
-                        >
-                          <MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                          <div className="text-xs font-semibold text-dark line-clamp-2 leading-relaxed">
-                            {result.displayName}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <MapView
-                  center={[serviceAreaLocation.lat, serviceAreaLocation.lng]}
-                  zoom={coverageRadius > 10000 ? 10 : coverageRadius > 5000 ? 11 : 12}
-                  draggable={true}
-                  onDragEnd={handleDragEnd}
+                <LocationPicker
+                  initialLat={serviceAreaLocation.lat}
+                  initialLng={serviceAreaLocation.lng}
                   coverageRadius={coverageRadius}
-                  height="100%"
+                  searchPlaceholder="Search base coordinate..."
+                  onLocationChange={(loc) => {
+                    setServiceAreaLocation({
+                      lat: loc.lat,
+                      lng: loc.lng
+                    });
+                    setSearchQuery(loc.completeAddress);
+                  }}
+                  onLocationGranted={(coords) => {
+                    setServiceAreaLocation(coords);
+                  }}
                 />
-
-                {/* Floating GPS Button */}
-                <button 
-                  onClick={handleUseCurrentLocation}
-                  disabled={isLocating}
-                  className="absolute bottom-5 right-4 z-20 w-10 h-10 bg-white text-primary rounded-full shadow-lg hover:bg-orange-50/50 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed select-none"
-                  aria-label="Use current location"
-                >
-                  {isLocating ? (
-                    <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
-                  ) : (
-                    <Navigation className="w-5 h-5 text-primary shrink-0" />
-                  )}
-                </button>
               </div>
               <p className="text-[10px] text-gray-400 mt-2 text-center">Drag the pin or search to set your sector base coordinates.</p>
             </div>

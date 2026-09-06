@@ -34,7 +34,6 @@ const WhatsAppIcon = ({ className }) => (
 // Screens imports
 import LandingScreen from './screens/LandingScreen';
 import ServiceUnavailableScreen from './screens/ServiceUnavailableScreen';
-import TaskerOnboardingScreen from './screens/tasker/TaskerOnboardingScreen';
 import TaskerHomeScreen from './screens/tasker/TaskerHomeScreen';
 import TaskerJobDetailsScreen from './screens/tasker/TaskerJobDetailsScreen';
 import TaskerRatingScreen from './screens/tasker/TaskerRatingScreen';
@@ -104,7 +103,6 @@ const AppContent = () => {
     openLoginModal,
     userId,
     logout,
-    switchRole,
     jobHistoryTab,
     setJobHistoryTab,
     currency,
@@ -159,13 +157,8 @@ const AppContent = () => {
       
       // Permissions are compulsory for real users
       const hasPermissions = hasOsLocation && hasNotifications;
-
-      if (role === 'tasker') {
-        const hasServiceArea = !missingWizardItems.includes('service_area');
-        isProfileIncomplete = !hasSkills || !hasServiceArea || !hasValidNameAndPhone || !hasPermissions;
-      } else {
-        isProfileIncomplete = !hasValidNameAndPhone || !hasJobLocation || !hasPermissions;
-      }
+      const hasServiceArea = !missingWizardItems.includes('service_area');
+      isProfileIncomplete = !hasSkills || !hasServiceArea || !hasValidNameAndPhone || !hasPermissions;
 
       if (isProfileIncomplete && !showWizard) {
         openOnboardingWizard();
@@ -173,10 +166,8 @@ const AppContent = () => {
     }
   }, [
     userId,
-    role,
     hasSkills,
     hasValidNameAndPhone,
-    hasJobLocation,
     hasOsLocation,
     hasNotifications,
     missingWizardItems,
@@ -187,11 +178,20 @@ const AppContent = () => {
 
 
 
-  // Status dot for Tasker avatar (reflects online/offline availability status)
+  // Status dot for Operative avatar (reflects online/offline availability status)
   const renderStatusDot = () => (
-    (role === 'tasker') ? (
-      <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white transition-colors duration-300 ${isOnline ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-    ) : null
+    <div 
+      style={{ 
+        position: 'absolute', 
+        bottom: '1px', 
+        right: '1px', 
+        width: '8px', 
+        height: '8px', 
+        borderRadius: '50%', 
+        background: isOnline ? '#22c55e' : '#9ca3af', 
+        transition: 'background 0.3s' 
+      }} 
+    />
   );
 
   const handleWhatsAppSupport = () => {
@@ -205,15 +205,8 @@ const AppContent = () => {
   };
 
   const handleHomeLogoClick = () => {
-    if (role === 'tasker') {
-      setActiveTab('home');
-      pushScreen('tasker_home');
-    } else if (role === 'poster') {
-      pushScreen('poster_home');
-    } else {
-      setActiveTab('home');
-      pushScreen('tasker_home');
-    }
+    setActiveTab('home');
+    pushScreen('tasker_home');
   };
 
   const handlePostTaskClick = () => {
@@ -223,7 +216,10 @@ const AppContent = () => {
       });
       return;
     }
-    const isWizardCompleted = localStorage.getItem(`helphive_wizard_completed_poster_${userId}`) === 'true' && missingWizardItems.length === 0;
+    const isWizardCompleted = (
+      localStorage.getItem(`helphive_wizard_completed_${userId}`) === 'true' ||
+      localStorage.getItem(`helphive_wizard_completed_poster_${userId}`) === 'true'
+    ) && missingWizardItems.length === 0;
     if (!isWizardCompleted) {
       openOnboardingWizard(() => {
         pushScreen('post_job');
@@ -274,16 +270,16 @@ const AppContent = () => {
         description = "Need assistance? Find answers to frequently asked questions and get in touch with HelpHive support.";
         break;
       case 'poster_home':
-        title = "Poster Dashboard | HelpHive";
-        description = "Manage your posted tasks, review applications from local helpers, and coordinate tasks.";
+        title = "Deployer Deck | HelpHive";
+        description = "Manage your deployed bounties, review claimers, and monitor active missions.";
         break;
       case 'tasker_home':
-        title = "Tasker Dashboard | HelpHive";
-        description = "Receive local tasks in your area, submit offers, and start earning on your own schedule.";
+        title = "Live Bounty Radar | HelpHive";
+        description = "Discover local sector bounties in your area, claim bounties, and earn rewards.";
         break;
       case 'post_job':
-        title = "Post a New Task | HelpHive";
-        description = "Quickly post a new task on HelpHive to find local verified helpers in minutes.";
+        title = "Deploy a Bounty | HelpHive";
+        description = "Deploy a new bounty on HelpHive to mobilize verified claimers in minutes.";
         break;
       case 'notifications':
         title = "Notifications | HelpHive";
@@ -352,7 +348,7 @@ const AppContent = () => {
       case 'service_unavailable':
         return <ServiceUnavailableScreen />;
       case 'tasker_onboarding':
-        return <TaskerOnboardingScreen />;
+        return <SetupWizardModal onComplete={() => popScreen()} onClose={() => popScreen()} />;
       case 'operations':
         return <OperationsScreen />;
       case 'poster_home':
@@ -457,8 +453,8 @@ const AppContent = () => {
               <span className="text-[22px] font-black text-dark tracking-tight">
                 Help<span className="text-primary">Hive</span>
               </span>
-              <span className="self-start mt-0.5 ml-1 text-[8px] font-[900] uppercase tracking-wider text-primary leading-none select-none">
-                BETA
+              <span className="hidden self-start mt-0.5 ml-1 text-[10px] font-extrabold tracking-normal text-primary leading-none select-none">
+                Beta
               </span>
             </div>
           </div>
@@ -494,7 +490,7 @@ const AppContent = () => {
               className="flex items-center space-x-1.5 px-4 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-full shadow-md shadow-primary/10 active-scale cursor-pointer mr-2"
             >
               <Plus className="w-4 h-4" />
-              <span>Deploy Op</span>
+              <span>Deploy Bounty</span>
             </button>
 
             {/* Notification Bell */}
@@ -518,12 +514,20 @@ const AppContent = () => {
                 pushScreen('my_profile');
               }}
             >
-              <div 
-                className="w-8 h-8 rounded-full flex items-center justify-center p-[1.5px] relative"
-                style={{ background: `conic-gradient(#F26419 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)` }}
-              >
-                <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-2 border-white">
-                  <BirdAvatar birdName={selectedBird} size={24} />
+              <div className="relative w-9 h-9">
+                <div 
+                  className="w-9 h-9 rounded-full flex items-center justify-center p-[2px]"
+                  style={{ 
+                    background: `conic-gradient(#F26419 ${completionPercentage}%, #e5e7eb ${completionPercentage}%)`,
+                    ...(role === 'tasker' ? {
+                      WebkitMaskImage: 'radial-gradient(circle 6.5px at calc(100% - 5px) calc(100% - 5px), transparent 0, transparent 5.5px, black 6.2px, black 100%)',
+                      maskImage: 'radial-gradient(circle 6.5px at calc(100% - 5px) calc(100% - 5px), transparent 0, transparent 5.5px, black 6.2px, black 100%)',
+                    } : {})
+                  }}
+                >
+                  <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-2 border-white">
+                    <BirdAvatar birdName={selectedBird} size={26} />
+                  </div>
                 </div>
                 {renderStatusDot()}
               </div>
@@ -546,27 +550,22 @@ const AppContent = () => {
             <span className="text-xl font-black text-dark tracking-tight">
               Help<span className="text-primary">Hive</span>
             </span>
-            <span className="self-start mt-0.5 ml-0.5 text-[7px] font-[900] uppercase tracking-wider text-primary leading-none select-none">
-              BETA
+            <span className="hidden self-start mt-0.5 ml-1 text-[9px] font-extrabold tracking-normal text-primary leading-none select-none">
+              Beta
             </span>
           </div>
           
           {/* Center: availability toggle for mobile (Tasker role only) */}
           {role === 'tasker' ? (
-            <div className="flex items-center gap-1.5 bg-slate-100/80 px-2.5 py-1 rounded-full">
-              <span className={`text-[9px] font-black uppercase tracking-wider ${isOnline ? 'text-emerald-600' : 'text-slate-400'}`}>
-                {isOnline ? 'Online' : 'Offline'}
-              </span>
-              <button
-                onClick={() => setIsOnline(!isOnline)}
-                aria-label="Toggle Availability"
-                className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none active-scale ${isOnline ? 'bg-emerald-500' : 'bg-slate-300'}`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out mt-[1px] ml-[1px] ${isOnline ? 'translate-x-3.5' : 'translate-x-0'}`}
-                />
-              </button>
-            </div>
+            <button
+              onClick={() => setIsOnline(!isOnline)}
+              aria-label={`Toggle Availability (${isOnline ? 'Online' : 'Offline'})`}
+              className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none active-scale ${isOnline ? 'bg-emerald-500' : 'bg-slate-300'}`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out mt-[1px] ml-[1px] ${isOnline ? 'translate-x-3.5' : 'translate-x-0'}`}
+              />
+            </button>
           ) : (
             <div className="w-4"></div>
           )}
@@ -596,17 +595,25 @@ const AppContent = () => {
                   pushScreen('my_profile');
                 }}
                 aria-label="Agent Dossier"
-                className="relative cursor-pointer p-0.5 rounded-full hover:bg-slate-100 transition-colors active-scale"
+                className="cursor-pointer p-0.5 rounded-full hover:bg-slate-100 transition-colors active-scale"
               >
-                <div 
-                  className="w-9 h-9 rounded-full flex items-center justify-center p-[2px]"
-                  style={{ background: `conic-gradient(#F26419 ${completionPercentage}%, #E2E8F0 ${completionPercentage}%)` }}
-                >
-                  <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-2 border-white">
-                    <BirdAvatar birdName={selectedBird} size={26} />
+                <div className="relative w-9 h-9">
+                  <div 
+                    className="w-9 h-9 rounded-full flex items-center justify-center p-[2px]"
+                    style={{ 
+                      background: `conic-gradient(#F26419 ${completionPercentage}%, #E2E8F0 ${completionPercentage}%)`,
+                      ...(role === 'tasker' ? {
+                        WebkitMaskImage: 'radial-gradient(circle 6.5px at calc(100% - 5px) calc(100% - 5px), transparent 0, transparent 5.5px, black 6.2px, black 100%)',
+                        maskImage: 'radial-gradient(circle 6.5px at calc(100% - 5px) calc(100% - 5px), transparent 0, transparent 5.5px, black 6.2px, black 100%)',
+                      } : {})
+                    }}
+                  >
+                    <div className="w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-2 border-white">
+                      <BirdAvatar birdName={selectedBird} size={26} />
+                    </div>
                   </div>
+                  {renderStatusDot()}
                 </div>
-                {renderStatusDot()}
               </button>
             )}
             {/* Back button (hides on main layout bases) */}
@@ -660,7 +667,7 @@ const AppContent = () => {
                     <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Radar Grid</span>
                   </button>
 
-                  {/* 2. Deploy Op */}
+                  {/* 2. Post Bounty */}
                   <button 
                     onClick={handlePostTaskClick}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] font-bold transition-colors duration-200 cursor-pointer whitespace-nowrap overflow-hidden ${
@@ -668,13 +675,13 @@ const AppContent = () => {
                         ? 'bg-[#FCE8DB] text-[#C4521A]' 
                         : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
                     }`}
-                    title="Deploy Op"
+                    title="Post Bounty"
                   >
                     <PlusCircle className="w-5 h-5 shrink-0" />
-                    <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Deploy Op</span>
+                    <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Post Bounty</span>
                   </button>
 
-                  {/* 3. Operations Center */}
+                  {/* 3. Bounty Board */}
                   <button 
                     onClick={() => {
                       pushScreen('operations');
@@ -684,10 +691,10 @@ const AppContent = () => {
                         ? 'bg-[#FCE8DB] text-[#C4521A]' 
                         : 'text-[#444746] hover:bg-[#FCE8DB]/40 hover:text-[#C4521A]'
                     }`}
-                    title="Operations"
+                    title="Bounties"
                   >
                     <Layers className="w-5 h-5 shrink-0" />
-                    <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Operations</span>
+                    <span className={`transition-opacity duration-200 ${showLabels ? 'opacity-100' : 'opacity-0'}`}>Bounties</span>
                   </button>
 
                   {/* 4. Agent Dossier */}

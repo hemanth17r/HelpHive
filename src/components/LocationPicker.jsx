@@ -14,12 +14,14 @@ import { ToastContext } from '../store/ToastContext';
  *                              loc = { lat, lng, completeAddress }
  *   onLocationError(err)     — optional; overrides default toast on GPS errors
  *   onLocationGranted(coords)— optional; called when the user explicitly taps
- *                              the GPS button AND we successfully obtain coords.
- *                              Useful for the parent to persist realLocation.
+ *   coverageRadius           — optional; radius circle in meters (for sector radius mode)
+ *   searchPlaceholder        — optional; placeholder text for search input
  */
 const LocationPicker = ({
   initialLat = 20.5937,  // Geographic center of India
   initialLng = 78.9629,
+  coverageRadius = null,
+  searchPlaceholder = 'Search for your location...',
   onLocationChange,
   onLocationError,
   onLocationGranted
@@ -126,6 +128,7 @@ const LocationPicker = ({
     setCurrentLat(result.lat);
     setCurrentLng(result.lng);
     setMapZoom(16);
+    setIsCentered(false);
     setShowDropdown(false);
     setResolvedAddressText(result.displayName);
 
@@ -153,21 +156,42 @@ const LocationPicker = ({
     }
   }
 
+  const [isCentered, setIsCentered] = useState(false);
+  const [userGpsPoint, setUserGpsPoint] = useState(null);
+
   const handleDragEnd = ({ lat, lng }) => {
     hasAppliedAsyncCenter.current = true;
+    setIsCentered(false);
     setCurrentLat(lat);
     setCurrentLng(lng);
     handleReverseGeocode(lat, lng);
   };
 
-  // Called ONLY when the user explicitly taps "Use my location".
+  // Called when the user taps the Google Maps style GPS navigation button
   const handleUseCurrentLocation = async () => {
     setIsLocating(true);
+    let hasAppliedQuickFix = false;
+
     try {
-      const loc = await getCurrentLocation();
+      const loc = await getCurrentLocation({
+        onQuickFix: (quickLoc) => {
+          hasAppliedQuickFix = true;
+          setCurrentLat(quickLoc.lat);
+          setCurrentLng(quickLoc.lng);
+          setMapZoom(16);
+          setUserGpsPoint(quickLoc);
+          setIsCentered(true);
+          handleReverseGeocode(quickLoc.lat, quickLoc.lng);
+          if (onLocationGranted) onLocationGranted(quickLoc);
+        }
+      });
+
+      // Refined high accuracy position
       setCurrentLat(loc.lat);
       setCurrentLng(loc.lng);
       setMapZoom(16);
+      setUserGpsPoint(loc);
+      setIsCentered(true);
       handleReverseGeocode(loc.lat, loc.lng);
 
       // Notify parent so it can persist realLocation for future use
@@ -175,11 +199,14 @@ const LocationPicker = ({
         onLocationGranted(loc);
       }
     } catch (e) {
-      console.error('Failed to get current location', e);
-      if (onLocationError) {
-        onLocationError(e);
-      } else {
-        showToast(e.message || 'Failed to detect location. Please check browser settings.', 'error');
+      if (!hasAppliedQuickFix) {
+        console.error('Failed to get current location', e);
+        setIsCentered(false);
+        if (onLocationError) {
+          onLocationError(e);
+        } else {
+          showToast(e.message || 'Failed to detect location. Please check device GPS settings.', 'error');
+        }
       }
     } finally {
       setIsLocating(false);
@@ -199,7 +226,7 @@ const LocationPicker = ({
             onKeyDown={handleKeyDown}
             onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
             className="w-full bg-white border border-border rounded-xl pl-9 pr-9 py-2 text-xs font-bold text-dark focus:outline-none focus:border-primary transition-all"
-            placeholder="Search for your location..."
+            placeholder={searchPlaceholder}
           />
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           {isSearching && (
@@ -229,26 +256,36 @@ const LocationPicker = ({
       <div className="w-full h-full flex-1 relative z-10">
         <MapView
           center={[currentLat, currentLng]}
-          zoom={mapZoom}
+          zoom={coverageRadius ? (coverageRadius > 10000 ? 10 : coverageRadius > 5000 ? 11 : 12) : mapZoom}
           draggable={true}
           onDragEnd={handleDragEnd}
+          onUserPan={() => setIsCentered(false)}
+          userLocationPoint={userGpsPoint}
+          coverageRadius={coverageRadius}
           height="100%"
           resolvedAddressText={isGeocoding ? 'Loading...' : resolvedAddressText}
         />
       </div>
 
-      {/* GPS Button — placed in the bottom right corner as a circular button */}
+      {/* Google Maps style GPS Navigation Button */}
       <button
         onClick={handleUseCurrentLocation}
         disabled={isLocating}
-        className="absolute bottom-5 right-4 z-20 w-10 h-10 flex items-center justify-center bg-white text-primary rounded-full shadow-lg hover:bg-orange-50/50 hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none"
-        title="Use my current location"
-        aria-label="Use my current location"
+        className={`absolute bottom-5 right-4 z-20 w-11 h-11 flex items-center justify-center rounded-full shadow-lg transition-all cursor-pointer select-none active:scale-90 ${
+          isLocating 
+            ? 'bg-white text-primary border border-primary/40 ring-4 ring-primary/10 animate-pulse'
+            : isCentered
+              ? 'bg-primary text-white shadow-primary/30 ring-2 ring-primary/40'
+              : 'bg-white text-slate-700 hover:text-primary hover:bg-orange-50/50 border border-slate-200/80'
+        }`}
+        title="Your location"
+        aria-label="Your location"
       >
-        {isLocating
-          ? <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
-          : <Navigation className="w-5 h-5 text-primary shrink-0" />
-        }
+        {isLocating ? (
+          <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
+        ) : (
+          <Navigation className={`w-5 h-5 -rotate-45 transition-transform shrink-0 ${isCentered ? 'fill-current text-white scale-105' : 'text-slate-700 hover:text-primary'}`} />
+        )}
       </button>
     </div>
   );

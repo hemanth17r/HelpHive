@@ -89,17 +89,8 @@ export const api = {
       tasker:profiles!jobs_tasker_id_fkey(id, name, bird, phone, upi_id, rating, tasks_completed)
     `);
     
-    if (role === 'poster' && userId) {
-      query = query.eq('poster_id', userId);
-    } else if (role === 'tasker' && userId) {
-      const offerJobIds = offers.map(o => o.job_id);
-      if (offerJobIds.length > 0) {
-        query = query.neq('poster_id', userId).or(`tasker_id.eq.${userId},id.in.(${offerJobIds.join(',')})`);
-      } else {
-        query = query.neq('poster_id', userId).eq('tasker_id', userId);
-      }
-    } else if (userId) {
-      // Unified mode: fetch deployed ops, active/assigned ops, and open radar ops
+    if (userId) {
+      // Unified Operative mode: fetch deployed ops, active/assigned ops, and open radar ops
       const offerJobIds = offers.map(o => o.job_id);
       if (offerJobIds.length > 0) {
         query = query.or(`poster_id.eq.${userId},tasker_id.eq.${userId},status.in.(open,searching),id.in.(${offerJobIds.join(',')})`);

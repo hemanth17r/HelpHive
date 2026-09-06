@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { Users, MapPin, Clock, Check, X, Zap, Award, Heart, Navigation } from 'lucide-react';
+import { Users, MapPin, Clock, Check, X, Zap, Navigation } from 'lucide-react';
 import { SKILLS, GAME_SKILLS } from '../config/constants';
 import { AppContext } from '../store/AppContext';
 import { ToastContext } from '../store/ToastContext';
@@ -45,17 +45,8 @@ const JobCard = ({ job, onDecline }) => {
 
   const [isAccepting, setIsAccepting] = useState(false);
 
-  // Rarity & Bounty Calculation
-  const amountVal = parseFloat(job.amount) || 0;
-  const isVolunteer = amountVal === 0;
-  const isLegendary = amountVal >= 1000;
-
-  // Clean Premium Theme Classes matching HelpHive Canvas
-  const cardTheme = isLegendary
-    ? 'bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 border-amber-300/80 shadow-xs hover:border-amber-400'
-    : isVolunteer
-      ? 'bg-gradient-to-br from-teal-50/40 via-white to-teal-50/20 border-teal-300/80 shadow-xs hover:border-teal-400'
-      : 'bg-white border-gray-100 hover:border-primary/40 shadow-xs';
+  // Clean Theme Classes
+  const cardTheme = 'bg-white border-gray-100 hover:border-primary/40 shadow-xs';
 
   const handleAcceptJob = async () => {
     if (!userId) {
@@ -65,7 +56,10 @@ const JobCard = ({ job, onDecline }) => {
       return;
     }
 
-    const isWizardCompleted = localStorage.getItem(`helphive_wizard_completed_tasker_${userId}`) === 'true' && missingWizardItems.length === 0;
+    const isWizardCompleted = (
+      localStorage.getItem(`helphive_wizard_completed_${userId}`) === 'true' ||
+      localStorage.getItem(`helphive_wizard_completed_tasker_${userId}`) === 'true'
+    ) && missingWizardItems.length === 0;
     if (!isWizardCompleted) {
       openOnboardingWizard(() => {
         handleAcceptJob();
@@ -123,45 +117,27 @@ const JobCard = ({ job, onDecline }) => {
   return (
     <div className={`m3-card rounded-[24px] p-5 sm:p-6 flex flex-col space-y-4 transition-all duration-200 border ${cardTheme}`}>
       
-      {/* Top Category & Rarity Header */}
+      {/* Top Category & Bounty Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center space-x-3">
-          <div className={`p-2.5 rounded-2xl shrink-0 ${
-            isLegendary 
-              ? 'bg-amber-100 text-amber-800' 
-              : isVolunteer 
-                ? 'bg-teal-100 text-teal-800' 
-                : 'bg-primary/10 text-primary'
-          }`}>
+          <div className="p-2.5 rounded-2xl shrink-0 bg-primary/10 text-primary">
             <Icon className="w-5 h-5" />
           </div>
           <div className="text-left">
             <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block leading-none mb-1">
-              {skill ? skill.label : 'Contract'}
+              {skill ? skill.label : 'Bounty'}
             </span>
             <p className="text-xs font-bold text-gray-500">
-              Op Lead: <span className="text-dark font-extrabold">{job.posterName || 'Nearby Client'}</span>
+              Deployed by: <span className="text-dark font-extrabold">{job.posterName || 'Nearby Deployer'}</span>
             </p>
           </div>
         </div>
 
         {/* Clean Bounty Pill */}
-        {isLegendary ? (
-          <div className="flex items-center space-x-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-2.5 py-1 rounded-xl text-xs font-black shadow-xs shrink-0">
-            <Award className="w-3.5 h-3.5 fill-white" />
-            <span>{formatCurrency(job.amount, job.currency)}</span>
-          </div>
-        ) : isVolunteer ? (
-          <div className="flex items-center space-x-1.5 bg-teal-100 text-teal-800 border border-teal-200 px-2.5 py-1 rounded-xl text-xs font-extrabold shrink-0">
-            <Heart className="w-3.5 h-3.5 text-teal-600 fill-teal-600" />
-            <span>Community</span>
-          </div>
-        ) : (
-          <div className="flex items-center space-x-1.5 bg-orange-50 text-primary border border-orange-200/80 px-2.5 py-1 rounded-xl text-xs font-black shrink-0">
-            <Zap className="w-3.5 h-3.5 text-primary fill-primary" />
-            <span>{formatCurrency(job.amount, job.currency)}{job.peopleNeeded > 1 ? '/op' : ''}</span>
-          </div>
-        )}
+        <div className="flex items-center space-x-1.5 bg-orange-50 text-primary border border-orange-200/80 px-2.5 py-1 rounded-xl text-xs font-black shrink-0">
+          <Zap className="w-3.5 h-3.5 text-primary fill-primary" />
+          <span>{formatCurrency(job.amount, job.currency)}{job.peopleNeeded > 1 ? ' / Claimer' : ''}</span>
+        </div>
       </div>
 
       {/* Quest Description */}
@@ -203,7 +179,7 @@ const JobCard = ({ job, onDecline }) => {
           ) : (
             <>
               <Zap className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="leading-none">Solo Op (1)</span>
+              <span className="leading-none">Solo (1)</span>
             </>
           )}
         </div>
@@ -231,7 +207,7 @@ const JobCard = ({ job, onDecline }) => {
 
       {/* Clean Tactile Action Buttons */}
       <div className="flex items-center space-x-3 pt-1">
-        <Tooltip text="Pass contract" className="flex-1">
+        <Tooltip text="Pass bounty" className="flex-1">
           <button
             onClick={() => onDecline(job.id)}
             disabled={isAccepting}
@@ -242,7 +218,7 @@ const JobCard = ({ job, onDecline }) => {
           </button>
         </Tooltip>
         
-        <Tooltip text="Lock in contract bounty" className="flex-1">
+        <Tooltip text="Lock in bounty" className="flex-1">
           <button
             onClick={handleAcceptJob}
             disabled={timeLeft === 0 || isAccepting}

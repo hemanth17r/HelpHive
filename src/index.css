@@ -259,15 +259,7 @@ body {
   margin: 0 !important;
 }
 
-/* Smooth 180-degree Rotation for Switch Role Icon */
-@keyframes roleRotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(180deg); }
-}
 
-.animate-role-rotate {
-  animation: roleRotate 400ms ease-in-out forwards;
-}
 
 /* Premium Glassmorphism Cards */
 .glass-card {

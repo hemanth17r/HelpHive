@@ -12,86 +12,139 @@ export const INDIA_MAP_ZOOM = 5;
  * 
  * @returns {Promise<{lat: number, lng: number}>}
  */
-export const getCurrentLocation = () => {
-  return new Promise((resolve, reject) => {
-    const overallTimeout = setTimeout(() => {
-      reject(new Error('Location request timed out (user did not respond to prompt or system hung).'));
-    }, 20000); // 20 seconds max wait time for the whole process including prompts and fallbacks
+export const getCurrentLocation = (options = {}) => {
+  const { onQuickFix = null } = options;
 
-    const clearOverallTimeout = () => clearTimeout(overallTimeout);
+  return new Promise((resolve, reject) => {
+    let resolved = false;
+    let quickFixCoords = null;
 
     if (!navigator.geolocation) {
-      clearOverallTimeout();
       reject(new Error('Geolocation is not supported by your browser.'));
       return;
     }
 
-    requestPosition(
-      (pos) => { clearOverallTimeout(); resolve(pos); },
-      (err) => { clearOverallTimeout(); reject(err); }
-    );
+    // Overall safety timeout (25s) to guard against browser hangs while user grants permissions
+    const overallTimeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        if (quickFixCoords) {
+          resolve(quickFixCoords);
+        } else {
+          const err = new Error('Location request timed out. Please check that GPS/location services are enabled and try again.');
+          err.code = 3;
+          reject(err);
+        }
+      }
+    }, 25000);
+
+    const finish = (fn, val) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(overallTimeout);
+      fn(val);
+    };
+
+    // Stage 1: Quick cached check (Google Maps behavior)
+    // If the device recently acquired a GPS fix (e.g. within 5 mins), return it immediately (<500ms)
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          };
+          quickFixCoords = coords;
+          if (typeof onQuickFix === 'function') {
+            try {
+              onQuickFix(coords);
+            } catch (e) {
+              console.warn('onQuickFix handler error:', e);
+            }
+          }
+        },
+        () => {
+          // Cached lookup failed/unavailable; proceed with active high-accuracy acquisition
+        },
+        { enableHighAccuracy: false, timeout: 2500, maximumAge: 300000 }
+      );
+    } catch {
+      // Ignore initial check failure
+    }
+
+    // Stage 2: Genuine High-Accuracy Satellite GPS Request
+    // 14 seconds gives cold-start mobile GPS hardware (and A-GPS) ample time to lock onto satellites
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          finish(resolve, {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.warn('High accuracy GPS acquisition failed or timed out:', error);
+
+          // If user clicked "Deny", immediately fail without retrying
+          if (error.code === 1 || error.code === error.PERMISSION_DENIED) {
+            const err = new Error('Location permission denied. Please enable location access in your browser settings.');
+            err.code = 1;
+            finish(reject, err);
+            return;
+          }
+
+          // If Stage 1 already gave us a cached fix, we can safely resolve with it!
+          if (quickFixCoords) {
+            finish(resolve, quickFixCoords);
+            return;
+          }
+
+          // Stage 3: Low-accuracy fallback (network / cell towers) with 8s timeout
+          navigator.geolocation.getCurrentPosition(
+            (position2) => {
+              finish(resolve, {
+                lat: position2.coords.latitude,
+                lng: position2.coords.longitude
+              });
+            },
+            (error2) => {
+              console.warn('Native geolocation failed or denied:', error2);
+              let message;
+              switch (error2.code) {
+                case 1:
+                case error2.PERMISSION_DENIED:
+                  message = 'Location permission denied. Please enable location access in your browser settings.';
+                  break;
+                case 2:
+                case error2.POSITION_UNAVAILABLE:
+                  message = 'Location information is unavailable. Please check that GPS/location services are enabled on your device.';
+                  break;
+                case 3:
+                case error2.TIMEOUT:
+                  message = 'Location request timed out. Please check that GPS is enabled and try again.';
+                  break;
+                default:
+                  message = error2.message || 'An unknown error occurred while getting your location.';
+              }
+              const enrichedError = new Error(message);
+              enrichedError.code = error2.code;
+              enrichedError.originalError = error2;
+              finish(reject, enrichedError);
+            },
+            { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }
+          );
+        },
+        { enableHighAccuracy: true, timeout: 14000, maximumAge: 60000 }
+      );
+    } catch (err) {
+      if (quickFixCoords) {
+        finish(resolve, quickFixCoords);
+      } else {
+        finish(reject, new Error(err.message || 'Failed to request location.'));
+      }
+    }
   });
 };
-
-function requestPosition(resolve, reject) {
-  const handleFailure = (originalError) => {
-    console.warn('Native geolocation failed or denied:', originalError);
-    let message;
-    switch (originalError.code) {
-      case originalError.PERMISSION_DENIED:
-        message = 'Location permission denied. Please enable location access in your browser settings.';
-        break;
-      case originalError.POSITION_UNAVAILABLE:
-        message = 'Location information is unavailable. Please check that GPS/location services are enabled on your device.';
-        break;
-      case originalError.TIMEOUT:
-        message = 'Location request timed out. Please try again.';
-        break;
-      default:
-        message = 'An unknown error occurred while getting your location.';
-    }
-    const enrichedError = new Error(message);
-    enrichedError.code = originalError.code;
-    enrichedError.originalError = originalError;
-    reject(enrichedError);
-  };
-
-  try {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-      },
-      (error) => {
-        // Try fallback to lower accuracy first
-        if (error.code === error.PERMISSION_DENIED) {
-          // If denied, do not try lower accuracy (it will just fail), try IP fallback directly
-          handleFailure(error);
-          return;
-        }
-
-        console.warn('High accuracy geolocation failed or timed out, trying low accuracy...', error);
-        navigator.geolocation.getCurrentPosition(
-          (position2) => {
-            resolve({
-              lat: position2.coords.latitude,
-              lng: position2.coords.longitude
-            });
-          },
-          (error2) => {
-            handleFailure(error2);
-          },
-          { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
-        );
-      },
-      { enableHighAccuracy: true, timeout: 4000, maximumAge: 60000 }
-    );
-  } catch (err) {
-    handleFailure({ code: 0, message: err.message });
-  }
-}
 
 export const getTimeAgo = (timestamp) => {
   if (!timestamp) return 'Just now';

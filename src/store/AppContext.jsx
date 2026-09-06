@@ -61,7 +61,7 @@ const parseProfileData = (data, currentRole) => {
   return {
     id: data.id,
     name: data.name,
-    handle: data.handle || (data.name ? `@${data.name.toLowerCase().replace(/\s+/g, '_')}` : '@operative'),
+    handle: data.handle || (data.name ? `@${data.name.toLowerCase().replace(/\s+/g, '_')}` : '@member'),
     title: data.title || 'Rookie Scout',
     xp,
     playerLevel,
@@ -638,10 +638,13 @@ export const AppProvider = ({ children }) => {
         // Validate that we have a valid active Supabase Auth session first (bypassed on localhost for testing)
         const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         let sessionData = null;
-        if (!isLocalDev) {
+        try {
           const { data } = await api.getSession();
           sessionData = data;
-        } else {
+        } catch (sessionErr) {
+          console.warn('[Auth] Error getting session on startup:', sessionErr);
+        }
+        if (!sessionData?.session && isLocalDev) {
           sessionData = { session: { user: { id: userId } } };
         }
 
@@ -662,6 +665,9 @@ export const AppProvider = ({ children }) => {
         if (data) {
           const activeRole = localStorage.getItem('activeRole') || data.role || 'tasker';
           const updatedProfile = parseProfileData(data, activeRole);
+          if (!updatedProfile.email && sessionData?.session?.user?.email) {
+            updatedProfile.email = sessionData.session.user.email;
+          }
 
           setUserProfileState(updatedProfile);
           // Sync with local cache
@@ -1026,6 +1032,8 @@ export const AppProvider = ({ children }) => {
   const [otpGenerated, setOtpGenerated] = useState('');
   const [editJobData, setEditJobData] = useState(null);
   const [editAddressData, setEditAddressData] = useState(null);
+  const [postJobDraft, setPostJobDraft] = useState(null);
+  const [postJobSelectedAddress, setPostJobSelectedAddress] = useState(null);
   const [jobHistoryTab, setJobHistoryTab] = useState('active'); // 'active', 'unfulfilled', 'completed'
 
   // Synchronize acceptedJob with the latest state from the jobs list
@@ -1477,8 +1485,8 @@ export const AppProvider = ({ children }) => {
 
         api.sendNotification(
           targetJob.posterId,
-          "Task Accepted!",
-          `${tName} has accepted your task and is on their way.`,
+          "Claimer Locked In!",
+          `${tName} claimed your bounty and is en route to coordinates.`,
           actionUrl,
           'job_accepted',
           'poster',
@@ -1513,9 +1521,9 @@ export const AppProvider = ({ children }) => {
       console.warn("Accept failed:", err);
       if (showToast) {
         if (err.message === 'not_available') {
-          showToast('This task is no longer available.', 'error');
+          showToast('This bounty is no longer available.', 'error');
         } else {
-          showToast('Could not accept task. Please check your connection.', 'error');
+          showToast('Could not claim bounty. Please check your uplink.', 'error');
         }
       }
     } finally {
@@ -1546,14 +1554,14 @@ export const AppProvider = ({ children }) => {
     const job = jobs.find(j => j.id === jobId);
     const { data: success } = await api.cancelAcceptedJobOffer(jobId, tId);
     if (success) {
-      if (showToast) showToast('You have cancelled your assignment for this task.', 'info');
+      if (showToast) showToast('You have disengaged from this bounty.', 'info');
       
       // Notify Hirer
       if (job && job.posterId) {
         api.sendNotification(
           job.posterId,
-          "Helper Left Task",
-          `${userProfile?.name || 'A helper'} has left the task "${job.description || 'Task'}".`,
+          "Claimer Disengaged",
+          `${userProfile?.name || 'A claimer'} has disengaged from the bounty "${job.description || 'Bounty'}".`,
           'crew_confirmed',
           'helper_left',
           'poster',
@@ -1566,7 +1574,7 @@ export const AppProvider = ({ children }) => {
       setAcceptedJob(null);
       pushScreen('tasker_home', true);
     } else {
-      if (showToast) showToast('Could not cancel assignment.', 'error');
+      if (showToast) showToast('Could not disengage from bounty.', 'error');
     }
   };
 
@@ -1574,7 +1582,7 @@ export const AppProvider = ({ children }) => {
     const posterId = userProfile?.id || userId || localStorage.getItem('userId');
     const { data: success } = await api.commitPartialCrew(jobId, posterId);
     if (success) {
-      if (showToast) showToast('Crew finalized. Proceeding with active helper(s)!', 'success');
+      if (showToast) showToast('Strike Team finalized. Proceeding with active claimer(s)!', 'success');
       // Update local job states
       setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: 'accepted', v2_status: 'accepted' } : j));
       const { data: crew } = await api.fetchJobCrew(jobId);
@@ -1582,7 +1590,7 @@ export const AppProvider = ({ children }) => {
       setLiveStatus('crew_set');
       pushScreen('crew_confirmed', true);
     } else {
-      if (showToast) showToast('No taskers have accepted this task yet.', 'error');
+      if (showToast) showToast('No claimers have locked into this bounty yet.', 'error');
     }
   };
 
@@ -1610,8 +1618,8 @@ export const AppProvider = ({ children }) => {
       if (job && job.posterId) {
         api.sendNotification(
           job.posterId,
-          "Helper Marked Complete",
-          `${userProfile?.name || 'A helper'} has marked the task as complete.`,
+          "Bounty Fulfilled",
+          `${userProfile?.name || 'A claimer'} has fulfilled the bounty.`,
           'crew_confirmed',
           'job_completed',
           'poster',
@@ -1626,7 +1634,7 @@ export const AppProvider = ({ children }) => {
       pushScreen('tasker_rating', true);
     } catch (err) {
       console.error("Failed to complete job", err);
-      if (showToast) showToast('Failed to complete task. Please try again.', 'error');
+      if (showToast) showToast('Failed to fulfill bounty. Please try again.', 'error');
       // Rollback optimistic state
       setJobs(originalJobs);
       if (originalAcceptedJob) setAcceptedJob(originalAcceptedJob);
@@ -1696,7 +1704,7 @@ export const AppProvider = ({ children }) => {
         id: data.id,
         description: newJobData.description || 'Quick task',
         posterId: data.poster_id,
-        posterName: userProfile?.posterName || userProfile?.name || 'Unknown Hirer',
+        posterName: userProfile?.posterName || userProfile?.name || 'Unknown Deployer',
         posterBird: selectedBird || 'robin',
         skillId: data.skill_id,
         timePosted: data.created_at,
@@ -1733,11 +1741,11 @@ export const AppProvider = ({ children }) => {
       setLiveStatus('posted');
 
       pushScreen('live_status', true);
-      showToast('Task posted successfully!', 'success');
+      showToast('Bounty deployed successfully!', 'success');
       return { success: true, data: dbJob };
     }
 
-    return { success: false, error: error?.message || 'Failed to post task' };
+    return { success: false, error: error?.message || 'Failed to deploy bounty' };
   };
 
 
@@ -2230,6 +2238,10 @@ export const AppProvider = ({ children }) => {
         setEditJobData,
         editAddressData,
         setEditAddressData,
+        postJobDraft,
+        setPostJobDraft,
+        postJobSelectedAddress,
+        setPostJobSelectedAddress,
         jobHistoryTab,
         setJobHistoryTab,
         taskerActivityScrollTarget,

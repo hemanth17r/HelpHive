@@ -7,7 +7,7 @@ import {
   PlusCircle, 
   ArrowRight, 
   Zap, 
-  ShieldCheck, 
+  Crosshair, 
   Clock, 
   CheckCircle2, 
   TrendingUp,
@@ -23,6 +23,7 @@ import { AppContext } from '../store/AppContext';
 import { ToastContext } from '../store/ToastContext';
 import { SKILLS, GUEST_DEMO_ARCHIVE_JOBS, GUEST_DEMO_DEPLOYED_JOBS } from '../config/constants';
 import { formatCurrency } from '../utils/currency';
+import DeployedBountyCard from '../components/DeployedBountyCard';
 
 const WhatsAppIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -75,7 +76,7 @@ const OperationsScreen = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // 1. Deployed Ops (Contracts issued by the current user)
+  // 1. Deployed Bounties (Bounties issued by the current user)
   const deployedJobs = useMemo(() => {
     return (jobs || []).filter(j => 
       j.posterId === userProfile?.id || 
@@ -101,7 +102,7 @@ const OperationsScreen = () => {
     return realCompleted;
   }, [deployedJobs, isGuest]);
 
-  // 2. Active Missions (Contracts accepted by the current user)
+  // 2. Active Missions (Bounties accepted by the current user)
   const activeMissions = useMemo(() => {
     return (jobs || []).filter(j => 
       j.isAcceptedByMe && !j.completedByMe &&
@@ -133,9 +134,9 @@ const OperationsScreen = () => {
       case 'crew_set': 
         return { text: 'Strike Team Assembled', color: 'text-emerald-600 bg-emerald-50 border-emerald-200' };
       case 'completed': 
-        return { text: 'Contract Fulfilled', color: 'text-gray-500 bg-gray-50 border-gray-200' };
+        return { text: 'Bounty Fulfilled', color: 'text-gray-500 bg-gray-50 border-gray-200' };
       default: 
-        return { text: 'Active Op', color: 'text-gray-600 bg-gray-50 border-gray-200' };
+        return { text: 'Active Bounty', color: 'text-gray-600 bg-gray-50 border-gray-200' };
     }
   };
 
@@ -153,13 +154,6 @@ const OperationsScreen = () => {
   const handleActiveMissionClick = (job) => {
     setAcceptedJob(job);
     pushScreen('tasker_accepted_job');
-  };
-
-  const copyKeycode = (e, keycode) => {
-    e.stopPropagation();
-    if (!keycode) return;
-    navigator.clipboard.writeText(keycode);
-    showToast(`Clearance Keycode copied: ${keycode}`, 'success');
   };
 
   const handleOpenMaps = (e, job) => {
@@ -187,17 +181,17 @@ const OperationsScreen = () => {
   return (
     <div className="flex-1 flex flex-col bg-[#F8FAFC] h-full select-none">
       
-      {/* Operations Center Header & Mode Switcher */}
+      {/* Bounty Board Header & Mode Switcher */}
       <div className="px-4 pt-2 pb-2 bg-transparent shrink-0 max-w-md lg:max-w-xl mx-auto w-full">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
-            <h1 className="text-xl font-black text-dark tracking-tight">Operations Center</h1>
+            <h1 className="text-xl font-black text-dark tracking-tight">Bounty Board</h1>
           </div>
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
             className="p-2 rounded-xl text-slate-500 hover:text-primary hover:bg-orange-50 active-scale transition-all cursor-pointer flex items-center space-x-1"
-            title="Refresh Operations"
+            title="Refresh Bounties"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
           </button>
@@ -213,7 +207,7 @@ const OperationsScreen = () => {
                 : 'text-slate-500 hover:text-slate-800 hover:bg-white/30'
             }`}
           >
-            <span>Deployed Ops</span>
+            <span>My Bounties</span>
             {activeDeployedJobs.length > 0 && (
               <span className="min-w-[18px] h-4.5 px-1 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-black">
                 {activeDeployedJobs.length}
@@ -229,7 +223,7 @@ const OperationsScreen = () => {
                 : 'text-slate-500 hover:text-slate-800 hover:bg-white/30'
             }`}
           >
-            <span>Active Missions</span>
+            <span>Claimed Bounties</span>
             {activeMissions.length > 0 && (
               <span className="min-w-[18px] h-4.5 px-1 rounded-full bg-emerald-500 text-white text-[10px] flex items-center justify-center font-black animate-pulse">
                 {activeMissions.length}
@@ -270,7 +264,7 @@ const OperationsScreen = () => {
         {activeTab === 'deployed' && (
           <div className="space-y-3.5">
             
-            {/* LIVE DEPLOYED OPS */}
+            {/* LIVE DEPLOYED BOUNTIES */}
             {subFilter === 'live' && (
               activeDeployedJobs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center text-center py-12 px-4 space-y-4 max-w-sm mx-auto">
@@ -278,9 +272,9 @@ const OperationsScreen = () => {
                     <Zap className="w-8 h-8" />
                   </div>
                   <div className="space-y-1.5 max-w-xs">
-                    <h3 className="text-base font-black text-slate-900">No Active Deployed Contracts</h3>
+                    <h3 className="text-base font-black text-slate-900">No Active Deployed Bounties</h3>
                     <p className="text-xs font-semibold text-slate-500 leading-relaxed">
-                      Broadcast a Solo Op or assemble a Strike Team to deploy contracts across your sector.
+                      Broadcast a Solo or Squad bounty across your sector.
                     </p>
                   </div>
                   <button
@@ -294,113 +288,13 @@ const OperationsScreen = () => {
                     className="w-full max-w-xs py-3.5 bg-primary hover:bg-primary/95 text-white text-xs font-black rounded-2xl shadow-lg shadow-primary/25 flex items-center justify-center space-x-2 cursor-pointer active-scale transition-all"
                   >
                     <PlusCircle className="w-4 h-4" />
-                    <span>Deploy New Contract</span>
+                    <span>Post New Bounty</span>
                   </button>
                 </div>
               ) : (
-                activeDeployedJobs.map(job => {
-                  const skill = SKILLS.find(s => s.id === job.skillId);
-                  const Icon = skill ? skill.icon : Zap;
-                  const statusInfo = getJobStatusBadge(job);
-                  const keycode = job.otp || '7492';
-                  
-                  return (
-                    <div 
-                      key={job.id} 
-                      onClick={() => handleDeployedJobClick(job)}
-                      className="m3-card m3-card-hover rounded-[22px] p-4 cursor-pointer active-scale transition-all duration-300 border border-border/80 group bg-white shadow-xs"
-                    >
-                      <div className="flex items-start justify-between mb-2.5">
-                        <div className="flex items-center space-x-2.5">
-                          <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
-                            <Icon className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <span className="text-[11px] font-bold text-gray-400 block leading-none mb-1">
-                              {skill?.label || 'Contract'}
-                            </span>
-                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${statusInfo.color}`}>
-                              {statusInfo.text}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Top Right: Amount & Dropdown */}
-                        <div className="flex items-center space-x-1">
-                          <span className="text-dark font-black text-sm text-primary mr-1">{formatCurrency(job.amount, job.currency)}</span>
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveDropdownId(activeDropdownId === job.id ? null : job.id);
-                              }}
-                              className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-dark transition-colors cursor-pointer"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-                            
-                            {activeDropdownId === job.id && (
-                              <div className="absolute right-0 mt-1 w-36 bg-white rounded-xl shadow-lg border border-border py-1 z-20 overflow-hidden animate-[fadeIn_150ms_ease-out]">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteJob(job.id);
-                                    setActiveDropdownId(null);
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 transition-colors"
-                                >
-                                  Abort Contract
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <p className="text-xs font-bold text-dark line-clamp-2 mb-2.5">
-                        {job.description}
-                      </p>
-
-                      {/* CLEARANCE KEYCODE BOX (HIGH SIGNAL) */}
-                      <div className="bg-orange-50/70 border border-orange-200/80 rounded-xl p-2.5 mb-2.5 flex items-center justify-between">
-                        <div>
-                          <span className="text-[9px] font-black uppercase tracking-wider text-orange-700 block leading-none mb-0.5">
-                            Mission Clearance Keycode
-                          </span>
-                          <span className="text-[10px] font-medium text-gray-500">
-                            Share upon work verification:
-                          </span>
-                        </div>
-                        <button
-                          onClick={(e) => copyKeycode(e, keycode)}
-                          className="flex items-center space-x-1.5 px-2.5 py-1 bg-white border border-orange-200 rounded-lg shadow-2xs hover:bg-orange-100/50 transition-colors cursor-pointer"
-                          title="Click to copy keycode"
-                        >
-                          <span className="text-xs font-black tracking-widest text-primary">{keycode}</span>
-                          <Copy className="w-3 h-3 text-primary" />
-                        </button>
-                      </div>
-
-                      {job.address?.completeAddress && (
-                        <div className="flex items-center space-x-1 text-[11px] font-medium text-gray-400 mb-2.5">
-                          <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                          <span className="truncate">{job.address.completeAddress}</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 border-t border-dashed border-border pt-2.5">
-                        <div className="flex items-center space-x-1.5">
-                          <Users className="w-3.5 h-3.5 text-primary" />
-                          <span>{job.peopleNeeded > 1 ? `Strike Team: ${job.peopleNeeded}` : 'Solo Op (1)'}</span>
-                        </div>
-                        <div className="flex items-center space-x-1 text-primary group-hover:translate-x-1 transition-transform text-xs font-black">
-                          <span>Mission Radar</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+                activeDeployedJobs.map(job => (
+                  <DeployedBountyCard key={job.id} job={job} />
+                ))
               )
             )}
 
@@ -408,7 +302,7 @@ const OperationsScreen = () => {
             {subFilter === 'archive' && (
               completedDeployedJobs.length === 0 ? (
                 <div className="text-center py-12 px-4 space-y-2 max-w-sm mx-auto">
-                  <p className="text-xs font-bold text-slate-400">No fulfilled deployed contracts yet.</p>
+                  <p className="text-xs font-bold text-slate-400">No completed bounties yet.</p>
                 </div>
               ) : (
                 completedDeployedJobs.map(job => (
@@ -439,17 +333,17 @@ const OperationsScreen = () => {
         {activeTab === 'active' && (
           <div className="space-y-3.5">
             
-            {/* LIVE ACTIVE MISSIONS */}
+            {/* LIVE ACTIVE BOUNTIES */}
             {subFilter === 'live' && (
               activeMissions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center text-center py-12 px-4 space-y-4 max-w-sm mx-auto">
                   <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 shadow-inner">
-                    <ShieldCheck className="w-8 h-8" />
+                    <Crosshair className="w-8 h-8" />
                   </div>
                   <div className="space-y-1.5 max-w-xs">
-                    <h3 className="text-base font-black text-slate-900">No Active Field Missions</h3>
+                    <h3 className="text-base font-black text-slate-900">No Claimed Bounties</h3>
                     <p className="text-xs font-semibold text-slate-500 leading-relaxed">
-                      Scan the Radar Grid to accept bounties and monetize your skills in the field.
+                      Scan the Radar to claim bounties and monetize your skills in the field.
                     </p>
                   </div>
                   <button
@@ -457,7 +351,7 @@ const OperationsScreen = () => {
                     className="w-full max-w-xs py-3.5 bg-primary hover:bg-primary/95 text-white text-xs font-black rounded-2xl shadow-lg shadow-primary/25 flex items-center justify-center space-x-2 cursor-pointer active-scale transition-all"
                   >
                     <Radio className="w-4 h-4 text-white" />
-                    <span>Scan Radar Grid</span>
+                    <span>Scan Radar</span>
                   </button>
                 </div>
               ) : (
@@ -479,10 +373,10 @@ const OperationsScreen = () => {
                           </div>
                           <div>
                             <span className="text-[11px] font-bold text-gray-500 block leading-none mb-1">
-                              {skill?.label || 'Mission'}
+                              {skill?.label || 'Bounty'}
                             </span>
                             <span className="text-[10px] font-black px-2 py-0.5 rounded-md border border-emerald-300 text-emerald-700 bg-emerald-100">
-                              Mission Locked In
+                              Bounty Locked In
                             </span>
                           </div>
                         </div>
@@ -500,7 +394,7 @@ const OperationsScreen = () => {
                         </div>
                       )}
 
-                      {/* FAST UTILITY ACTIONS: Turn-by-Turn & Contact Op Lead */}
+                      {/* FAST UTILITY ACTIONS: Turn-by-Turn & Contact Poster */}
                       <div className="grid grid-cols-2 gap-2 mb-3 pt-1">
                         <button
                           onClick={(e) => handleOpenMaps(e, job)}
@@ -515,13 +409,13 @@ const OperationsScreen = () => {
                           className="flex items-center justify-center space-x-1.5 py-2 px-3 bg-white border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 shadow-2xs hover:bg-emerald-50 transition-colors cursor-pointer"
                         >
                           <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Call Client</span>
+                          <span>Call Deployer</span>
                         </button>
                       </div>
                       
                       <div className="flex items-center justify-between text-[11px] font-bold text-emerald-800 border-t border-emerald-200/60 pt-2.5">
                         <span className="text-[10px] uppercase tracking-wider text-gray-500">
-                          Op Lead: {job.posterName || 'Client'}
+                          Deployer: {job.posterName || 'Deployer'}
                         </span>
                         <div className="flex items-center space-x-1 text-primary group-hover:translate-x-1 transition-transform text-xs font-black">
                           <span>Enter Clearance Key</span>
@@ -538,7 +432,7 @@ const OperationsScreen = () => {
             {subFilter === 'archive' && (
               completedMissions.length === 0 ? (
                 <div className="text-center py-10 bg-white rounded-[24px] border border-border/80 p-4">
-                  <p className="text-xs font-bold text-gray-400">No fulfilled field missions yet.</p>
+                  <p className="text-xs font-bold text-gray-400">No completed field bounties yet.</p>
                 </div>
               ) : (
                 completedMissions.map(job => (

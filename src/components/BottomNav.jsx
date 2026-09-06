@@ -73,7 +73,10 @@ const BottomNav = () => {
       });
       return;
     }
-    const isWizardCompleted = localStorage.getItem(`helphive_wizard_completed_poster_${userId}`) === 'true' && missingWizardItems.length === 0;
+    const isWizardCompleted = (
+      localStorage.getItem(`helphive_wizard_completed_${userId}`) === 'true' ||
+      localStorage.getItem(`helphive_wizard_completed_poster_${userId}`) === 'true'
+    ) && missingWizardItems.length === 0;
     if (!isWizardCompleted) {
       openOnboardingWizard(() => {
         pushScreen('post_job');
@@ -112,7 +115,7 @@ const BottomNav = () => {
         <span className="text-[10px] font-black uppercase tracking-wider mt-0.5 leading-none">Radar</span>
       </button>
 
-      {/* 2. Deploy Contract (Middle Inline Tab) */}
+      {/* 2. Deploy Bounty (Middle Inline Tab) */}
       <button
         onClick={handleDeployClick}
         className={`flex flex-col items-center justify-center py-2 px-2 rounded-full transition-all duration-200 cursor-pointer select-none active-scale ${
@@ -125,7 +128,7 @@ const BottomNav = () => {
         <span className="text-[10px] font-black uppercase tracking-wider mt-0.5 leading-none">Deploy</span>
       </button>
 
-      {/* 3. Operations Center */}
+      {/* 3. Bounty Board */}
       <button
         onClick={handleOperationsClick}
         className={`flex flex-col items-center justify-center py-2 px-2 rounded-full transition-all duration-200 cursor-pointer select-none active-scale ${
@@ -135,7 +138,7 @@ const BottomNav = () => {
         }`}
       >
         <Layers className="w-5 h-5 shrink-0" />
-        <span className="text-[10px] font-black uppercase tracking-wider mt-0.5 leading-none">Operations</span>
+        <span className="text-[10px] font-black uppercase tracking-wider mt-0.5 leading-none">Bounties</span>
       </button>
     </nav>
   );

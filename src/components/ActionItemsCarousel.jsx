@@ -7,7 +7,7 @@ import { useProfileCompletion } from '../hooks/useProfileCompletion';
 import { getCurrentLocation } from '../utils/location';
 
 const ActionItemsCarousel = () => {
-  const { requireProfile, pushScreen, realLocation, setRealLocation, setActiveTab, setTaskerActivityScrollTarget } = useContext(AppContext);
+  const { requireProfile, pushScreen, realLocation, setRealLocation, setActiveTab, setTaskerActivityScrollTarget, openOnboardingWizard } = useContext(AppContext);
   const { subscribeToPush, pushSupported, pushPermission } = useContext(NotificationContext);
   const { showToast } = useContext(ToastContext);
   const { missingItems } = useProfileCompletion();
@@ -72,7 +72,7 @@ const ActionItemsCarousel = () => {
   };
 
   const handleSkillsRequest = () => {
-    pushScreen('tasker_onboarding');
+    openOnboardingWizard();
   };
 
   const CARDS = {

@@ -4,9 +4,21 @@ import { AppContext } from '../../store/AppContext';
 import { ToastContext } from '../../store/ToastContext';
 
 const AddressBookScreen = () => {
-  const { popScreen, pushScreen, savedAddresses, removeSavedAddress, setDefaultAddress, changeLocation, setEditAddressData } = useContext(AppContext);
+  const { 
+    popScreen, 
+    pushScreen, 
+    savedAddresses, 
+    removeSavedAddress, 
+    setDefaultAddress, 
+    changeLocation, 
+    setEditAddressData,
+    routeParams,
+    setPostJobSelectedAddress 
+  } = useContext(AppContext);
   const { showToast } = useContext(ToastContext);
   const [activeMenuId, setActiveMenuId] = useState(null);
+
+  const isForPostJob = routeParams?.returnTo === 'post_job';
 
   // Close menu on Escape or click outside
   useEffect(() => {
@@ -50,10 +62,16 @@ const AddressBookScreen = () => {
     }
   };
 
+  const handleSelectForPostJob = (address) => {
+    setPostJobSelectedAddress(address);
+    showToast(`Selected "${address.type || 'Location'}" for deployment`, 'success');
+    pushScreen('post_job', true);
+  };
+
   const handleEdit = (e, address) => {
     e.stopPropagation();
     setEditAddressData(address);
-    pushScreen('add_edit_address');
+    pushScreen('add_edit_address', false, isForPostJob ? { returnTo: 'post_job' } : null);
     setActiveMenuId(null);
   };
 
@@ -77,18 +95,33 @@ const AddressBookScreen = () => {
         style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}
       >
         <button 
-          onClick={popScreen}
+          onClick={() => {
+            if (isForPostJob) {
+              pushScreen('post_job', true);
+            } else {
+              popScreen();
+            }
+          }}
           className="p-2 -ml-2 rounded-full hover:bg-slate-200/60 text-slate-700 transition-colors cursor-pointer active-scale"
           aria-label="Go back"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">Saved Locations</h2>
+        <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">
+          {isForPostJob ? 'Select Drop Coordinates' : 'Saved Locations'}
+        </h2>
         <div className="w-9" />
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-2 pb-28">
         <div className="max-w-md lg:max-w-xl mx-auto w-full">
+          {isForPostJob && (
+            <div className="mb-3 px-3.5 py-2.5 bg-orange-50/80 border border-primary/20 rounded-2xl flex items-center space-x-2 text-primary shadow-2xs">
+              <MapPin className="w-4 h-4 shrink-0 text-primary" />
+              <span className="text-[11px] font-black">Tap an address below to apply to your bounty</span>
+            </div>
+          )}
+
           {savedAddresses.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="w-16 h-16 bg-orange-100/70 text-primary rounded-full flex items-center justify-center mb-4 border border-orange-200/60 shadow-inner">
@@ -104,11 +137,17 @@ const AddressBookScreen = () => {
                 return (
                   <div 
                     key={address.id} 
-                    className={`bg-white rounded-2xl p-4 border shadow-2xs ${
-                      isMenuOpen ? 'relative z-40' : 'relative z-10 cursor-pointer hover:border-primary/50'
+                    className={`bg-white rounded-2xl p-4 border shadow-2xs transition-all ${
+                      isMenuOpen ? 'relative z-40' : 'relative z-10 cursor-pointer hover:border-primary/50 hover:shadow-xs'
                     } ${address.isDefault ? 'border-primary ring-1 ring-primary/20 shadow-xs' : 'border-slate-200/80'}`}
                     onClick={(e) => {
-                      if (!isMenuOpen) handleSetDefault(e, address);
+                      if (!isMenuOpen) {
+                        if (isForPostJob) {
+                          handleSelectForPostJob(address);
+                        } else {
+                          handleSetDefault(e, address);
+                        }
+                      }
                     }}
                   >
                     <div className="flex justify-between items-start">
@@ -167,7 +206,10 @@ const AddressBookScreen = () => {
       <div className="absolute bottom-6 left-0 right-0 px-4 z-20 pointer-events-none">
         <div className="max-w-md lg:max-w-xl mx-auto w-full pointer-events-auto flex justify-center">
           <button 
-            onClick={() => { setEditAddressData(null); pushScreen('add_edit_address'); }}
+            onClick={() => { 
+              setEditAddressData(null); 
+              pushScreen('add_edit_address', false, isForPostJob ? { returnTo: 'post_job' } : null); 
+            }}
             className="w-full max-w-xs flex items-center justify-center space-x-2 bg-primary hover:bg-primary/95 text-white py-3.5 rounded-2xl shadow-lg shadow-primary/25 font-black text-xs uppercase tracking-wide cursor-pointer active-scale transition-all"
           >
             <Plus className="w-4 h-4" />

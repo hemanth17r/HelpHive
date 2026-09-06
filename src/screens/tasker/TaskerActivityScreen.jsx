@@ -116,7 +116,7 @@ const TaskerActivityScreen = () => {
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
               <div className="bg-gray-50 rounded-2xl p-3 text-center">
                 <span className="text-xl font-black text-dark block leading-none" id="jobs-completed-value">{jobsCompletedCount}</span>
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 block">Contracts Solved</span>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1 block">Bounties Solved</span>
               </div>
               <div className="bg-gray-50 rounded-2xl p-3 text-center">
                 <span className="text-xl font-black text-dark block leading-none" id="this-month-value">{formatCurrency(thisMonthEarnings || 0, currency?.code)}</span>
@@ -171,7 +171,7 @@ const TaskerActivityScreen = () => {
             <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-2xl p-4 space-y-1.5">
               <span className="text-xs font-black text-emerald-900 block">Direct Peer-to-Peer Settlement</span>
               <p className="text-[11px] font-semibold text-emerald-800 leading-relaxed">
-                Direct settlement between both parties upon task completion.
+                Direct settlement between both parties upon bounty claim & fulfillment.
               </p>
             </div>
           </div>

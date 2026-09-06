@@ -35,7 +35,7 @@ const TaskerRatingScreen = () => {
   const posterBadges = [
     { id: 'paid_promptly', label: 'Instant Bounty Payout', icon: Award, color: 'green' },
     { id: 'clear_instructions', label: 'Flawless Directives', icon: Check, color: 'blue' },
-    { id: 'easy_to_work', label: 'Top Op Lead', icon: Star, color: 'orange' }
+    { id: 'easy_to_work', label: 'Top Bounty Lead', icon: Star, color: 'orange' }
   ];
 
   const getBadgeStyle = (color, isSelected) => {
@@ -66,8 +66,8 @@ const TaskerRatingScreen = () => {
       
       const badgeObj = selectedBadge ? posterBadges.find(b => b.id === selectedBadge) : null;
       const notificationText = badgeObj 
-        ? `An Operative awarded you ${rating} stars and the "${badgeObj.label}" commendation!`
-        : `An Operative awarded you ${rating} stars for the recent contract.`;
+        ? `A Claimer awarded you ${rating} stars and the "${badgeObj.label}" commendation!`
+        : `A Claimer awarded you ${rating} stars for the recent bounty.`;
 
       if (acceptedJob?.posterId) {
         await api.sendNotification(
@@ -82,7 +82,7 @@ const TaskerRatingScreen = () => {
 
       if (selectedBadge) {
         trackEvent(EVENTS.BADGE_SENT, { userId: userProfile?.id, role, entityId: acceptedJob?.posterId, metadata: { badge_type: selectedBadge } });
-        showToast(`🏅 Op Lead received your "${badgeObj?.label}" commendation!`, 'success');
+        showToast(`🏅 Deployer received your "${badgeObj?.label}" commendation!`, 'success');
       } else {
         showToast('Commendation submitted!', 'success');
       }
@@ -116,7 +116,7 @@ const TaskerRatingScreen = () => {
           </div>
           <h3 className="text-lg font-black text-dark">Commendation Logged!</h3>
           <p className="text-xs font-semibold text-gray-400 max-w-[220px]">
-            Your rating updates Fixer Street Cred on the open-world network.
+            Your rating updates Deployer Street Cred on the open-world network.
           </p>
         </div>
       ) : (
@@ -126,7 +126,7 @@ const TaskerRatingScreen = () => {
             <div className="w-16 h-16 rounded-full border-2 border-primary/20 shadow-xs overflow-hidden bg-orange-50 flex items-center justify-center">
               <BirdAvatar birdName={acceptedJob?.posterBird || 'robin'} size={56} />
             </div>
-            <h3 className="text-sm font-black text-dark">{acceptedJob?.posterName || 'Fixer'}</h3>
+            <h3 className="text-sm font-black text-dark">{acceptedJob?.posterName || 'Deployer'}</h3>
           </div>
 
           {/* Interactive Stars */}
@@ -176,7 +176,7 @@ const TaskerRatingScreen = () => {
       {/* Submit Button Footer */}
       {!isSubmitted && (
         <div className="w-full pt-4 border-t border-border shrink-0 lg:px-8 flex justify-center">
-          <Tooltip text="Submit Fixer Cred commendation">
+          <Tooltip text="Submit Deployer Cred commendation">
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
@@ -187,7 +187,7 @@ const TaskerRatingScreen = () => {
               ) : (
                 <Send className="w-5 h-5" />
               )}
-              <span>{isSubmitting ? 'Submitting...' : 'Submit Fixer Cred'}</span>
+              <span>{isSubmitting ? 'Submitting...' : 'Submit Deployer Cred'}</span>
             </button>
           </Tooltip>
         </div>

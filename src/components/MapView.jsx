@@ -13,17 +13,22 @@ const MapView = ({
   height = '300px',
   resolvedAddressText = 'Location pinned on map',
   showAddressBanner = false,
-  coverageRadius = null // new prop for coverage circle
+  coverageRadius = null, // new prop for coverage circle
+  userLocationPoint = null, // Google Maps style { lat, lng } for pulsing blue dot
+  onUserPan = null // Triggered when user manually pans/touches the map
 }) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const draggableMarkerRef = useRef(null);
+  const userLocationMarkerRef = useRef(null);
   const taskersMarkersRef = useRef({}); // maps taskerId -> Leaflet marker
   const routeLinesRef = useRef({}); // maps taskerId -> Leaflet polyline
   const coverageCircleRef = useRef(null);
   const isDraggingRef = useRef(false);
   const lastDraggedPosRef = useRef(null);
   const prevZoomPropRef = useRef(zoom);
+  const onUserPanRef = useRef(onUserPan);
+  useEffect(() => { onUserPanRef.current = onUserPan; }, [onUserPan]);
 
   useEffect(() => {
     if (!window.L || !mapContainerRef.current) return;
@@ -107,6 +112,13 @@ const MapView = ({
       L.marker([jobLocation.lat, jobLocation.lng], { icon: orangeIcon }).addTo(map);
     }
 
+    // Notify parent if user manually touches, drags or pans the map
+    map.on('movestart', (e) => {
+      if (e.originalEvent && typeof onUserPanRef.current === 'function') {
+        onUserPanRef.current();
+      }
+    });
+
     // Handle container resize issues for modals (e.g. animation delays)
     const resizeTimer = setTimeout(() => {
       if (mapInstanceRef.current) {
@@ -124,7 +136,40 @@ const MapView = ({
     };
   }, []);
 
-  // Pan the map dynamically when center/zoom props update from external sources (e.g., search/GPS button)
+  // Render or update Google Maps style pulsing blue dot for the device's real GPS coordinates
+  useEffect(() => {
+    if (!mapInstanceRef.current || !window.L) return;
+    const L = window.L;
+
+    if (userLocationPoint?.lat && userLocationPoint?.lng) {
+      const latLng = [userLocationPoint.lat, userLocationPoint.lng];
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.setLatLng(latLng);
+      } else {
+        const blueDotIcon = L.divIcon({
+          className: 'leaflet-user-location-dot',
+          html: `
+            <div class="relative flex items-center justify-center w-7 h-7">
+              <span class="absolute inline-flex h-full w-full rounded-full bg-blue-500/30 animate-ping"></span>
+              <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-600 border-2 border-white shadow-md"></span>
+            </div>
+          `,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        });
+        userLocationMarkerRef.current = L.marker(latLng, {
+          icon: blueDotIcon,
+          zIndexOffset: 400,
+          interactive: false
+        }).addTo(mapInstanceRef.current);
+      }
+    } else if (userLocationMarkerRef.current) {
+      mapInstanceRef.current.removeLayer(userLocationMarkerRef.current);
+      userLocationMarkerRef.current = null;
+    }
+  }, [userLocationPoint]);
+
+  // Pan or Fly the map dynamically when center/zoom props update from external sources (e.g., search/GPS button)
   useEffect(() => {
     if (mapInstanceRef.current && center) {
       const [newLat, newLng] = center;
@@ -148,7 +193,14 @@ const MapView = ({
         // Only change zoom if zoom prop explicitly changed from parent (e.g. search result clicked or GPS button).
         // Otherwise, ALWAYS keep the user's current manual map zoom!
         const targetZoom = zoomPropChanged ? zoom : mapInstanceRef.current.getZoom();
-        mapInstanceRef.current.setView(center, targetZoom);
+        
+        // Google Maps style smooth camera swoop
+        if (typeof mapInstanceRef.current.flyTo === 'function') {
+          mapInstanceRef.current.flyTo(center, targetZoom, { animate: true, duration: 1.0, easeLinearity: 0.25 });
+        } else {
+          mapInstanceRef.current.setView(center, targetZoom);
+        }
+
         if (draggableMarkerRef.current) {
           draggableMarkerRef.current.setLatLng(center);
         }

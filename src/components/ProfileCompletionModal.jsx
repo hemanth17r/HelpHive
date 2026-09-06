@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { User, Phone, CheckCircle2, X } from 'lucide-react';
+import { CheckCircle2, X } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { ToastContext } from '../store/ToastContext';
+import { formatPhoneNumber, cleanPhoneNumber, isValidPhoneNumber } from '../utils/validation';
+import ProfileContactInputs from './ProfileContactInputs';
 
 const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
   const { role, userProfile } = useContext(AppContext);
@@ -35,16 +37,7 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
       const cleanPhone = currentPhone === 'Add Phone' ? '' : currentPhone || '';
       setName(cleanName);
 
-      // Format phone number
-      const rawPhone = cleanPhone.replace(/\D/g, '');
-      let formatted = rawPhone;
-      if (rawPhone.length > 3 && rawPhone.length <= 6) {
-        formatted = `${rawPhone.slice(0, 3)}-${rawPhone.slice(3)}`;
-      } else if (rawPhone.length > 6) {
-        formatted = `${rawPhone.slice(0, 3)}-${rawPhone.slice(3, 6)}-${rawPhone.slice(6, 10)}`;
-      }
-      setPhone(formatted);
-
+      setPhone(formatPhoneNumber(cleanPhone));
       setError('');
     } else {
       if (shouldRender) {
@@ -62,17 +55,6 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
 
   if (!shouldRender) return null;
 
-  const handlePhoneChange = (e) => {
-    const input = e.target.value.replace(/\D/g, ''); // Keep only digits
-    let formatted = input;
-    if (input.length > 3 && input.length <= 6) {
-      formatted = `${input.slice(0, 3)}-${input.slice(3)}`;
-    } else if (input.length > 6) {
-      formatted = `${input.slice(0, 3)}-${input.slice(3, 6)}-${input.slice(6, 10)}`;
-    }
-    setPhone(formatted);
-  };
-
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (isSubmitting) return;
@@ -87,8 +69,8 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
     }
     
     // Remove formatting characters to get raw 10 digits
-    const rawPhone = phone.replace(/\D/g, '');
-    if (rawPhone.length !== 10) {
+    const rawPhone = cleanPhoneNumber(phone);
+    if (!isValidPhoneNumber(rawPhone)) {
       setError('Please enter a valid 10-digit phone number.');
       return;
     }
@@ -151,38 +133,13 @@ const ProfileCompletionModal = ({ isOpen, onClose, onSubmit }) => {
           {/* Body */}
           <div className="flex-1 overflow-y-auto px-6 py-6 bg-gray-50/50 space-y-4">
             
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-gray-500">
-                Full name
-              </label>
-              <div className="flex items-center bg-white border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
-                <User className="w-4 h-4 text-gray-400 shrink-0" />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. John Doe"
-                  className="w-full bg-transparent border-0 px-2 py-2 text-sm font-semibold outline-hidden text-dark h-full"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-gray-500">
-                Phone number
-              </label>
-              <div className="flex items-center bg-white border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
-                <Phone className="w-4 h-4 text-gray-400 shrink-0" />
-                <input
-                  type="tel"
-                  value={phone}
-                  maxLength={12}
-                  onChange={handlePhoneChange}
-                  placeholder="e.g. 987-654-3210"
-                  className="w-full bg-transparent border-0 px-2 py-2 text-sm font-semibold outline-hidden text-dark h-full"
-                />
-              </div>
-            </div>
+            <ProfileContactInputs
+              name={name}
+              setName={setName}
+              phone={phone}
+              setPhone={setPhone}
+              namePlaceholder="e.g. John Doe"
+            />
 
             {error && (
               <p className="text-xs font-bold text-red-500 bg-red-50 p-2 rounded-lg border border-red-100">

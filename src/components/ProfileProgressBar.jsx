@@ -4,7 +4,7 @@ import { AppContext } from '../store/AppContext';
 import { useProfileCompletion } from '../hooks/useProfileCompletion';
 
 const ProfileProgressBar = () => {
-  const { openOnboardingWizard, role } = useContext(AppContext);
+  const { openOnboardingWizard } = useContext(AppContext);
   const { completionPercentage, missingWizardItems } = useProfileCompletion();
 
   // Hide if fully configured
@@ -16,10 +16,8 @@ const ProfileProgressBar = () => {
     openOnboardingWizard();
   };
 
-  const titleText = role === 'tasker' ? 'Complete Operator Dossier' : 'Complete Fixer Profile';
-  const subtext = role === 'tasker'
-    ? 'Configure dossier to lock onto high-payout bounties'
-    : 'Complete setup to broadcast bounties to the network';
+  const titleText = 'Complete Profile Setup';
+  const subtext = 'Add your skills and sector radius to claim and deploy bounties';
 
   return (
     <button

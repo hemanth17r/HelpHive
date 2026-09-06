@@ -83,12 +83,11 @@ export const NotificationProvider = ({ children }) => {
 
     const fetchNotifications = async () => {
       try {
-        // Query notifications filtered by both user_id and target role
+        // Query notifications for user_id
         const { data } = await api.supabase
           .from('notifications')
           .select('*')
           .eq('user_id', userId)
-          .eq('role', role)
           .order('created_at', { ascending: false })
           .limit(50);
           
@@ -111,19 +110,14 @@ export const NotificationProvider = ({ children }) => {
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           (payload) => {
-            // Client-side role matching check
-            if (payload.new.role === role) {
-              setNotifications(prev => [payload.new, ...prev]);
-            }
+            setNotifications(prev => [payload.new, ...prev]);
           }
         )
         .on(
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           (payload) => {
-            if (payload.new.role === role) {
-              setNotifications(prev => prev.map(n => n.id === payload.new.id ? payload.new : n));
-            }
+            setNotifications(prev => prev.map(n => n.id === payload.new.id ? payload.new : n));
           }
         )
         .subscribe();
@@ -136,7 +130,7 @@ export const NotificationProvider = ({ children }) => {
         try { api.supabase.removeChannel(sub); } catch (e) { /* ignore */ }
       }
     };
-  }, [userId, role]);
+  }, [userId]);
 
   const markAsRead = useCallback(async (notificationId) => {
     // Optimistic update

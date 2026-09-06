@@ -15,19 +15,12 @@ export const SUPPORTED_CURRENCIES = [
 const CURRENCY_STORAGE_KEY = 'helphive_user_currency';
 
 /**
- * Auto-detect user's currency based on timezone & locale,
- * falling back to saved preference if present.
+ * Detect user's natural currency purely based on device timezone & locale,
+ * without looking at localStorage overrides.
  */
-export const detectUserCurrency = () => {
+export const getAutoDetectedCurrency = () => {
   try {
-    // 1. Check if user explicitly chose a currency override
-    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
-    if (saved) {
-      const match = SUPPORTED_CURRENCIES.find(c => c.code === saved);
-      if (match) return match;
-    }
-
-    // 2. Zero-permission auto-detection via device timezone & locale
+    // Zero-permission auto-detection via device timezone & locale
     const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').toLowerCase();
     const lang = (navigator.language || navigator.userLanguage || '').toLowerCase();
 
@@ -85,12 +78,34 @@ export const detectUserCurrency = () => {
 };
 
 /**
+ * Auto-detect user's currency based on timezone & locale,
+ * falling back to saved preference if present.
+ */
+export const detectUserCurrency = () => {
+  try {
+    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    if (saved) {
+      const match = SUPPORTED_CURRENCIES.find(c => c.code === saved);
+      if (match) return match;
+    }
+    return getAutoDetectedCurrency();
+  } catch {
+    return SUPPORTED_CURRENCIES[0];
+  }
+};
+
+/**
  * Save user's selected currency override to localStorage
  */
 export const setUserCurrency = (currencyCode) => {
   const match = SUPPORTED_CURRENCIES.find(c => c.code === currencyCode);
   if (match) {
-    localStorage.setItem(CURRENCY_STORAGE_KEY, match.code);
+    const autoDefault = getAutoDetectedCurrency();
+    if (match.code === autoDefault.code) {
+      localStorage.removeItem(CURRENCY_STORAGE_KEY);
+    } else {
+      localStorage.setItem(CURRENCY_STORAGE_KEY, match.code);
+    }
     window.dispatchEvent(new CustomEvent('currencyChange', { detail: match }));
     return match;
   }
@@ -102,16 +117,19 @@ export const setUserCurrency = (currencyCode) => {
  */
 export const resetUserCurrency = () => {
   localStorage.removeItem(CURRENCY_STORAGE_KEY);
-  const detected = detectUserCurrency();
+  const detected = getAutoDetectedCurrency();
   window.dispatchEvent(new CustomEvent('currencyChange', { detail: detected }));
   return detected;
 };
 
 /**
- * Check if the user currently has an explicit manual override saved
+ * Check if the user currently has an explicit manual override that differs from auto-detect
  */
-export const hasManualCurrencyOverride = () => {
-  return !!localStorage.getItem(CURRENCY_STORAGE_KEY);
+export const hasManualCurrencyOverride = (currentCode) => {
+  const autoDefault = getAutoDetectedCurrency();
+  const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+  const codeToCheck = currentCode || saved;
+  return !!codeToCheck && codeToCheck !== autoDefault.code;
 };
 
 /**

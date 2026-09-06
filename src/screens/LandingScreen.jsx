@@ -34,7 +34,7 @@ const LandingScreen = () => {
       .reduce((sum, j) => sum + (parseFloat(j.amount) || 0) * (j.peopleNeeded || 1), 0);
   }, [jobs]);
 
-  // Completed Ops
+  // Completed Bounties
   const completedOps = useMemo(() => {
     if (!userId) return 34;
     const taskerCompleted = (jobs || []).filter(j => 
@@ -71,8 +71,8 @@ const LandingScreen = () => {
             <h1 className="text-3xl sm:text-4xl font-[1000] tracking-tight text-dark leading-none">
               Help<span className="text-primary">Hive</span>
             </h1>
-            <span className="self-start mt-0.5 sm:mt-1 ml-1 text-[9px] sm:text-[10px] font-[900] uppercase tracking-wider text-primary leading-none select-none">
-              BETA
+            <span className="hidden self-start mt-0.5 sm:mt-1 ml-1.5 text-[11px] sm:text-[12px] font-extrabold tracking-normal text-primary leading-none select-none">
+              Beta
             </span>
           </div>
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-dark/70">
@@ -106,12 +106,12 @@ const LandingScreen = () => {
               {/* Callsign & Tag */}
               <div>
                 <h2 className="text-base font-black text-dark tracking-tight group-hover:text-primary transition-colors">
-                  {userProfile?.name || 'Agent Operative'}
+                  {userProfile?.name || 'Member'}
                 </h2>
 
                 <div className="flex items-center space-x-2 mt-1">
                   <span className="text-[11px] font-bold text-gray-400">
-                    {completedOps} Ops Fulfilled
+                    {completedOps} Bounties Completed
                   </span>
                 </div>
               </div>
@@ -183,7 +183,7 @@ const LandingScreen = () => {
             <ChevronRight className="w-6 h-6 text-white group-hover:translate-x-1 transition-transform shrink-0" />
           </button>
 
-          {/* Pillar B: DEPLOY SQUAD CONTRACT */}
+          {/* Pillar B: DEPLOY SQUAD BOUNTY */}
           <button
             onClick={() => pushScreen('post_job')}
             className="w-full bg-white hover:bg-orange-50/50 text-dark p-4.5 rounded-[26px] border-2 border-orange-200/80 hover:border-primary shadow-xs cursor-pointer active-scale transition-all duration-200 flex items-center justify-between group"
@@ -195,10 +195,10 @@ const LandingScreen = () => {
               <div>
                 <div className="flex items-center space-x-2">
                   <h3 className="text-base font-[900] text-dark leading-tight group-hover:text-primary transition-colors">
-                    Deploy a Contract
+                    Deploy a Bounty
                   </h3>
                   <span className="text-[9px] font-black uppercase bg-orange-100 text-primary px-2 py-0.5 rounded-full">
-                    HOST OP
+                    HOST BOUNTY
                   </span>
                 </div>
                 <p className="text-xs font-bold text-gray-500 mt-0.5">

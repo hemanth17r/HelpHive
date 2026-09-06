@@ -46,60 +46,45 @@ export const useProfileCompletion = () => {
 
   if (!isTestUser) {
     completionPercentage = 0;
-    if (role === 'tasker') {
-    // 4 Steps: 1. Auth (25%), 2. Skills (25%), 3. Service Area (25%), 4. Profile & Phone (25%)
+    
+    // Unified 4 Core Pillars for every User (25% each):
+    // 1. Auth (25%)
     const hasAuth = !!userId;
     if (hasAuth) completionPercentage += 25;
-    
-    if (hasSkills) completionPercentage += 25;
-    else {
+
+    // 2. Identity: Name & Phone (25%)
+    if (hasValidNameAndPhone) {
+      completionPercentage += 25;
+    } else {
+      missingItems.push('profile');
+      missingWizardItems.push('profile');
+    }
+
+    // 3. Tactical Skills (25%)
+    if (hasSkills) {
+      completionPercentage += 25;
+    } else {
       missingItems.push('skills');
       missingWizardItems.push('skills');
     }
 
-    if (hasServiceArea) completionPercentage += 25;
-    else {
+    // 4. Sector Calibration: Service Area or Saved Location (25%)
+    const hasSectorLocation = hasServiceArea || hasJobLocation;
+    if (hasSectorLocation) {
+      completionPercentage += 25;
+    } else {
       missingItems.push('service_area');
       missingWizardItems.push('service_area');
     }
 
-    if (hasValidNameAndPhone) completionPercentage += 25;
-    else {
-      missingItems.push('profile');
-      missingWizardItems.push('profile');
+    // Secondary system access (Location & Notifications)
+    if (!hasOsLocation) {
+      missingItems.push('os_location');
     }
-
-    if (hasOsLocation) completionPercentage += 0; // Excluded from loading percentage calculation
-    else missingItems.push('os_location');
-
-    if (hasNotifications) completionPercentage += 0; // Excluded from loading percentage calculation
-    else missingItems.push('notifications');
-
-  } else {
-    // Poster (Hirer)
-    // 3 Steps: 1. Auth (34%), 2. Profile/Name/Phone (33%), 3. Address setup (33%)
-    const hasAuth = !!userId;
-    if (hasAuth) completionPercentage += 34;
-
-    if (hasValidNameAndPhone) completionPercentage += 33;
-    else {
-      missingItems.push('profile');
-      missingWizardItems.push('profile');
+    if (!hasNotifications) {
+      missingItems.push('notifications');
     }
-
-    if (hasJobLocation) completionPercentage += 33;
-    else {
-      missingItems.push('job_location');
-      missingWizardItems.push('job_location');
-    }
-
-    if (hasNotifications) completionPercentage += 0; // Excluded from loading percentage
-    else missingItems.push('notifications');
-
-    if (hasOsLocation) completionPercentage += 0; // Excluded from loading percentage
-    else missingItems.push('os_location');
   }
-}
 
   return {
     completionPercentage,

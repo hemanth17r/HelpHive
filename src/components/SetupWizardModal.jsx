@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useRef, useMemo } from 'react';
 import { 
   User, 
   Phone, 
@@ -11,42 +11,39 @@ import {
   Briefcase, 
   IndianRupee, 
   ArrowRight, 
-  ArrowLeft,
-  Check,
-  ShieldCheck,
-  Smartphone,
-  X,
-  Flame,
-  Zap,
-  Wifi,
-  Mail,
-  LogOut
+  ArrowLeft, 
+  Check, 
+  ShieldCheck, 
+  Smartphone, 
+  X, 
+  Flame, 
+  Zap, 
+  Wifi, 
+  Mail, 
+  LogOut,
+  Globe
 } from 'lucide-react';
 import { AppContext } from '../store/AppContext';
 import { NotificationContext } from '../store/NotificationContext';
 import { ToastContext } from '../store/ToastContext';
 import { useProfileCompletion } from '../hooks/useProfileCompletion';
 import { SKILLS } from '../config/constants';
-import { GAME_SKILLS, resolveUserSkills } from '../config/skillRegistry';
+import { GAME_SKILLS, HERO_DISCIPLINES, resolveUserSkills } from '../config/skillRegistry';
 import { searchAddress, reverseGeocode } from '../utils/geocoding';
 import { getCurrentLocation, INDIA_CENTER } from '../utils/location';
 import { api } from '../services/api';
-import MapView from './MapView';
 import LocationPicker from './LocationPicker';
+import SkillPicker from './SkillPicker';
+import ProfileContactInputs from './ProfileContactInputs';
+import { formatPhoneNumber, cleanPhoneNumber, isValidPhoneNumber } from '../utils/validation';
 
-const formatPhoneNumber = (value) => {
-  const input = value.replace(/\D/g, ''); // Digits only
-  if (input.length > 3 && input.length <= 6) {
-    return `${input.slice(0, 3)}-${input.slice(3)}`;
-  } else if (input.length > 6) {
-    return `${input.slice(0, 3)}-${input.slice(3, 6)}-${input.slice(6, 10)}`;
-  }
-  return input;
-};
-
+/**
+ * Unified Operative Onboarding Wizard
+ * Single source of truth for full operative onboarding across HelpHive.
+ * Calibrates identity, tactical skills, system access, and sector perimeter.
+ */
 const SetupWizardModal = ({ onComplete, onClose }) => {
   const { 
-    role, 
     userId, 
     userProfile, 
     setUserProfile, 
@@ -54,7 +51,6 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
     addSavedAddress,
     realLocation, 
     setRealLocation,
-    switchRole,
     resetApp
   } = useContext(AppContext);
 
@@ -62,7 +58,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
   const { showToast } = useContext(ToastContext);
   const { missingItems, missingWizardItems, hasValidNameAndPhone } = useProfileCompletion();
 
-  // Active step counter (1-indexed)
+  // Active step counter (1 to 5)
   const [activeStep, setActiveStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -73,48 +69,31 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
   const [isGeoLoading, setIsGeoLoading] = useState(false);
   const [isNotifLoading, setIsNotifLoading] = useState(false);
 
-  // --- Tasker / Helper State ---
+  // Tactical Skills state
   const [selectedSkills, setSelectedSkills] = useState([]);
   
-  // Service Area Map state
+  // Sector Perimeter & Location State
   const [serviceAreaLocation, setServiceAreaLocation] = useState(() => {
     return realLocation || INDIA_CENTER;
   });
   const [coverageRadius, setCoverageRadius] = useState(5000);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
+  const [sectorLandmark, setSectorLandmark] = useState('');
   const hasInitializedRef = useRef(false);
 
-  // Profile fields state (Common)
+  // Profile Identity state
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [upiId, setUpiId] = useState('');
   const [isGoogleLinked, setIsGoogleLinked] = useState(false);
 
-  // Authentication Step 1 states
+  // Authentication Step 1 state
   const [email, setEmail] = useState('');
   const [authView, setAuthView] = useState('main'); // 'main' | 'magic_link_sent'
   const [loadingAction, setLoadingAction] = useState(null);
   const isLoading = loadingAction !== null;
 
-  // --- Poster / Hirer State ---
-  // Address Setup State
-  const [addressDetails, setAddressDetails] = useState(() => {
-    return {
-      lat: realLocation?.lat || INDIA_CENTER.lat,
-      lng: realLocation?.lng || INDIA_CENTER.lng,
-      completeAddress: '',
-      landmark: ''
-    };
-  });
-
-  const dropdownRef = useRef(null);
-  const searchTimeoutRef = useRef(null);
-
-  // Sync map center and default address with realLocation when it becomes available
+  // Sync map center with realLocation when it becomes available
   useEffect(() => {
     if (realLocation) {
       setServiceAreaLocation(prev => {
@@ -123,16 +102,10 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
         }
         return prev;
       });
-      setAddressDetails(prev => {
-        if (prev.lat === INDIA_CENTER.lat && prev.lng === INDIA_CENTER.lng) {
-          return { ...prev, lat: realLocation.lat, lng: realLocation.lng };
-        }
-        return prev;
-      });
     }
   }, [realLocation]);
 
-  // 1. Reactive Permission Checking
+  // Reactive Permission Checking
   const checkPermissions = useCallback(async () => {
     if (navigator.permissions && navigator.permissions.query) {
       try {
@@ -168,26 +141,21 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
     checkGoogleLinked();
   }, []);
 
-  // 2. Pre-fill states from userProfile when available (only once on load)
+  // Pre-fill states from userProfile when available
   useEffect(() => {
     if (userProfile && !hasInitializedRef.current) {
       hasInitializedRef.current = true;
-      // Name
       const cleanName = userProfile.name === 'New User' || userProfile.name === 'Guest User' ? '' : userProfile.name || '';
       setName(cleanName);
 
-      // Phone
       const cleanPhone = userProfile.phone === 'Add Phone' ? '' : userProfile.phone || '';
       setPhone(formatPhoneNumber(cleanPhone));
 
-      // UPI
       setUpiId(userProfile.upiId || '');
 
-      // Skills
       const resolved = resolveUserSkills(userProfile.skills || [], userProfile.taskerTasksCompleted || userProfile.tasksCompleted || 0);
       setSelectedSkills(resolved.map(s => s.id));
 
-      // Service Area Coordinates
       if (userProfile.serviceAreaLat && userProfile.serviceAreaLng) {
         setServiceAreaLocation({
           lat: userProfile.serviceAreaLat,
@@ -205,35 +173,19 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
     }
   }, [userProfile]);
 
-  // Pre-fill Poster Address with default address if it exists
+  // Pre-fill landmark from saved addresses if available
   useEffect(() => {
-    if (role === 'poster' && savedAddresses.length > 0) {
+    if (savedAddresses.length > 0 && !sectorLandmark) {
       const defaultAddr = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
-      setAddressDetails({
-        lat: defaultAddr.lat,
-        lng: defaultAddr.lng,
-        completeAddress: defaultAddr.completeAddress,
-        landmark: defaultAddr.landmark || ''
-      });
-    }
-  }, [role, savedAddresses]);
-
-  // Click outside for search dropdown and cleanup search timeout
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowDropdown(false);
+      if (defaultAddr.landmark) {
+        setSectorLandmark(defaultAddr.landmark);
       }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    };
-  }, []);
+    }
+  }, [savedAddresses, sectorLandmark]);
 
   const hasInitializedStepRef = useRef(false);
 
+  // Auto-detect optimal starting step
   useEffect(() => {
     if (!hasInitializedStepRef.current) {
       if (!userId) {
@@ -241,57 +193,42 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
         setActiveStep(1);
       } else if (userProfile) {
         hasInitializedStepRef.current = true;
-        if (role === 'tasker') {
-          const hasSkills = userProfile.skills && userProfile.skills.length > 0;
-          const hasServiceArea = userProfile.serviceAreaLat && userProfile.serviceAreaLng && userProfile.serviceAreaName;
-          
-          const cleanName = userProfile.name === 'New User' || userProfile.name === 'Guest User' ? '' : userProfile.name || '';
-          const cleanPhone = userProfile.phone === 'Add Phone' ? '' : userProfile.phone || '';
-          const hasProfile = cleanName.trim() && cleanPhone.trim();
+        const cleanName = userProfile.name === 'New User' || userProfile.name === 'Guest User' ? '' : userProfile.name || '';
+        const cleanPhone = userProfile.phone === 'Add Phone' ? '' : userProfile.phone || '';
+        const hasProfile = cleanName.trim() && cleanPhone.trim();
+        const hasSkills = userProfile.skills && userProfile.skills.length > 0;
+        const hasServiceArea = userProfile.serviceAreaLat && userProfile.serviceAreaLng;
 
-          if (!hasSkills) {
-            setActiveStep(2);
-          } else if (geoState !== 'granted' || notifState !== 'granted') {
-            setActiveStep(3);
-          } else if (!hasServiceArea) {
-            setActiveStep(4);
-          } else if (!hasProfile) {
-            setActiveStep(5);
-          } else {
-            setActiveStep(5);
-          }
-        } else if (role === 'poster') {
-          const cleanName = userProfile.name === 'New User' || userProfile.name === 'Guest User' ? '' : userProfile.name || '';
-          const cleanPhone = userProfile.phone === 'Add Phone' ? '' : userProfile.phone || '';
-          const hasProfile = cleanName.trim() && cleanPhone.trim();
-          
-          const hasAddress = savedAddresses.length > 0;
-
-          if (!hasProfile) {
-            setActiveStep(2);
-          } else if (geoState !== 'granted' || notifState !== 'granted') {
-            setActiveStep(3);
-          } else if (!hasAddress) {
-            setActiveStep(4);
-          } else {
-            setActiveStep(4);
-          }
+        if (!hasProfile) {
+          setActiveStep(2);
+        } else if (!hasSkills) {
+          setActiveStep(3);
+        } else if (geoState !== 'granted' || notifState !== 'granted') {
+          setActiveStep(4);
+        } else if (!hasServiceArea && savedAddresses.length === 0) {
+          setActiveStep(5);
+        } else {
+          setActiveStep(2);
         }
       }
     }
-  }, [userProfile, role, savedAddresses, userId, geoState, notifState]);
+  }, [userProfile, savedAddresses, userId, geoState, notifState]);
 
   // Check if wizard completed flag is set
-  const isCompleted = localStorage.getItem(`helphive_wizard_completed_${role}_${userId}`) === 'true';
+  const isCompleted = (
+    localStorage.getItem(`helphive_wizard_completed_${userId}`) === 'true' ||
+    localStorage.getItem(`helphive_wizard_completed_tasker_${userId}`) === 'true' ||
+    localStorage.getItem(`helphive_wizard_completed_poster_${userId}`) === 'true'
+  );
 
   useEffect(() => {
     if (userId && userProfile && !isCompleted && missingWizardItems.length === 0) {
-      localStorage.setItem(`helphive_wizard_completed_${role}_${userId}`, 'true');
+      localStorage.setItem(`helphive_wizard_completed_${userId}`, 'true');
       if (onComplete) {
         onComplete();
       }
     }
-  }, [missingWizardItems.length, role, userId, userProfile, isCompleted, onComplete]);
+  }, [missingWizardItems.length, userId, userProfile, isCompleted, onComplete]);
 
   // Auto-advance step if user authenticates in step 1
   useEffect(() => {
@@ -302,14 +239,9 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
 
   const isWizardReallyCompleted = userId && isCompleted && missingWizardItems.length === 0;
 
-  // Do not render if already completed OR userProfile isn't loaded yet
   if (userId && !userProfile) return null;
   if (isWizardReallyCompleted) return null;
-
-  // Render ONLY if there are missing items to onboarding
-  if (userId && missingWizardItems.length === 0) {
-    return null;
-  }
+  if (userId && missingWizardItems.length === 0) return null;
 
   // --- Helper Methods ---
 
@@ -349,80 +281,24 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
     }
   };
 
-  const handlePhoneChange = (e) => {
-    setPhone(formatPhoneNumber(e.target.value));
+  const handleToggleSkill = (skillId) => {
+    setSelectedSkills(prev => 
+      prev.includes(skillId) ? prev.filter(s => s !== skillId) : [...prev, skillId]
+    );
+    setError('');
   };
 
-  // Search Address Autocomplete
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    
-    if (query.length < 3) {
-      setSearchResults([]);
-      setShowDropdown(false);
-      return;
-    }
-
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    
-    setIsSearching(true);
-    setShowDropdown(true);
-    
-    searchTimeoutRef.current = setTimeout(async () => {
-      const results = await searchAddress(query);
-      setSearchResults(results);
-      setIsSearching(false);
-    }, 800);
-  };
-
-  const handleSelectResult = (result) => {
-    setSearchQuery(result.displayName);
-    setServiceAreaLocation({ lat: result.lat, lng: result.lng });
-    setShowDropdown(false);
-  };
-
-  const handleUseCurrentLocation = async () => {
-    setIsLocating(true);
-    try {
-      const loc = await getCurrentLocation();
-      setServiceAreaLocation({ lat: loc.lat, lng: loc.lng });
-      
-      const result = await reverseGeocode(loc.lat, loc.lng);
-      if (result) {
-        setSearchQuery(result.displayName);
-      }
-    } catch (e) {
-      showToast('Location permission denied or unavailable.', 'error');
-    } finally {
-      setIsLocating(false);
-    }
-  };
-
-  const handleDragEnd = async (pos) => {
-    setServiceAreaLocation(pos);
-    try {
-      const result = await reverseGeocode(pos.lat, pos.lng);
-      if (result) {
-        setSearchQuery(result.displayName);
-      }
-    } catch (e) {
-      console.error('Failed reverse geocoding on drag end', e);
-    }
-  };
-
-  // Trigger Geolocation request
+  // Trigger Location request
   const requestLocation = async () => {
     setIsGeoLoading(true);
     try {
       const loc = await getCurrentLocation();
       setRealLocation(loc);
+      setServiceAreaLocation(loc);
       setGeoState('granted');
-      setServiceAreaLocation({ lat: loc.lat, lng: loc.lng });
-      setAddressDetails(prev => ({ ...prev, lat: loc.lat, lng: loc.lng }));
-      showToast('Location permission granted!', 'success');
+      showToast('Location calibrated successfully!', 'success');
     } catch (err) {
-      showToast(err.message || 'Location access denied.', 'error');
+      showToast('Location permission denied or unavailable.', 'warning');
     } finally {
       setIsGeoLoading(false);
     }
@@ -450,74 +326,36 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
   const handleNext = async () => {
     setError('');
 
-    // --- Tasker Steps Flow (1: Auth, 2: Skills, 3: Enable Access, 4: Service Area, 5: Profile/Contact) ---
-    if (role === 'tasker') {
-      if (activeStep === 1) {
-        if (!userId) {
-          setError('Please sign in or sign up to continue.');
-          return;
-        }
-        setActiveStep(2);
-      } else if (activeStep === 2) {
-        if (selectedSkills.length === 0) {
-          setError('Please select at least one skill task.');
-          return;
-        }
-        setActiveStep(3);
-      } else if (activeStep === 3) {
-        setActiveStep(4);
-      } else if (activeStep === 4) {
-        if (!serviceAreaLocation.lat || !serviceAreaLocation.lng) {
-          setError('Please define your service scope center.');
-          return;
-        }
-        setActiveStep(5);
-      } else if (activeStep === 5) {
-        if (!name.trim()) {
-          setError('Your full name is required.');
-          return;
-        }
-        const rawPhone = phone.replace(/\D/g, '');
-        if (rawPhone.length !== 10) {
-          setError('Please enter a valid 10-digit phone number.');
-          return;
-        }
-        handleDone();
+    if (activeStep === 1) {
+      if (!userId) {
+        setError('Please sign in to continue.');
+        return;
       }
-    }
-
-    // --- Poster Steps Flow (1: Auth, 2: Profile/Name/Phone, 3: Enable Access, 4: Address Picker) ---
-    if (role === 'poster') {
-      if (activeStep === 1) {
-        if (!userId) {
-          setError('Please sign in or sign up to continue.');
-          return;
-        }
-        setActiveStep(2);
-      } else if (activeStep === 2) {
-        if (!name.trim()) {
-          setError('Your full name is required.');
-          return;
-        }
-        const rawPhone = phone.replace(/\D/g, '');
-        if (rawPhone.length !== 10) {
-          setError('Please enter a valid 10-digit phone number.');
-          return;
-        }
-        setActiveStep(3);
-      } else if (activeStep === 3) {
-        setActiveStep(4);
-      } else if (activeStep === 4) {
-        if (!addressDetails.completeAddress) {
-          setError('Please search and pin your address on the map.');
-          return;
-        }
-        if (!addressDetails.landmark.trim()) {
-          setError('Please enter the nearest landmark.');
-          return;
-        }
-        handleDone();
+      setActiveStep(2);
+    } else if (activeStep === 2) {
+      if (!name.trim()) {
+        setError('Your full name is required.');
+        return;
       }
+      if (!isValidPhoneNumber(phone)) {
+        setError('Please enter a valid 10-digit phone number.');
+        return;
+      }
+      setActiveStep(3);
+    } else if (activeStep === 3) {
+      if (selectedSkills.length === 0) {
+        setError('Please select at least one tactical skill.');
+        return;
+      }
+      setActiveStep(4);
+    } else if (activeStep === 4) {
+      setActiveStep(5);
+    } else if (activeStep === 5) {
+      if (!serviceAreaLocation.lat || !serviceAreaLocation.lng) {
+        setError('Please define your sector coordinates on the map.');
+        return;
+      }
+      handleDone();
     }
   };
 
@@ -535,26 +373,23 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
     setIsSubmitting(true);
     setError('');
     try {
-      const rawPhone = phone.replace(/\D/g, '');
+      const rawPhone = cleanPhoneNumber(phone);
       
-      let payload = {
+      const payload = {
         name: name.trim(),
         phone: rawPhone,
-        verifiedPhone: rawPhone
+        verifiedPhone: rawPhone,
+        skills: selectedSkills,
+        coverageRadius: coverageRadius,
+        coverageLevel: coverageRadius === 20000 ? 'flexible' : coverageRadius === 10000 ? 'local' : 'nearby',
+        serviceAreaName: searchQuery || sectorLandmark || 'Primary Sector',
+        serviceAreaLat: serviceAreaLocation.lat,
+        serviceAreaLng: serviceAreaLocation.lng,
+        locationStr: `POINT(${serviceAreaLocation.lng} ${serviceAreaLocation.lat})`
       };
 
-      if (role === 'tasker') {
-        payload = {
-          ...payload,
-          skills: selectedSkills,
-          coverageRadius: coverageRadius,
-          coverageLevel: coverageRadius === 20000 ? 'flexible' : coverageRadius === 10000 ? 'local' : 'nearby',
-          serviceAreaName: searchQuery || 'Primary Service Area',
-          locationStr: `POINT(${serviceAreaLocation.lng} ${serviceAreaLocation.lat})`
-        };
-        if (upiId && upiId.trim()) {
-          payload.upiId = upiId.trim();
-        }
+      if (upiId && upiId.trim()) {
+        payload.upiId = upiId.trim();
       }
 
       const res = await setUserProfile(payload);
@@ -564,27 +399,29 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
         return;
       }
 
-      if (role === 'poster') {
-        // Only save the address if it doesn't already exist in savedAddresses
-        const isAlreadySaved = savedAddresses.some(
-          addr => addr.completeAddress === addressDetails.completeAddress &&
-                  addr.landmark?.trim() === addressDetails.landmark.trim()
-        );
-        if (!isAlreadySaved) {
-          await addSavedAddress({
-            lat: addressDetails.lat,
-            lng: addressDetails.lng,
-            completeAddress: addressDetails.completeAddress,
-            landmark: addressDetails.landmark.trim(),
-            type: 'Home',
-            isDefault: savedAddresses.length === 0
-          });
-        }
+      // Also ensure primary sector base address is saved in Address Book
+      const landmarkText = sectorLandmark.trim() || searchQuery || 'Sector Base';
+      const completeAddr = searchQuery || 'Primary Sector Coordinates';
+      const isAlreadySaved = savedAddresses.some(
+        addr => addr.completeAddress === completeAddr || (addr.lat === serviceAreaLocation.lat && addr.lng === serviceAreaLocation.lng)
+      );
+      if (!isAlreadySaved) {
+        await addSavedAddress({
+          lat: serviceAreaLocation.lat,
+          lng: serviceAreaLocation.lng,
+          completeAddress: completeAddr,
+          landmark: landmarkText,
+          type: 'Base',
+          isDefault: savedAddresses.length === 0
+        });
       }
 
-      // Complete wizard!
-      localStorage.setItem(`helphive_wizard_completed_${role}_${userId}`, 'true');
-      showToast('Profile & settings updated successfully!', 'success');
+      // Complete wizard across unified and legacy keys
+      localStorage.setItem(`helphive_wizard_completed_${userId}`, 'true');
+      localStorage.setItem(`helphive_wizard_completed_tasker_${userId}`, 'true');
+      localStorage.setItem(`helphive_wizard_completed_poster_${userId}`, 'true');
+
+      showToast('Profile calibrated successfully!', 'success');
       if (onComplete) {
         onComplete();
       }
@@ -606,77 +443,58 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
     }
   };
 
-  const handleRoleSwitch = async () => {
-    setError('');
-    const newRole = role === 'tasker' ? 'poster' : 'tasker';
-    setActiveStep(1);
-    await switchRole(newRole);
-  };
-
-  // Total Steps
-  const totalSteps = role === 'tasker' ? 5 : 4;
+  const totalSteps = 5;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm modal-backdrop-open"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white w-full sm:max-w-lg sm:rounded-[32px] rounded-t-[32px] flex flex-col h-[92vh] sm:h-[85vh] max-h-[800px] overflow-hidden shadow-2xl modal-content-open text-left"
-        onClick={(e) => e.stopPropagation()}
-      >
-        
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-border bg-white shrink-0 flex flex-col space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-primary">
-              {role === 'tasker' ? 'Apex Operator Calibration' : 'Fixer Contractor Calibration'}
+    <div className="fixed inset-0 z-50 w-full h-full bg-[#F8FAFC] flex flex-col overflow-hidden select-none animate-[fadeIn_150ms_ease-out]">
+      {/* Top Navigation Bar */}
+      <header className="px-4 sm:px-8 py-3.5 sm:py-4 border-b border-border bg-white shrink-0 flex flex-col space-y-3 shadow-xs">
+        <div className="max-w-4xl w-full mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <span className="text-xs sm:text-sm font-black text-primary px-3 py-1 rounded-full bg-primary/10 tracking-tight">
+              Profile Setup
             </span>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleRoleSwitch}
-                className="text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
-              >
-                Switch to {role === 'tasker' ? 'Fixer' : 'Operator'}
-              </button>
-              {onClose && (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors cursor-pointer shrink-0"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
           </div>
-
-          {/* Progress Indicators */}
-          <div className="flex items-center space-x-2 pt-1">
-            {Array.from({ length: totalSteps }).map((_, idx) => {
-              const isPassed = activeStep > idx + 1;
-              const isActive = activeStep === idx + 1;
-              return (
-                <div key={idx} className="flex-1 flex flex-col space-y-1">
-                  <div className={`h-1.5 rounded-full transition-all duration-300 ${
-                    isPassed ? 'bg-green-500' : isActive ? 'bg-primary' : 'bg-gray-100'
-                  }`} />
-                </div>
-              );
-            })}
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-dark transition-colors cursor-pointer shrink-0"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Content Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 bg-gray-50/50">
-          
+        {/* 5-Step Progress Indicators */}
+        <div className="max-w-4xl w-full mx-auto flex items-center space-x-2 pt-0.5">
+          {Array.from({ length: totalSteps }).map((_, idx) => {
+            const isPassed = activeStep > idx + 1;
+            const isActive = activeStep === idx + 1;
+            return (
+              <div key={idx} className="flex-1 flex flex-col space-y-1">
+                <div className={`h-1.5 rounded-full transition-all duration-300 ${
+                  isPassed ? 'bg-emerald-500' : isActive ? 'bg-primary' : 'bg-gray-200'
+                }`} />
+              </div>
+            );
+          })}
+        </div>
+      </header>
+
+      {/* Content Body */}
+      <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 flex flex-col">
+        <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col">
           {error && (
-            <div className="mb-4 text-xs font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100 animate-pulse">
+            <div className="mb-4 text-xs font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100 animate-pulse shrink-0">
               {error}
             </div>
           )}
 
-          {/* Step 1: Authentication (Common for both flows) */}
+          {/* Step 1: Authentication */}
           {activeStep === 1 && (
             <div className="space-y-5">
               <div className="space-y-4 pt-1">
@@ -767,279 +585,57 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
             </div>
           )}
 
-          {/* --- TASKER FLOW --- */}
-          {role === 'tasker' && (
-            <>
-              {/* Step 2: Skills Selection */}
-              {activeStep === 2 && (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-black text-dark leading-tight">Select Specialist Classes</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Select tactical archetypes &amp; skill trees you want to execute.</p>
-                  </div>
-                  
-                  <div className="space-y-8 pt-1">
-                    {/* On-site Section */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-1.5 px-1">
-                        <MapPin className="w-3 h-3 text-primary shrink-0" />
-                        <span className="text-xs font-medium text-slate-700 tracking-wide">Field Ops &amp; Physical Archetypes</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {GAME_SKILLS.filter(s => s.type === 'physical').map((skill) => {
-                          const isSelected = selectedSkills.includes(skill.id);
-                          const SkillIcon = skill.icon || Zap;
-                          return (
-                            <button
-                              key={skill.id}
-                              type="button"
-                              onClick={() => {
-                                if (isSelected) {
-                                  setSelectedSkills(selectedSkills.filter(id => id !== skill.id));
-                                } else {
-                                  setSelectedSkills([...selectedSkills, skill.id]);
-                                }
-                              }}
-                              className={`relative flex flex-col items-center justify-center p-3 rounded-2xl border-2 text-center transition-all cursor-pointer min-h-[96px] ${
-                                isSelected 
-                                  ? 'border-primary bg-primary/[0.03] text-primary shadow-xs shadow-primary/10' 
-                                  : 'border-border bg-white text-dark hover:border-gray-300'
-                              }`}
-                            >
-                              {isSelected && (
-                                <div className="absolute top-2 left-2 w-3.5 h-3.5 bg-primary text-white rounded-full flex items-center justify-center shadow-xs animate-[scaleIn_150ms_ease-out]">
-                                  <Check className="w-2.5 h-2.5 stroke-[4]" />
-                                </div>
-                              )}
-                              <SkillIcon className={`w-5 h-5 mb-1.5 ${isSelected ? 'text-primary' : 'text-slate-500'}`} />
-                              <span className="text-xs font-black tracking-tight leading-tight">{skill.shortLabel || skill.label}</span>
-                              <span className="text-[9.5px] text-slate-400 font-medium line-clamp-1 mt-0.5">{skill.tagline}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+          {/* Step 2: Contact Identity (Name & Phone) */}
+          {activeStep === 2 && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-black text-dark leading-tight">Your Identity</h3>
+                <p className="text-xs font-semibold text-gray-400 mt-1">Shared with matching claimers and deployers on active bounties.</p>
+              </div>
 
-                    {/* Online Section */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-1.5 px-1">
-                        <Wifi className="w-3 h-3 text-primary shrink-0" />
-                        <span className="text-xs font-medium text-slate-700 tracking-wide">Cyber &amp; Remote Archetypes</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {GAME_SKILLS.filter(s => s.type === 'remote').map((skill) => {
-                          const isSelected = selectedSkills.includes(skill.id);
-                          const SkillIcon = skill.icon || Zap;
-                          return (
-                            <button
-                              key={skill.id}
-                              type="button"
-                              onClick={() => {
-                                if (isSelected) {
-                                  setSelectedSkills(selectedSkills.filter(id => id !== skill.id));
-                                } else {
-                                  setSelectedSkills([...selectedSkills, skill.id]);
-                                }
-                              }}
-                              className={`relative flex flex-col items-center justify-center p-3 rounded-2xl border-2 text-center transition-all cursor-pointer min-h-[96px] ${
-                                isSelected 
-                                  ? 'border-primary bg-primary/[0.03] text-primary shadow-xs shadow-primary/10' 
-                                  : 'border-border bg-white text-dark hover:border-gray-300'
-                              }`}
-                            >
-                              {isSelected && (
-                                <div className="absolute top-2 left-2 w-3.5 h-3.5 bg-primary text-white rounded-full flex items-center justify-center shadow-xs animate-[scaleIn_150ms_ease-out]">
-                                  <Check className="w-2.5 h-2.5 stroke-[4]" />
-                                </div>
-                              )}
-                              <SkillIcon className={`w-5 h-5 mb-1.5 ${isSelected ? 'text-primary' : 'text-slate-500'}`} />
-                              <span className="text-xs font-black tracking-tight leading-tight">{skill.shortLabel || skill.label}</span>
-                              <span className="text-[9.5px] text-slate-400 font-medium line-clamp-1 mt-0.5">{skill.tagline}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Legend */}
-                  <div className="pt-4 border-t border-border flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary text-white border border-primary">
-                        NEW
-                      </span>
-                      <span className="text-[10px] font-bold text-gray-500">Newly Added</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
-                        <Flame className="w-2.5 h-2.5 fill-current text-white" />
-                      </span>
-                      <span className="text-[10px] font-bold text-gray-500">High Demand</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="p-1 rounded-full bg-primary text-white flex items-center justify-center">
-                        <Zap className="w-2.5 h-2.5 fill-current text-white" />
-                      </span>
-                      <span className="text-[10px] font-bold text-gray-500">Quick Match</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 4: Service Scope Area */}
-              {activeStep === 4 && (
-                <div className="space-y-4 flex flex-col h-full min-h-[380px]">
-                  <div>
-                    <h3 className="text-lg font-black text-dark leading-tight">Set Sector Patrol Range</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Your radar scanner will ping bounties broadcast within this sector perimeter.</p>
-                  </div>
-
-                  {/* Map container */}
-                  <div className="flex-1 relative min-h-[220px] rounded-2xl overflow-hidden border border-border mt-2">
-                    {/* Autocomplete Search */}
-                    <div className="absolute top-3 left-3 right-3 z-20" ref={dropdownRef}>
-                      <div className="relative shadow-md rounded-xl">
-                        <input 
-                          type="text" 
-                          value={searchQuery}
-                          onChange={handleSearchChange}
-                          onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
-                          className="w-full bg-white border-none rounded-xl pl-9 pr-8 py-2 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="Search sector base coordinates..."
-                        />
-                        <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                        {isSearching && (
-                          <Loader2 className="absolute right-3 top-2.5 w-4 h-4 text-primary animate-spin" />
-                        )}
-                      </div>
-                      
-                      {showDropdown && searchResults.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden max-h-44 overflow-y-auto">
-                          {searchResults.map((result, idx) => (
-                            <div 
-                              key={idx}
-                              onClick={() => handleSelectResult(result)}
-                              className="p-2.5 border-b border-gray-50 hover:bg-orange-50 cursor-pointer transition-colors flex items-start space-x-2 text-[11px] font-semibold text-dark"
-                            >
-                              <MapPin className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
-                              <span className="line-clamp-2">{result.displayName}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <MapView
-                      center={[serviceAreaLocation.lat, serviceAreaLocation.lng]}
-                      zoom={coverageRadius > 10000 ? 10 : coverageRadius > 5000 ? 11 : 12}
-                      draggable={true}
-                      onDragEnd={handleDragEnd}
-                      coverageRadius={coverageRadius}
-                      height="100%"
-                    />
-
-                    {/* Labeled GPS Button */}
-                    <button 
-                      onClick={handleUseCurrentLocation}
-                      disabled={isLocating}
-                      className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-1.5 px-4 py-2 bg-white rounded-full shadow-lg border border-gray-100 text-gray-600 hover:text-primary hover:border-primary/30 hover:shadow-xl active:scale-[0.95] transition-all cursor-pointer select-none disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {isLocating ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary shrink-0" />
-                      ) : (
-                        <Navigation className="w-3.5 h-3.5 shrink-0" />
-                      )}
-                      <span className="text-[11px] font-bold">
-                        {isLocating ? 'Pinging GPS...' : 'Ping Current GPS'}
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Radius Selection */}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 block mb-2">Radar Perimeter Radius</label>
-                    <div className="flex space-x-2">
-                      {[
-                        { val: 5000, label: '5 km', desc: 'Nearby Sector' },
-                        { val: 10000, label: '10 km', desc: 'Local Sector' },
-                        { val: 20000, label: '20 km', desc: 'Extended Sector' }
-                      ].map((rad) => {
-                        const isRadSelected = coverageRadius === rad.val;
-                        return (
-                          <button
-                            key={rad.val}
-                            onClick={() => setCoverageRadius(rad.val)}
-                            className={`flex-1 py-2 px-3 rounded-xl border text-center transition-all cursor-pointer ${
-                              isRadSelected
-                                ? 'border-primary bg-primary/5 text-primary font-black'
-                                : 'border-border bg-white text-gray-600 font-bold hover:border-gray-300'
-                            }`}
-                          >
-                            <div className="text-xs">{rad.label}</div>
-                            <div className="text-[9px] opacity-75">{rad.desc}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 5: Contact & Profile Details */}
-              {activeStep === 5 && (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-black text-dark leading-tight">Operator Profile &amp; Contact Details</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Set your callsign and direct contact phone to coordinate directly with posters.</p>
-                  </div>
-
-                  <div className="space-y-3.5 pt-1">
-                    {/* Name */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-gray-500">Operator callsign / full name</label>
-                      <div className="flex items-center bg-gray-50 border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
-                        <User className="w-4 h-4 text-gray-400 shrink-0" />
-                        <input
-                          type="text"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="e.g. Felix Wing"
-                          className="w-full bg-transparent border-0 px-2 py-2 text-sm font-semibold outline-hidden text-dark h-full"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Phone */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-gray-500">Comms phone number</label>
-                      <div className="flex items-center bg-gray-50 border border-border focus-within:border-primary focus-within:bg-white rounded-xl px-3 w-full h-[52px]">
-                        <Phone className="w-4 h-4 text-gray-400 shrink-0" />
-                        <input
-                          type="tel"
-                          value={phone}
-                          maxLength={12}
-                          onChange={handlePhoneChange}
-                          placeholder="e.g. 9876543210"
-                          className="w-full bg-transparent border-0 px-2 py-2 text-sm font-semibold outline-hidden text-dark h-full"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
+              <div className="pt-1">
+                <ProfileContactInputs
+                  name={name}
+                  setName={setName}
+                  phone={phone}
+                  setPhone={setPhone}
+                  namePlaceholder="e.g. Felix Wing"
+                  inputBg="bg-white"
+                />
+              </div>
+            </div>
           )}
 
-          {/* Common Step 3: Enable Access (Location & Notification Permissions) */}
+          {/* Step 3: Tactical Skills Selection */}
           {activeStep === 3 && (
+            <div className="space-y-4 flex flex-col flex-1">
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-dark leading-tight">Equip Tactical Skills</h3>
+                <p className="text-xs font-semibold text-gray-400 mt-1">Select your capabilities across Field and Cyber operations.</p>
+              </div>
+
+              <div className="flex-1 min-h-[350px]">
+                <SkillPicker
+                  mode="multi"
+                  layout="grid"
+                  selected={selectedSkills}
+                  onSelect={handleToggleSkill}
+                  maxHeight="max-h-[55vh]"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: System Access (Location & Notification Permissions) */}
+          {activeStep === 4 && (
             <div className="space-y-6 py-2 flex flex-col items-center text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                 <Smartphone className="w-8 h-8" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-dark leading-tight">Activate Comms &amp; Sector Radar</h3>
-                <p className="text-xs font-semibold text-gray-400 mt-1 max-w-[280px] mx-auto">
-                  To detect sector bounties on radar and receive priority comms dispatches, activate system uplinks.
+                <h3 className="text-lg font-black text-dark leading-tight">Enable Sector Access</h3>
+                <p className="text-xs font-semibold text-gray-400 mt-1 max-w-[320px] mx-auto">
+                  Required to detect nearby bounties in real time and receive instant dispatch alerts.
                 </p>
               </div>
 
@@ -1051,8 +647,8 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-dark">GPS Sector Radar</p>
-                      <p className="text-[10px] font-semibold text-gray-400">Used to sync sector grid with your live operational vector</p>
+                      <p className="text-xs font-bold text-dark">Location</p>
+                      <p className="text-[10px] font-semibold text-gray-400">Calibrates radar for local sector bounties</p>
                     </div>
                   </div>
                   
@@ -1082,8 +678,8 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                       <Bell className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-dark">Priority Comms Dispatches</p>
-                      <p className="text-[10px] font-semibold text-gray-400">Used to broadcast incoming bounty pings and crew keycode updates</p>
+                      <p className="text-xs font-bold text-dark">Notifications</p>
+                      <p className="text-[10px] font-semibold text-gray-400">Instant alerts for nearby bounties and status updates</p>
                     </div>
                   </div>
                   
@@ -1109,102 +705,88 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
             </div>
           )}
 
-          {/* --- POSTER FLOW --- */}
-          {role === 'poster' && (
-            <>
-              {/* Step 2: Contact Details */}
-              {activeStep === 2 && (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-black text-dark leading-tight">Fixer Identity &amp; Callsign</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Operators will see this identity and comms number on locked contracts.</p>
-                  </div>
+          {/* Step 5: Sector Area & Perimeter Calibration */}
+          {activeStep === 5 && (
+            <div className="space-y-4 flex flex-col flex-1 min-h-[500px]">
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-dark leading-tight">Sector Calibration</h3>
+                <p className="text-xs font-semibold text-gray-400 mt-1">Calibrate your patrol radius and primary base for live radar matching and instant deployment.</p>
+              </div>
 
-                  <div className="space-y-3.5 pt-1">
-                    {/* Name */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-gray-500">Fixer callsign / name</label>
-                      <div className="flex items-center bg-white border border-border focus-within:border-primary rounded-xl px-3 h-12">
-                        <User className="w-4 h-4 text-gray-400 shrink-0" />
-                        <input
-                          type="text"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="e.g. Priya Sharma"
-                          className="w-full bg-transparent border-0 px-2.5 text-xs font-semibold outline-none text-dark"
-                        />
-                      </div>
-                    </div>
+              {/* Full-height LocationPicker with live coverage circle */}
+              <div className="flex-1 min-h-[360px] sm:min-h-[420px] relative rounded-3xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+                <LocationPicker
+                  initialLat={serviceAreaLocation.lat}
+                  initialLng={serviceAreaLocation.lng}
+                  coverageRadius={coverageRadius}
+                  searchPlaceholder="Search sector base, street, or landmark..."
+                  onLocationChange={(loc) => {
+                    setServiceAreaLocation({
+                      lat: loc.lat,
+                      lng: loc.lng
+                    });
+                    setSearchQuery(loc.completeAddress);
+                  }}
+                  onLocationGranted={(coords) => {
+                    setRealLocation(coords);
+                  }}
+                />
+              </div>
 
-                    {/* Phone */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-gray-500">Direct comms phone number</label>
-                      <div className="flex items-center bg-white border border-border focus-within:border-primary rounded-xl px-3 h-12">
-                        <Phone className="w-4 h-4 text-gray-400 shrink-0" />
-                        <input
-                          type="tel"
-                          value={phone}
-                          maxLength={12}
-                          onChange={handlePhoneChange}
-                          placeholder="e.g. 987-654-3210"
-                          className="w-full bg-transparent border-0 px-2.5 text-xs font-semibold outline-none text-dark"
-                        />
-                      </div>
-                    </div>
-                  </div>
+              {/* Radius Control Card */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-xs shrink-0">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Sector Radar Radius</label>
+                <div className="flex space-x-2.5">
+                  {[
+                    { val: 5000, label: '5 km', desc: 'Nearby' },
+                    { val: 10000, label: '10 km', desc: 'Local' },
+                    { val: 20000, label: '20 km', desc: 'Extended' }
+                  ].map((rad) => {
+                    const isRadSelected = coverageRadius === rad.val;
+                    return (
+                      <button
+                        key={rad.val}
+                        onClick={() => setCoverageRadius(rad.val)}
+                        className={`flex-1 py-2.5 px-3 rounded-xl border text-center transition-all cursor-pointer active-scale ${
+                          isRadSelected
+                            ? 'border-primary bg-primary/10 text-primary font-black shadow-xs ring-1 ring-primary/20'
+                            : 'border-gray-200 bg-white text-gray-600 font-bold hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="text-xs font-black">{rad.label}</div>
+                        <div className="text-[10px] font-semibold opacity-75">{rad.desc}</div>
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
 
-              {/* Step 4: Address Setup */}
-              {activeStep === 4 && (
-                <div className="space-y-4 flex flex-col h-full min-h-[380px]">
-                  <div>
-                    <h3 className="text-lg font-black text-dark leading-tight">Primary Base Coordinates</h3>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Set your headquarters or drop zone to broadcast bounties with zero delay.</p>
-                  </div>
-
-                  {/* Map picker wrapper */}
-                  <div className="flex-1 min-h-[220px] relative rounded-2xl overflow-hidden border border-border mt-1">
-                    <LocationPicker
-                      initialLat={addressDetails.lat}
-                      initialLng={addressDetails.lng}
-                      onLocationChange={(loc) => {
-                        setAddressDetails(prev => ({
-                          ...prev,
-                          lat: loc.lat,
-                          lng: loc.lng,
-                          completeAddress: loc.completeAddress
-                        }));
-                      }}
-                    />
-                  </div>
-
-                   {/* Landmark detail */}
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-gray-500">Sector Landmark / Drop Details</label>
-                    <input
-                      type="text"
-                      value={addressDetails.landmark}
-                      onChange={(e) => setAddressDetails(prev => ({ ...prev, landmark: e.target.value }))}
-                      placeholder="e.g. Near Community Center, opposite park"
-                      className="bg-white border border-border focus:border-primary rounded-xl px-3 h-10 w-full text-xs font-semibold outline-none text-dark"
-                    />
-                  </div>
-                </div>
-              )}
-            </>
+              {/* Sector Landmark / Drop Details */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-xs shrink-0 space-y-1.5">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Sector Landmark / Base Drop Details</label>
+                <input
+                  type="text"
+                  value={sectorLandmark}
+                  onChange={(e) => setSectorLandmark(e.target.value)}
+                  placeholder="e.g. Near Community Center, Sector 4, gate 2"
+                  className="bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-xl px-3.5 h-11 w-full text-xs font-bold outline-none text-dark transition-all"
+                />
+              </div>
+            </div>
           )}
 
         </div>
+      </main>
 
-        {/* Footer Navigation */}
-        <div className="px-6 py-4 bg-white border-t border-border shrink-0 flex items-center space-x-3 pb-8 sm:pb-4">
+      {/* Sticky Bottom Footer Navigation */}
+      <footer className="px-4 sm:px-8 py-3.5 sm:py-4 bg-white border-t border-border shrink-0 shadow-sm">
+        <div className="max-w-4xl w-full mx-auto flex items-center space-x-3 pb-2 sm:pb-0">
           {userId ? (
             <button
               type="button"
               onClick={handleLogout}
               disabled={isSubmitting}
-              className="py-3 px-4 rounded-xl border border-red-100 bg-red-50/50 hover:bg-red-50 text-red-500 font-semibold transition-all flex items-center justify-center space-x-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+              className="py-3 px-4 rounded-xl border border-red-100 bg-red-50/50 hover:bg-red-50 text-red-500 font-semibold transition-all flex items-center justify-center space-x-1.5 cursor-pointer shrink-0 disabled:opacity-50 active-scale"
             >
               <LogOut className="w-4 h-4 text-red-500" />
               <span className="text-xs font-semibold">Sign out</span>
@@ -1215,7 +797,7 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
                 type="button"
                 onClick={handleBack}
                 disabled={isSubmitting}
-                className="py-3 px-4 rounded-xl border border-border font-semibold text-gray-500 hover:bg-gray-50 transition-all flex items-center justify-center space-x-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                className="py-3 px-4 rounded-xl border border-border font-semibold text-gray-600 hover:bg-gray-50 transition-all flex items-center justify-center space-x-1.5 cursor-pointer shrink-0 disabled:opacity-50 active-scale"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span className="text-xs font-semibold">Back</span>
@@ -1226,23 +808,21 @@ const SetupWizardModal = ({ onComplete, onClose }) => {
           <button
             onClick={handleNext}
             disabled={isSubmitting || (activeStep === 1 && !userId)}
-            className="flex-1 bg-primary hover:bg-primary/95 text-white py-3 px-6 rounded-xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all font-bold flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-80 disabled:cursor-not-allowed"
+            className="flex-1 bg-primary hover:bg-primary/95 text-white py-3.5 px-6 rounded-xl shadow-lg shadow-primary/20 active:scale-[0.99] transition-all font-bold flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-80 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
             ) : (
               <>
-                <span className="text-xs font-bold">
-                  {((role === 'tasker' && activeStep === 5) || (role === 'poster' && activeStep === 4)) 
-                    ? 'Complete & continue' 
-                    : 'Save & next'}
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  {activeStep === 5 ? 'Calibrate & Enter The Grid 🚀' : 'Save & Next'}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
         </div>
-      </div>
+      </footer>
     </div>
   );
 };

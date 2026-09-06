@@ -18,8 +18,8 @@ const CONFIG_CATEGORIES = [
   // --- On-site / Physical Services ---
   {
     id: 'creative',
-    label: 'Creative Ops & Media',
-    shortLabel: 'Creative Ops',
+    label: 'Creative & Media',
+    shortLabel: 'Creative',
     icon: Camera,
     type: 'physical',
     isNew: true,
@@ -91,11 +91,11 @@ const CONFIG_CATEGORIES = [
   },
   {
     id: 'local_helpers',
-    label: 'Craft & Domestic Base Ops',
-    shortLabel: 'Base Ops',
+    label: 'Home, Craft & Repairs',
+    shortLabel: 'Home & Craft',
     icon: Home,
     type: 'physical',
-    description: 'Gear assembly, spatial organization, groundskeeping, and base fixes',
+    description: 'Gear assembly, spatial organization, groundskeeping, and home fixes',
     matchingBehavior: 'location_critical',
     examples: [
       'Assemble precision modular workstations or flat-pack wardrobes',
@@ -115,21 +115,21 @@ const CONFIG_CATEGORIES = [
     examples: [
       'Urgent key recovery: pick up keys from cafe and rush deliver across town',
       'Procure prescription supplies from 24/7 pharmacy and drop off immediately',
-      'Express courier: transport sealed contract to client HQ in under 30 mins'
+      'Express courier: transport sealed documents to client HQ in under 30 mins'
     ]
   },
   {
     id: 'others_physical',
-    label: 'Custom Field Missions',
-    shortLabel: 'Custom Ops',
+    label: 'Custom Field Tasks',
+    shortLabel: 'Custom Field',
     icon: HelpCircle,
     type: 'physical',
-    description: 'Custom on-site operations, reconnaissance, and unique physical tasks',
+    description: 'Custom Field operations, reconnaissance, and unique physical tasks',
     matchingBehavior: 'generic',
     examples: [
       'Run urban dog training walk around the park for 45 minutes',
       'Deploy tactical flyer distribution for new store launch at high-traffic spot',
-      'On-site supervision and security check during third-party tech installations'
+      'Field supervision and security check during third-party tech installations'
     ]
   },
 
@@ -198,15 +198,15 @@ const CONFIG_CATEGORIES = [
   },
   {
     id: 'others_remote',
-    label: 'Special Remote Ops',
-    shortLabel: 'Special Ops',
+    label: 'Special Cyber Tasks',
+    shortLabel: 'Special Cyber',
     icon: Wifi,
     type: 'remote',
     isNew: true,
-    description: 'Custom digital tasks, remote workflows, and online specialist projects',
+    description: 'Custom digital tasks, cyber workflows, and online specialist projects',
     matchingBehavior: 'remote',
     examples: [
-      'Custom online research, data scraping, or specialized remote tasks'
+      'Custom online research, data scraping, or specialized cyber tasks'
     ]
   }
 ];
@@ -224,7 +224,7 @@ export const SUB_SKILL_TAGS = {
   moving: ['Titan Muscle', 'Furniture Shift', 'Cargo Unload', 'Gear Moving', 'Workstation Build'],
   queue_standing: ['Hospital Priority', 'Embassy Token', 'Drop Queue', 'Visa Submission'],
   personal_assistance: ['Guardian Escort', 'Trail Guide', 'Wheelchair Support', 'Civic Guide'],
-  local_helpers: ['Modular Assembly', 'Camp Chef', 'Handyman Ops', 'Groundskeeper', 'Storage Overhaul'],
+  local_helpers: ['Modular Assembly', 'Camp Chef', 'Handyman', 'Groundskeeper', 'Storage Overhaul'],
   errands: ['Velocity Sprint', 'Trip Pilot', 'Supply Scout', 'Express Courier'],
   video_editing: ['Viral Reels', 'YouTube Cut', 'Kinetic Captions', 'Color Grade'],
   graphic_design: ['High-CTR Thumbnail', 'Vector Logo', 'Campaign Assets', 'Brand Deck'],

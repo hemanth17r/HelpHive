@@ -229,7 +229,7 @@ const TaskerHomeScreen = () => {
                       </div>
                       <div>
                         <span className="text-[10px] font-black uppercase text-gray-400 block leading-none mb-1">
-                          {skill?.label || 'Contract'}
+                          {skill?.label || 'Bounty'}
                         </span>
                         <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border text-blue-500 bg-blue-50 border-blue-200">
                           In Execution
@@ -249,7 +249,7 @@ const TaskerHomeScreen = () => {
                       <span>Crew: {job.peopleNeeded}</span>
                     </div>
                     <div className="flex items-center space-x-1 text-gray-400">
-                      <span>Fixer: <span className="text-gray-600 font-extrabold">{job.posterName || 'Contractor'}</span></span>
+                      <span>Deployer: <span className="text-gray-600 font-extrabold">{job.posterName || 'Deployer'}</span></span>
                     </div>
                   </div>
                 </div>
@@ -258,16 +258,16 @@ const TaskerHomeScreen = () => {
           </div>
         )}
 
-        {/* Quest Radar Search & Filter Control Deck */}
+        {/* Bounty Radar Search & Filter Control Deck */}
         {isOnline && isProfileReady && (
           <div className="space-y-3 pt-1">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center space-x-2">
-                <span className="relative flex h-2 w-2">
+              <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center space-x-2 leading-none">
+                <span className="relative flex h-2 w-2 -translate-y-px shrink-0">
                   <span className="animate-live-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                 </span>
-                <span>Live Quest Radar</span>
+                <span>Live Bounty Radar</span>
               </h2>
               <button
                 onClick={handleRefresh}
@@ -305,46 +305,46 @@ const TaskerHomeScreen = () => {
             <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pb-1">
               <button
                 onClick={() => setActiveRadarFilter('all')}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer inline-flex items-center justify-center leading-none ${
+                className={`h-7 px-3 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer inline-flex items-center justify-center leading-none border ${
                   activeRadarFilter === 'all'
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+                    ? 'bg-primary text-white border-primary shadow-xs'
+                    : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200/70'
                 }`}
               >
                 All ({visibleJobs.length})
               </button>
               <button
                 onClick={() => setActiveRadarFilter('matched')}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 leading-none ${
+                className={`h-7 px-3 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer inline-flex items-center gap-1.5 leading-none border ${
                   activeRadarFilter === 'matched'
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'bg-orange-50 text-orange-700 border border-orange-200/60 hover:bg-orange-100/70'
+                    ? 'bg-primary text-white border-primary shadow-xs'
+                    : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200/70'
                 }`}
               >
                 <UserCheck className="w-3.5 h-3.5 shrink-0" />
-                <span className="leading-none">Matched ({matchingSkillsJobs.length})</span>
+                <span className="leading-none">Skill ({matchingSkillsJobs.length})</span>
               </button>
               <button
                 onClick={() => setActiveRadarFilter('physical')}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 leading-none ${
+                className={`h-7 px-3 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer inline-flex items-center gap-1.5 leading-none border ${
                   activeRadarFilter === 'physical'
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+                    ? 'bg-primary text-white border-primary shadow-xs'
+                    : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200/70'
                 }`}
               >
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
-                <span className="leading-none">Nearby</span>
+                <span className="leading-none">Field</span>
               </button>
               <button
                 onClick={() => setActiveRadarFilter('remote')}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 leading-none ${
+                className={`h-7 px-3 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer inline-flex items-center gap-1.5 leading-none border ${
                   activeRadarFilter === 'remote'
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+                    ? 'bg-primary text-white border-primary shadow-xs'
+                    : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200/70'
                 }`}
               >
                 <Globe className="w-3.5 h-3.5 shrink-0" />
-                <span className="leading-none">Remote</span>
+                <span className="leading-none">Cyber</span>
               </button>
             </div>
           </div>

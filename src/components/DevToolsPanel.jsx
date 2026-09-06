@@ -20,11 +20,11 @@ const DevToolsPanel = () => {
       id: '11111111-1111-1111-1111-111111111111',
       name: 'Aeron Vance',
       role: 'poster',
-      roleLabel: 'Quest Issuer',
+      roleLabel: 'Bounty Issuer',
       level: 10,
       badgeText: 'ISSUER',
       badgeClass: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-      desc: 'Apex Quest Issuer deploying multi-operative bounties & raid contracts (Bangalore Sector)',
+      desc: 'Apex Bounty Issuer deploying multi-operative bounties (Bangalore Sector)',
       color: 'from-orange-500 to-amber-500',
       bird: 'sparrow',
       tasksCompleted: 24,
@@ -39,7 +39,7 @@ const DevToolsPanel = () => {
       level: 8,
       badgeText: 'ELITE FIXER',
       badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-      desc: 'High-stats fixer (35 Quests, 5.0★, Titan Muscle & Modular Assembly loadout)',
+      desc: 'High-stats fixer (35 Bounties, 5.0★, Titan Muscle & Modular Assembly loadout)',
       color: 'from-emerald-500 to-teal-500',
       bird: 'falcon',
       tasksCompleted: 35,
@@ -54,7 +54,7 @@ const DevToolsPanel = () => {
       level: 1,
       badgeText: 'RECRUIT',
       badgeClass: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      desc: 'Fresh recruit operative (0 Quests, ₹0 Stash, Starter Loadout baseline)',
+      desc: 'Fresh recruit operative (0 Bounties, ₹0 Stash, Starter Loadout baseline)',
       color: 'from-blue-500 to-cyan-500',
       bird: 'robin',
       tasksCompleted: 0,
@@ -69,7 +69,7 @@ const DevToolsPanel = () => {
       level: 5,
       badgeText: 'CYBER OPS',
       badgeClass: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-      desc: 'Remote & Code Hotfix loadout (12 Quests, 4.9★, Media & Cyber abilities)',
+      desc: 'Cyber & Code Hotfix loadout (12 Bounties, 4.9★, Media & Cyber abilities)',
       color: 'from-purple-500 to-pink-500',
       bird: 'owl',
       tasksCompleted: 12,
@@ -123,7 +123,7 @@ const DevToolsPanel = () => {
   const activeRoleLabel = isGuest
     ? 'Goated Guest Operative (Lv.12)'
     : role === 'poster'
-    ? '👑 Quest Issuer'
+    ? '👑 Bounty Issuer'
     : '⚡ Fixer (Operative)';
 
   return (
@@ -229,7 +229,7 @@ const DevToolsPanel = () => {
                     <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.2 rounded-md font-bold uppercase">Guest</span>
                   </div>
                   <span className="text-[10px] text-gray-300 font-semibold truncate">
-                    Lv.12 • 42 Ops • ₹24,500 Stash
+                    Lv.12 • 42 Bounties • ₹24,500 Stash
                   </span>
                 </div>
               </div>
@@ -238,6 +238,7 @@ const DevToolsPanel = () => {
 
             {personas.map((p) => {
               const isActive = userId === p.id;
+              const isTasker = p.role === 'tasker';
               return (
                 <button
                   key={p.id}
@@ -286,10 +287,10 @@ const DevToolsPanel = () => {
             <div className="grid grid-cols-2 gap-1.5">
               {[
                 { id: 'landing', label: '1. Gateway Landing' },
-                { id: 'tasker_home', label: '2. Live Quest Radar' },
+                { id: 'tasker_home', label: '2. Live Bounty Radar' },
                 { id: 'post_job', label: '3. Deploy Bounty' },
                 { id: 'poster_home', label: '4. Issuer Deck' },
-                { id: 'operations', label: '5. Active Operations' },
+                { id: 'operations', label: '5. Bounty Board' },
                 { id: 'my_profile', label: '6. Operative Dossier' },
                 { id: 'tasker_activity', label: '7. Stash & Ledger' },
                 { id: 'notifications', label: '8. Transmissions' },
@@ -301,8 +302,6 @@ const DevToolsPanel = () => {
                 <button
                   key={s.id}
                   onClick={() => {
-                    if (s.id === 'poster_home' || s.id === 'post_job') setRole('poster');
-                    if (s.id === 'tasker_home' || s.id === 'tasker_activity') setRole('tasker');
                     pushScreen(s.id, true);
                     setIsOpen(false);
                   }}
@@ -323,8 +322,8 @@ const DevToolsPanel = () => {
             <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Copy Bounty Test Presets</span>
             <div className="flex flex-col space-y-1.5">
               {[
-                '[TEST] Titan Muscle heavy shift bounty (Solo Op)',
-                '[TEST] Modular Assembly & Rigging contract (Crew Raid)',
+                '[TEST] Titan Muscle heavy shift bounty (Solo)',
+                '[TEST] Modular Assembly & Rigging bounty (Squad Bounty)',
                 '[TEST] Code Hotfix & Cyber repair dispatch',
                 '[TEST] Velocity Sprint priority sector courier'
               ].map((template) => {

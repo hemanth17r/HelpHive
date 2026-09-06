@@ -27,7 +27,7 @@ const JobReceiptScreen = () => {
   if (!currentPostedJob) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-white p-6">
-        <p className="text-gray-500 font-bold">Task details not found.</p>
+        <p className="text-gray-500 font-bold">Bounty details not found.</p>
         <button onClick={() => pushScreen('poster_home')} className="mt-4 text-primary font-bold">Go Home</button>
       </div>
     );
@@ -56,7 +56,7 @@ const JobReceiptScreen = () => {
 
   const handleWhatsAppSupport = () => {
     const taskTitle = skill?.label || 'General Operation';
-    const message = `Hi HelpHive Support,\n\nI need help with a completed contract.\n\nContract ID: ${currentPostedJob.id || 'N/A'}\nContract: ${taskTitle}\nAmount Settled: ${formatCurrency(currentPostedJob.amount || 0, currentPostedJob.currency || currency?.code)}\n\nFixer ID: ${currentPostedJob.posterId || userId || 'N/A'}\n\nIssue: `;
+    const message = `Hi HelpHive Support,\n\nI need help with a completed bounty.\n\nBounty ID: ${currentPostedJob.id || 'N/A'}\nBounty: ${taskTitle}\nAmount Settled: ${formatCurrency(currentPostedJob.amount || 0, currentPostedJob.currency || currency?.code)}\n\nDeployer ID: ${currentPostedJob.posterId || userId || 'N/A'}\n\nIssue: `;
     const whatsappUrl = `https://wa.me/919347442426?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -68,15 +68,15 @@ const JobReceiptScreen = () => {
   if (isJobCancelled) {
     if (role === 'tasker') {
       if (currentPostedJob.isCancelledByMe) {
-        cancelMessage = "You disengaged from this contract.";
+        cancelMessage = "You disengaged from this bounty.";
       } else {
-        cancelMessage = "This contract was aborted by the Fixer.";
+        cancelMessage = "This bounty was aborted by the Deployer.";
       }
     } else {
       if (cancelledHelpers.length > 0) {
-        cancelMessage = `${cancelledHelpers.map(h => h.name).join(', ')} disengaged from this contract.`;
+        cancelMessage = `${cancelledHelpers.map(h => h.name).join(', ')} disengaged from this bounty.`;
       } else {
-        cancelMessage = "You aborted this contract.";
+        cancelMessage = "You aborted this bounty.";
       }
     }
   }
@@ -91,7 +91,7 @@ const JobReceiptScreen = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
         </Tooltip>
-        <h1 className="ml-2 text-base font-black text-dark tracking-tight">Contract Settlement Report</h1>
+        <h1 className="ml-2 text-base font-black text-dark tracking-tight">Bounty Settlement Report</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-6 space-y-6 w-full max-w-md lg:max-w-2xl mx-auto">
@@ -102,7 +102,7 @@ const JobReceiptScreen = () => {
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center border border-red-200 shadow-xs">
               <XCircle className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-black text-dark">Contract Aborted</h2>
+            <h2 className="text-xl font-black text-dark">Bounty Aborted</h2>
             <p className="text-xs font-bold text-gray-400 text-center max-w-xs">{cancelMessage}</p>
           </div>
         ) : (
@@ -110,7 +110,7 @@ const JobReceiptScreen = () => {
             <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center border border-green-200 shadow-xs">
               <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-black text-dark">Contract Fulfilled</h2>
+            <h2 className="text-xl font-black text-dark">Bounty Fulfilled</h2>
             <p className="text-xs font-bold text-gray-400">Mission accomplished. Escrow settled.</p>
           </div>
         )}
@@ -153,14 +153,14 @@ const JobReceiptScreen = () => {
         {/* Order Info Card */}
         <div className="bg-white border border-border rounded-3xl p-5 shadow-xs space-y-4">
           <h3 className="text-xs font-semibold text-gray-500 border-b border-gray-100 pb-3 flex items-center">
-            <FileText className="w-4 h-4 mr-1.5" /> Contract Record
+            <FileText className="w-4 h-4 mr-1.5" /> Bounty Record
           </h3>
           
           <div className="space-y-3 pt-1">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-2 text-gray-500">
                 <Receipt className="w-4 h-4" />
-                <span className="text-xs font-bold">Contract ID</span>
+                <span className="text-xs font-bold">Bounty ID</span>
               </div>
               <span className="text-xs font-black text-dark text-right">
                 {displayOrderId}
@@ -180,7 +180,7 @@ const JobReceiptScreen = () => {
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-2 text-gray-500">
                 <Users className="w-4 h-4" />
-                <span className="text-xs font-bold">Operators Deployed</span>
+                <span className="text-xs font-bold">Claimers Deployed</span>
               </div>
               <span className="text-xs font-black text-dark text-right">
                 {currentPostedJob.peopleNeeded}
@@ -207,12 +207,12 @@ const JobReceiptScreen = () => {
                Bounty Settlement Breakdown
              </h3>
               <div className="flex items-center justify-between mt-2">
-                <span className="text-xs font-medium text-gray-500">Bounty per Operator</span>
+                <span className="text-xs font-medium text-gray-500">Bounty per Claimer</span>
                 <span className="text-sm font-semibold text-dark">{formatCurrency(currentPostedJob.amount || 0, currentPostedJob.currency || currency?.code)}</span>
               </div>
               {role === 'poster' && (
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs font-medium text-gray-500">Operators Settled</span>
+                  <span className="text-xs font-medium text-gray-500">Claimers Settled</span>
                   <span className="text-sm font-semibold text-dark">{crew.filter(c => c.status === 'accepted').length || 1}</span>
                 </div>
               )}
@@ -253,7 +253,7 @@ const JobReceiptScreen = () => {
                 className="flex items-center justify-center space-x-2 w-full bg-orange-50 hover:bg-orange-100 text-primary font-semibold py-3 rounded-xl border border-primary/20 active:scale-[0.99] transition-all cursor-pointer mt-2 text-xs"
               >
                 <Star className="w-4 h-4 fill-primary/20" />
-                <span>{role === 'poster' ? 'Commend Operator' : 'Rate Fixer Cred'}</span>
+                <span>{role === 'poster' ? 'Commend Claimer' : 'Rate Deployer Cred'}</span>
               </button>
             </div>
           </div>
@@ -264,21 +264,18 @@ const JobReceiptScreen = () => {
             </h3>
             <div className="flex flex-col py-1 space-y-2">
               <div className="flex items-center space-x-1">
-                {[1, 2, 3, 4, 5].map((star) => {
-                  const ratingVal = currentPostedJob.myRatingToReceiver || 5;
-                  return (
-                    <Star 
-                      key={star} 
-                      className={`w-5 h-5 ${star <= ratingVal ? 'fill-primary text-primary' : 'text-gray-200'}`} 
-                    />
-                  );
-                })}
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star 
+                    key={star} 
+                    className={`w-5 h-5 ${star <= (currentPostedJob.myRatingToReceiver || 5) ? 'fill-primary text-primary' : 'text-gray-200'}`} 
+                  />
+                ))}
                 <span className="text-xs font-black text-dark ml-2">
                   {currentPostedJob.myRatingToReceiver ? currentPostedJob.myRatingToReceiver.toFixed(1) : '5.0'}
                 </span>
               </div>
               <p className="text-xs font-semibold text-gray-500">
-                You commended the {role === 'poster' ? 'Operator' : 'Fixer'} for this contract.
+                You commended the {role === 'poster' ? 'Claimer' : 'Deployer'} for this bounty.
               </p>
             </div>
           </div>
